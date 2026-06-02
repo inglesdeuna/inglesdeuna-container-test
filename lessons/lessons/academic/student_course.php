@@ -800,7 +800,7 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo h($currentTypeLabel . ' — ' . $courseName); ?></title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@500;600;700;800&display=swap');
 :root{
     --bg:#fff8e6;
     --card:#ffffff;
@@ -820,73 +820,105 @@ html,body{height:100%}
 body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradient(145deg,#fff8e6 0%,#fdeaff 55%,#f0e0ff 100%);color:var(--text);display:flex;flex-direction:column;overflow:hidden}
 
 .topbar{
-    background:linear-gradient(180deg,#f14902,#d33d00);
-    color:#fff;
-    padding:10px 24px;
+    background:#ffffff;
+    border-bottom:1.5px solid #F0EEF8;
+    height:52px;
+    padding:0 20px;
     flex-shrink:0;
 }
 .topbar-inner{
-    max-width:1280px;
-    margin:0 auto;
-    display:grid;
-    grid-template-columns:180px 1fr 320px;
+    width:100%;
+    height:100%;
+    display:flex;
     align-items:center;
-    gap:12px;
+    justify-content:space-between;
+    gap:8px;
 }
 .top-actions{
     display:flex;
     align-items:center;
-    justify-content:flex-end;
     gap:8px;
-    min-width:0;
 }
 .top-btn{
     display:inline-flex;align-items:center;justify-content:center;
     gap:6px;
-    padding:13px 22px;border-radius:12px;text-decoration:none;
-    font-size:15px;font-weight:700;color:#fff;white-space:nowrap;
-    background:linear-gradient(180deg,#a855f7,#7c3aed);
-    box-shadow:var(--shadow-sm);
-    transition:filter .15s,transform .15s;
+    padding:6px 14px;
+    border-radius:8px;
+    text-decoration:none;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:#fff;
+    white-space:nowrap;
+    background:#F97316;
+    border:none;
+    line-height:1;
 }
-.top-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.topbar-title{font-size:28px;font-weight:700;text-align:center;font-family:'Fredoka','Trebuchet MS',sans-serif;letter-spacing:.01em}
+.top-btn.top-btn-pdf{background:#7F77DD}
+.top-btn.top-btn-download{background:#22c55e}
+.top-btn-icon{
+    font-size:14px;
+    line-height:1;
+}
+.topbar-title{
+    flex:1;
+    text-align:center;
+    font-family:'Fredoka One','Trebuchet MS',sans-serif;
+    font-size:18px;
+    font-weight:400;
+    color:#F97316;
+    letter-spacing:0;
+}
 
 .page{max-width:1280px;margin:0 auto;padding:1cm;width:100%;flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .content{display:flex;flex-direction:column;gap:10px;min-width:0;flex:1;min-height:0;overflow:hidden}
 
 .viewer-shell{
-    background:var(--card);border:1px solid var(--line);
-    border-radius:22px;box-shadow:var(--shadow);padding:14px;
-    display:flex;
-    flex-direction:column;
-    min-height:0;
-    flex:1;
-    overflow:hidden;
+   background:#ffffff;
+   border:1.5px solid #EDE9FA;
+   border-radius:24px;
+   display:flex;
+   flex-direction:column;
+   min-height:0;
+   flex:1;
+   overflow:hidden;
 }
 .viewer-top{
-    display:flex;align-items:center;justify-content:space-between;
-    gap:10px;margin-bottom:10px;flex-wrap:wrap;flex-shrink:0;
+   display:flex;
+   align-items:center;
+   justify-content:space-between;
+   gap:10px;
+   margin-bottom:12px;
+   padding:14px 20px 0;
+   flex-shrink:0;
 }
 .section-title{
-    display:flex;align-items:center;gap:12px;
-    font-size:22px;font-weight:800;color:var(--muted);
-}
-.section-title::after{
-    content:"";flex:1;height:2px;min-width:60px;
-    background:linear-gradient(90deg,var(--line) 0%,transparent 100%);
+   font-family:'Nunito','Segoe UI',sans-serif;
+   font-size:13px;
+   font-weight:600;
+   color:#9B8FCC;
 }
 .act-badge{
-    display:inline-flex;align-items:center;padding:7px 12px;
-    border-radius:999px;background:var(--salmon-soft);color:var(--salmon);
-    font-size:12px;font-weight:800;text-transform:uppercase;
+   display:inline-flex;
+   align-items:center;
+   padding:4px 12px;
+   border-radius:12px;
+   background:#FFF0E6;
+   color:#F97316;
+   font-family:'Fredoka One','Trebuchet MS',sans-serif;
+   font-size:12px;
+   font-weight:400;
+   text-transform:none;
 }
 .frame-wrap{
-    border-radius:14px;overflow:hidden;background:#fff;
-    border:1px solid var(--line);box-shadow:var(--shadow-sm);
-    min-height:0;
-    flex:1 1 auto;
-    position:relative;
+   border-radius:0;
+   overflow:hidden;
+   background:#fff;
+   border:none;
+   box-shadow:none;
+   min-height:0;
+   flex:1 1 auto;
+   position:relative;
 }
 .frame-wrap iframe{display:block;width:100%;height:100%;border:0;background:#fff}
 
@@ -939,29 +971,58 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 }
 
 .controls{
-    display:flex;align-items:center;justify-content:space-between;
-    gap:12px;padding-top:10px;padding-bottom:2px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 20px;
     flex-shrink:0;
-    background:var(--card);
+    border-top:1.5px solid #EDE9FA;
+    background:#ffffff;
     z-index:3;
 }
-.step-counter{font-size:13px;font-weight:700;color:var(--muted);text-align:center}
-.step-counter strong{color:var(--salmon)}
+.step-counter{
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:13px;
+    font-weight:600;
+    color:#9B8FCC;
+    text-align:center;
+}
+.step-counter strong{color:inherit}
 
 .ctrl-btn{
-    display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    min-width:130px;padding:12px 18px;border-radius:12px;text-decoration:none;
-    color:#fff;font-size:14px;font-weight:700;
-    background:linear-gradient(180deg,#f14902,#d33d00);
-    box-shadow:var(--shadow-sm);transition:filter .15s,transform .15s;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    min-width:130px;
+    padding:8px 20px;
+    border-radius:12px;
+    text-decoration:none;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:14px;
+    font-weight:700;
+    border:2px solid #F97316;
+    color:#ffffff;
+    background:#F97316;
 }
-.ctrl-btn.blue{background:linear-gradient(180deg,#c97de8,#8b1a9a)}
-.ctrl-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.ctrl-btn.disabled{opacity:.38;pointer-events:none}
+.ctrl-btn.blue{
+    border-color:#EDE9FA;
+    color:#7F77DD;
+    background:#ffffff;
+}
+.ctrl-btn.disabled{opacity:.45;pointer-events:none}
 
 /* units sidebar strip */
 .units-strip{
-    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
+    display:flex;
+    flex-wrap:nowrap;
+    gap:8px;
+    margin-bottom:16px;
+    background:#FFF8F4;
+    border-bottom:1px solid #F0EEF8;
+    padding:10px 20px;
+    overflow-x:auto;
 }
 .modules-strip{
     margin-bottom:12px;
@@ -979,13 +1040,25 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     font-weight:700;
 }
 .unit-chip{
-    display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;
-    font-size:13px;font-weight:700;text-decoration:none;
-    background:var(--card);border:2px solid var(--line);color:var(--muted);
-    transition:background .15s,border-color .15s;
+    display:inline-flex;
+    align-items:center;
+    padding:6px 14px;
+    border-radius:8px;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    font-size:12px;
+    font-weight:600;
+    text-decoration:none;
+    background:#ffffff;
+    border:1.5px solid #EDE9FA;
+    color:#9B8FCC;
+    white-space:nowrap;
 }
-.unit-chip:hover{border-color:var(--salmon);color:var(--salmon)}
-.unit-chip.active{background:var(--salmon);border-color:var(--salmon);color:#fff}
+.unit-chip:hover{border-color:#7F77DD;color:#7F77DD}
+.unit-chip.active{
+    background:#EDE9FA;
+    border-color:#7F77DD;
+    color:#7F77DD;
+}
 
 /* empty / completed */
 .empty-shell{
@@ -1143,8 +1216,10 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 .empty-btn.disabled{opacity:.45;pointer-events:none;cursor:not-allowed}
 
 @media(max-width:768px){
-    .topbar-inner{grid-template-columns:1fr;text-align:center}
-    .top-actions{justify-content:center;flex-wrap:wrap}
+    .topbar{height:auto;padding:10px 16px}
+    .topbar-inner{flex-wrap:wrap}
+    .top-actions{justify-content:flex-end;flex-wrap:wrap}
+    .topbar-title{order:3;flex-basis:100%}
     .page{padding:0.5cm}
     .frame-wrap iframe{height:100%}
     .controls{flex-wrap:wrap}
@@ -1157,19 +1232,17 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
 <header class="topbar">
     <div class="topbar-inner">
-        <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
-        <h1 class="topbar-title"><?php echo h($isTechnicalProgram ? $courseName : (($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName)); ?></h1>
+        <a class="top-btn" href="<?php echo h($backHref); ?>"><span class="top-btn-icon">←</span><span>Back</span></a>
+        <h1 class="topbar-title"><?php echo h($courseName); ?></h1>
         <div class="top-actions">
             <?php if ($selectedUnitId !== ''): ?>
-            <a class="top-btn"
-               style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
+            <a class="top-btn top-btn-pdf"
                href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
                target="_blank"
                rel="noopener noreferrer">📄 PDF</a>
             <?php endif; ?>
             <?php if ($topWorksheetDownloadUrl !== ''): ?>
-            <a class="top-btn"
-               style="background:linear-gradient(180deg,#10b981,#059669);"
+            <a class="top-btn top-btn-download"
                href="<?php echo h($topWorksheetDownloadUrl); ?>"
                target="_blank"
                rel="noopener noreferrer">📥 Downloadable</a>
