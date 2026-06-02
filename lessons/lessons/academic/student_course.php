@@ -790,6 +790,25 @@ $resultStatusLabel = $isPassingScore ? 'PASS' : 'FAIL';
 $resultStatusClass = $isPassingScore ? 'result-badge-pass' : 'result-badge-fail';
 
 $backHref = 'student_dashboard.php';
+$studentName = trim((string) ($_SESSION['student_name'] ?? 'Student'));
+if ($studentName === '') {
+    $studentName = 'Student';
+}
+$logoutUrl = 'logout.php';
+$backUrl = $backHref;
+$unitTitle = $selectedUnitName;
+$pdfUrl = $selectedUnitId !== ''
+    ? 'unit_pdf.php?unit=' . urlencode($selectedUnitId) . '&assignment=' . urlencode($assignmentId)
+    : '';
+$downloadableUrl = $topWorksheetDownloadUrl;
+$score = $completionPercent;
+$errors = $quizErrors;
+$phaseName = trim((string) ($assignment['period'] ?? ''));
+if ($phaseName === '') {
+    $phaseName = $courseName;
+}
+$dashboardUrl = $backHref;
+$retryUrl = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart . '&step=0';
 $completedStep = max(9999, $total);
 $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart . '&step=' . urlencode((string) $completedStep);
 ?>
@@ -799,8 +818,10 @@ $completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?php echo h($currentTypeLabel . ' — ' . $courseName); ?></title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@500;600;700;800&display=swap');
 :root{
     --bg:#fff8e6;
     --card:#ffffff;
@@ -1230,26 +1251,42 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 </head>
 <body>
 
-<header class="topbar">
-    <div class="topbar-inner">
-        <a class="top-btn" href="<?php echo h($backHref); ?>"><span class="top-btn-icon">←</span><span>Back</span></a>
-        <h1 class="topbar-title"><?php echo h($courseName); ?></h1>
-        <div class="top-actions">
-            <?php if ($selectedUnitId !== ''): ?>
-            <a class="top-btn top-btn-pdf"
-               href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
-               target="_blank"
-               rel="noopener noreferrer">📄 PDF</a>
-            <?php endif; ?>
-            <?php if ($topWorksheetDownloadUrl !== ''): ?>
-            <a class="top-btn top-btn-download"
-               href="<?php echo h($topWorksheetDownloadUrl); ?>"
-               target="_blank"
-               rel="noopener noreferrer">📥 Downloadable</a>
-            <?php endif; ?>
-        </div>
+<!-- SITE HEADER -->
+<div style="background:#fff;border-bottom:1.5px solid #F0EEF8;padding:0 20px;height:52px;display:flex;align-items:center;justify-content:space-between;font-family:'Nunito',sans-serif;">
+  <div style="display:flex;align-items:center;gap:9px;">
+    <div style="width:32px;height:32px;border-radius:8px;background:#F97316;display:flex;align-items:center;justify-content:center;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="#F97316"/></svg>
     </div>
-</header>
+    <div style="line-height:1.1;">
+      <div style="font-family:'Fredoka',sans-serif;font-size:17px;font-weight:600;color:#F97316;">ONES</div>
+      <div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:.8px;">Online English Solution</div>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div style="text-align:right;">
+      <div style="font-size:13px;font-weight:700;color:#7F77DD;"><?php echo h($studentName); ?></div>
+      <div style="font-size:11px;color:#bbb;">Estudiante · <?php echo h($studentId); ?></div>
+    </div>
+    <div style="width:30px;height:30px;border-radius:50%;background:#EDE9FA;display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:14px;color:#7F77DD;font-weight:700;">
+      <?php echo h(strtoupper(substr($studentName, 0, 1))); ?>
+    </div>
+    <a href="<?php echo h($logoutUrl); ?>" style="font-size:12px;font-weight:700;padding:5px 13px;border-radius:8px;border:1.5px solid #EDE9FA;color:#7F77DD;background:#fff;text-decoration:none;">↩ Salir</a>
+  </div>
+</div>
+
+<!-- UNIT TOPBAR -->
+<div style="background:#fff;border-bottom:1.5px solid #F0EEF8;padding:0 16px;height:46px;display:flex;align-items:center;justify-content:space-between;font-family:'Nunito',sans-serif;">
+  <a href="<?php echo h($backUrl); ?>" style="font-size:13px;font-weight:700;padding:6px 14px;border-radius:8px;border:1.5px solid #EDE9FA;color:#555;background:#fff;text-decoration:none;">← Back</a>
+  <span style="font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;color:#F97316;"><?php echo h(app_upper($unitTitle)); ?></span>
+  <div style="display:flex;gap:7px;">
+    <?php if ($pdfUrl !== ''): ?>
+    <a href="<?php echo h($pdfUrl); ?>" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;border:1.5px solid #EDE9FA;color:#555;background:#fff;text-decoration:none;" target="_blank" rel="noopener noreferrer">📄 PDF</a>
+    <?php endif; ?>
+    <?php if ($downloadableUrl !== ''): ?>
+    <a href="<?php echo h($downloadableUrl); ?>" style="font-size:12px;font-weight:700;padding:5px 12px;border-radius:8px;border:1.5px solid #EDE9FA;color:#555;background:#fff;text-decoration:none;" target="_blank" rel="noopener noreferrer">⬇ Downloadable</a>
+    <?php endif; ?>
+  </div>
+</div>
 
 <div class="page">
 <main class="content">
@@ -1276,13 +1313,17 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
     <!-- Unit selector strip (only if multiple units) -->
     <?php if (count($allUnits) > 1): ?>
-    <div class="units-strip">
+    <div style="background:#fff;padding:8px 16px;display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid #F0EEF8;">
         <?php foreach ($allUnits as $_unit):
             $_uid = (string) ($_unit['id'] ?? '');
             $_uname = (string) ($_unit['name'] ?? 'Unit');
             $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid) . $moduleQueryPart;
+            $_isActive = $_uid === $selectedUnitId;
+            $_tabStyle = $_isActive
+                ? "background:#7F77DD;color:#fff;border:1.5px solid #7F77DD;border-radius:20px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;text-decoration:none;"
+                : "background:#fff;color:#9B8FCC;border:1.5px solid #EDE9FA;border-radius:20px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;text-decoration:none;";
         ?>
-            <a class="unit-chip <?php echo $_uid === $selectedUnitId ? 'active' : ''; ?>"
+            <a style="<?php echo h($_tabStyle); ?>"
                href="<?php echo h($_href); ?>">
                 <?php echo h($_uname); ?>
             </a>
@@ -1292,56 +1333,72 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
 
     <?php if ($isCompleted): ?>
-    <!-- COMPLETED -->
-    <section class="empty-shell">
-        <div class="empty-state">
-            <div class="empty-icon">🏁</div>
-            <div class="empty-title">Unit completed!</div>
-            <div class="empty-text">You completed all activities in this unit.</div>
+    <!-- UNIT COMPLETED SCREEN -->
+    <div style="background:#F8F7FF;padding:28px 20px;display:flex;justify-content:center;font-family:'Nunito',sans-serif;">
+      <div style="background:#fff;border:1.5px solid #EDE9FA;border-radius:16px;padding:28px 28px 24px;display:flex;flex-direction:column;align-items:center;gap:11px;width:100%;max-width:400px;box-shadow:0 4px 24px rgba(127,119,221,.10);">
+        <div style="font-family:'Fredoka',sans-serif;font-size:24px;font-weight:600;color:#7F77DD;">Unit completed!</div>
+        <div style="font-size:13px;color:#9B8FCC;text-align:center;">You completed all activities in this unit.</div>
 
-            <?php if ($hasUnitResult): ?>
-            <div class="unit-result-card">
-                <div class="result-badge <?php echo h($resultStatusClass); ?>"><?php echo h($resultStatusLabel); ?></div>
-                <div class="unit-percent <?php echo h($scoreToneClass); ?>"><?php echo $completionPercent; ?>%</div>
-                <div class="unit-errors">Errors: <?php echo $quizErrors; ?> / <?php echo $quizTotal; ?></div>
-                <?php if ($isPassingScore): ?>
-                    <div class="unit-rule pass">Passed: quiz unlocked.</div>
-                <?php elseif ($quizEnabledByTeacher): ?>
-                    <div class="unit-rule pass">Quiz enabled by your teacher.</div>
-                <?php else: ?>
-                    <div class="unit-rule fail">Below 60%: you must repeat this unit to unlock the quiz.</div>
-                <?php endif; ?>
-            </div>
+        <?php if ($isPassingScore): ?>
+        <div style="background:#EDE9FA;color:#7F77DD;font-family:'Fredoka',sans-serif;font-size:13px;font-weight:600;padding:3px 18px;border-radius:20px;">PASS</div>
+        <?php else: ?>
+        <div style="background:#FEF2F2;color:#DC2626;font-family:'Fredoka',sans-serif;font-size:13px;font-weight:600;padding:3px 18px;border-radius:20px;">FAIL</div>
+        <?php endif; ?>
 
-            <div class="result-actions">
-                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
+        <div style="font-family:'Fredoka',sans-serif;font-size:54px;font-weight:600;color:#F97316;line-height:1.05;"><?php echo (int) $score; ?>%</div>
 
-                <?php if ($canAccessQuiz): ?>
-                    <?php if ($quizHref !== ''): ?>
-                        <a class="empty-btn" href="<?php echo h($quizHref); ?>">Start quiz</a>
-                    <?php else: ?>
-                        <a class="empty-btn disabled" href="#" aria-disabled="true">Quiz not available</a>
-                    <?php endif; ?>
-                <?php else: ?>
-                    <a class="empty-btn"
-                       href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=0">
-                       Repeat unit
-                    </a>
-                <?php endif; ?>
-            </div>
-
-            <?php else: ?>
-            <div class="empty-text">Complete the graded activities to calculate your score and unlock the quiz.</div>
-            <div class="result-actions">
-                <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
-                <a class="empty-btn"
-                   href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=0">
-                   Repeat unit
-                </a>
-            </div>
-            <?php endif; ?>
+        <div style="width:100%;background:#EDE9FA;border-radius:6px;height:7px;overflow:hidden;">
+          <div style="height:7px;border-radius:6px;background:linear-gradient(90deg,#F97316,#7F77DD);width:<?php echo (int) max(0, min(100, $score)); ?>%;"></div>
         </div>
-    </section>
+
+        <div style="font-size:12px;font-weight:700;color:#F97316;">Errors: <?php echo (int) $errors; ?> / <?php echo (int) $total; ?></div>
+
+        <div style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap;">
+          <div style="background:#FAFAFA;border:1.5px solid #EDE9FA;border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;color:#7F77DD;">
+            ✔ Activities <span style="font-family:'Fredoka',sans-serif;font-size:14px;color:#F97316;"><?php echo (int) $total; ?></span>
+          </div>
+          <div style="background:#FAFAFA;border:1.5px solid #EDE9FA;border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;color:#7F77DD;">
+            ✖ Errors <span style="font-family:'Fredoka',sans-serif;font-size:14px;color:#F97316;"><?php echo (int) $errors; ?></span>
+          </div>
+          <div style="background:#FAFAFA;border:1.5px solid #EDE9FA;border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;color:#7F77DD;">
+            🏆 Score <span style="font-family:'Fredoka',sans-serif;font-size:14px;color:#F97316;"><?php echo (int) $score; ?>%</span>
+          </div>
+        </div>
+
+        <?php if ($isPassingScore): ?>
+        <div style="font-size:12px;color:#7F77DD;background:#F5F3FF;padding:5px 14px;border-radius:8px;border:1px solid #EDE9FA;text-align:center;">
+          ✅ Passed — quiz unlocked
+        </div>
+        <?php elseif ($quizEnabledByTeacher): ?>
+        <div style="font-size:12px;color:#7F77DD;background:#F5F3FF;padding:5px 14px;border-radius:8px;border:1px solid #EDE9FA;text-align:center;">
+          ✅ Quiz enabled by your teacher
+        </div>
+        <?php endif; ?>
+
+        <div style="width:100%;height:1px;background:#EDE9FA;"></div>
+
+        <div style="display:flex;gap:9px;width:100%;">
+          <a href="<?php echo h($dashboardUrl); ?>" style="background:#fff;color:#7F77DD;font-size:13px;font-weight:700;padding:10px 14px;border-radius:8px;border:1.5px solid #EDE9FA;flex:1;text-align:center;text-decoration:none;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ← <?php echo h($phaseName); ?>
+          </a>
+          <?php if ($canAccessQuiz): ?>
+              <?php if ($quizHref !== ''): ?>
+              <a href="<?php echo h($quizHref); ?>" style="background:#F97316;color:#fff;font-size:14px;font-weight:700;padding:10px 18px;border-radius:8px;border:none;flex:1;text-align:center;text-decoration:none;display:block;">
+                ✏ Start quiz
+              </a>
+              <?php else: ?>
+              <a href="#" aria-disabled="true" style="background:#F97316;color:#fff;font-size:14px;font-weight:700;padding:10px 18px;border-radius:8px;border:none;flex:1;text-align:center;text-decoration:none;display:block;opacity:.45;pointer-events:none;">
+                Quiz not available
+              </a>
+              <?php endif; ?>
+          <?php else: ?>
+          <a href="<?php echo h($retryUrl); ?>" style="background:#F97316;color:#fff;font-size:14px;font-weight:700;padding:10px 18px;border-radius:8px;border:none;flex:1;text-align:center;text-decoration:none;display:block;">
+            ↺ Try again
+          </a>
+          <?php endif; ?>
+        </div>
+      </div>
+    </div>
 
     <?php elseif (!$current || !$viewerHref): ?>
     <!-- NO ACTIVITIES -->
