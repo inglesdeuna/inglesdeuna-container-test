@@ -242,7 +242,7 @@ button {
 if ($programSlug === "prog_technical") {
     $adminLink = "technical_modules_view.php?course=" . urlencode($course["id"]);
 } else {
-    $adminLink = "english_units.php?course=" . urlencode($course["id"]);
+    $adminLink = "english_structure_levels.php";
 }
 ?>
 
