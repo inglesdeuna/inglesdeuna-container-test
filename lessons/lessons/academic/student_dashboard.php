@@ -927,7 +927,7 @@ body {
 <div class="sd-phase-bar">
     <button class="sd-phase-btn active" data-tab="english">English</button>
     <button class="sd-phase-btn" data-tab="technical">Technical</button>
-    <button class="sd-phase-btn" data-tab="lifeskills">Life Skills</button>
+    <button class="sd-phase-btn" data-tab="lifeskills">Progress</button>
 </div>
 
 <!-- ═══ BODY ═══ -->
