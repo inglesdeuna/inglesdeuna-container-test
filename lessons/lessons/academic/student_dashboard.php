@@ -247,6 +247,37 @@ function build_assignment_sections(array $assignments): array
     return $sections;
 }
 
+function build_sidebar_module_links(array $assignments): array
+{
+    $modulesById = [];
+
+    foreach ($assignments as $assignment) {
+        $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
+        if ($program !== 'technical') {
+            continue;
+        }
+
+        $moduleId = trim((string) ($assignment['module_id'] ?? ''));
+        $moduleName = normalize_label_spaces((string) ($assignment['module_name'] ?? ''));
+        $assignmentId = trim((string) ($assignment['id'] ?? ''));
+        if ($moduleId === '' || $moduleName === '' || $assignmentId === '') {
+            continue;
+        }
+
+        if (isset($modulesById[$moduleId])) {
+            continue;
+        }
+
+        $modulesById[$moduleId] = [
+            'id' => $moduleId,
+            'name' => $moduleName,
+            'href' => 'student_course.php?assignment=' . urlencode($assignmentId) . '&module=' . urlencode($moduleId),
+        ];
+    }
+
+    return array_values($modulesById);
+}
+
 function student_initials(string $name): string
 {
     $name = trim($name);
@@ -577,6 +608,7 @@ function load_student_assignments(string $studentId): array
                    t.name AS teacher_name,
                    c.name AS course_name,
                    u.name AS unit_name,
+                   u.module_id AS module_id,
                    m.name AS module_name,
                    ep.name AS phase_name,
                    ep.created_at AS phase_created_at
@@ -716,6 +748,11 @@ $studentPermission = load_student_permission($studentId);
 $_SESSION['student_permission'] = $studentPermission;
 $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
+$sidebarModuleLinks = build_sidebar_module_links($myAssignments);
+$sidebarSelectedModuleId = trim((string) ($_GET['module'] ?? ''));
+if ($sidebarSelectedModuleId === '' && !empty($sidebarModuleLinks)) {
+    $sidebarSelectedModuleId = (string) ($sidebarModuleLinks[0]['id'] ?? '');
+}
 $assignmentSections = build_assignment_sections($myAssignments);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 
@@ -1004,6 +1041,18 @@ body {
 .sd-action-btn:hover { background: #F5F3FF; }
 .sd-action-btn.locked { color: #B0A8D8; cursor: default; }
 .sd-action-btn.locked:hover { background: var(--white); }
+.sd-module-select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  background: var(--white);
+  color: #30248F;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  margin-bottom: 10px;
+}
 
 /* ─── Main Content ─── */
 .sd-main { min-width: 0; }
@@ -1223,6 +1272,22 @@ body {
 
         <!-- Actions card -->
         <div class="sd-card">
+            <?php if (!empty($sidebarModuleLinks)) { ?>
+                <span class="sd-actions-label">Módulos</span>
+                <select class="sd-module-select" aria-label="Módulo técnico" onchange="if (this.value) { window.location.href = this.value; }">
+                    <?php foreach ($sidebarModuleLinks as $moduleLink) { ?>
+                        <?php
+                        $moduleId = (string) ($moduleLink['id'] ?? '');
+                        $moduleName = (string) ($moduleLink['name'] ?? 'Módulo');
+                        $moduleHref = (string) ($moduleLink['href'] ?? '');
+                        ?>
+                        <option value="<?php echo h($moduleHref); ?>" <?php echo $moduleId === $sidebarSelectedModuleId ? 'selected' : ''; ?>>
+                            <?php echo h($moduleName); ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            <?php } ?>
+
             <span class="sd-actions-label">Acciones</span>
 
             <?php if ($quizUnlocked && $quizGoHref !== '') { ?>
