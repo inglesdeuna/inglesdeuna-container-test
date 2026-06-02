@@ -39,6 +39,199 @@ function upper_label(string $value): string
         : strtoupper($normalized);
 }
 
+function lower_label(string $value): string
+{
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($value, 'UTF-8')
+        : strtolower($value);
+}
+
+function normalize_label_spaces(string $value): string
+{
+    return trim((string) preg_replace('/\s+/', ' ', $value));
+}
+
+function extract_first_number(string $value): ?int
+{
+    if (preg_match('/(\d+)/u', $value, $matches)) {
+        return (int) $matches[1];
+    }
+
+    return null;
+}
+
+function is_generic_course_label(string $value): bool
+{
+    $label = strtolower(normalize_label_spaces($value));
+    if ($label === '') {
+        return true;
+    }
+
+    $generic = [
+        'english course',
+        'english courses',
+        'technical course',
+        'technical courses',
+        'course',
+        'courses',
+        'curso',
+        'cursos',
+    ];
+
+    return in_array($label, $generic, true);
+}
+
+function resolve_phase_label(array $assignment): string
+{
+    $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
+    $courseName = normalize_label_spaces((string) ($assignment['course_name'] ?? ''));
+    $moduleName = normalize_label_spaces((string) ($assignment['module_name'] ?? ''));
+    $period = normalize_label_spaces((string) ($assignment['period'] ?? ''));
+
+    if ($program === 'technical' && $moduleName !== '') {
+        return $moduleName;
+    }
+
+    if ($courseName !== '' && !is_generic_course_label($courseName)) {
+        return $courseName;
+    }
+
+    if ($period !== '') {
+        $periodNumber = extract_first_number($period);
+        if ($program === 'english') {
+            if ($periodNumber !== null) {
+                return 'Basic ' . $periodNumber;
+            }
+            return 'Basic ' . $period;
+        }
+        if ($program === 'technical') {
+            if ($periodNumber !== null) {
+                return 'Semestre ' . $periodNumber;
+            }
+            return 'Semestre ' . $period;
+        }
+        return $period;
+    }
+
+    return $program === 'english' ? 'Basic' : ($program === 'technical' ? 'Semestre' : 'Curso');
+}
+
+function resolve_unit_label(array $assignment): string
+{
+    $unitName = normalize_label_spaces((string) ($assignment['unit_name'] ?? ''));
+    if ($unitName !== '') {
+        return $unitName;
+    }
+
+    $unitId = trim((string) ($assignment['unit_id'] ?? ''));
+    if ($unitId !== '' && preg_match('/^\d+$/', $unitId)) {
+        return 'Unit ' . $unitId;
+    }
+
+    return 'Unit';
+}
+
+function phase_sort_order(array $assignment, string $phaseLabel): int
+{
+    $number = extract_first_number($phaseLabel);
+    if ($number === null) {
+        $number = extract_first_number((string) ($assignment['period'] ?? ''));
+    }
+    if ($number === null) {
+        return 9999;
+    }
+
+    return $number;
+}
+
+function unit_sort_order(string $unitLabel): int
+{
+    $number = extract_first_number($unitLabel);
+    if ($number === null) {
+        return 9999;
+    }
+
+    return $number;
+}
+
+function build_assignment_sections(array $assignments): array
+{
+    $sectionsByKey = [];
+
+    foreach ($assignments as $assignment) {
+        $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
+        $phaseLabel = resolve_phase_label($assignment);
+        $unitLabel = resolve_unit_label($assignment);
+        $phaseSort = phase_sort_order($assignment, $phaseLabel);
+        $unitSort = unit_sort_order($unitLabel);
+
+        $sectionKey = $program . '|' . lower_label($phaseLabel);
+        if (!isset($sectionsByKey[$sectionKey])) {
+            $sectionsByKey[$sectionKey] = [
+                'program' => $program,
+                'phase_label' => $phaseLabel,
+                'phase_sort' => $phaseSort,
+                'assignments' => [],
+            ];
+        }
+
+        $assignment['_resolved_unit_label'] = $unitLabel;
+        $assignment['_unit_sort'] = $unitSort;
+        $sectionsByKey[$sectionKey]['assignments'][] = $assignment;
+    }
+
+    $sections = array_values($sectionsByKey);
+
+    foreach ($sections as &$section) {
+        usort($section['assignments'], static function (array $a, array $b): int {
+            $aSort = (int) ($a['_unit_sort'] ?? 9999);
+            $bSort = (int) ($b['_unit_sort'] ?? 9999);
+            if ($aSort !== $bSort) {
+                return $aSort <=> $bSort;
+            }
+
+            $aUnit = lower_label((string) ($a['_resolved_unit_label'] ?? ''));
+            $bUnit = lower_label((string) ($b['_resolved_unit_label'] ?? ''));
+            if ($aUnit !== $bUnit) {
+                return $aUnit <=> $bUnit;
+            }
+
+            return ((string) ($a['id'] ?? '')) <=> ((string) ($b['id'] ?? ''));
+        });
+    }
+    unset($section);
+
+    usort($sections, static function (array $a, array $b): int {
+        $programWeight = static function (string $program): int {
+            if ($program === 'english') {
+                return 1;
+            }
+            if ($program === 'technical') {
+                return 2;
+            }
+            return 3;
+        };
+
+        $aProgram = (string) ($a['program'] ?? '');
+        $bProgram = (string) ($b['program'] ?? '');
+        $aWeight = $programWeight($aProgram);
+        $bWeight = $programWeight($bProgram);
+        if ($aWeight !== $bWeight) {
+            return $aWeight <=> $bWeight;
+        }
+
+        $aSort = (int) ($a['phase_sort'] ?? 9999);
+        $bSort = (int) ($b['phase_sort'] ?? 9999);
+        if ($aSort !== $bSort) {
+            return $aSort <=> $bSort;
+        }
+
+        return lower_label((string) ($a['phase_label'] ?? '')) <=> lower_label((string) ($b['phase_label'] ?? ''));
+    });
+
+    return $sections;
+}
+
 function student_initials(string $name): string
 {
     $name = trim($name);
@@ -492,6 +685,7 @@ $studentPermission = load_student_permission($studentId);
 $_SESSION['student_permission'] = $studentPermission;
 $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
+$assignmentSections = build_assignment_sections($myAssignments);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 
 // Presentation-only stats for sidebar and header meta
@@ -795,6 +989,35 @@ body {
 .sd-main-title { font-size: 22px; font-weight: 700; color: var(--primary); }
 .sd-main-meta { font-size: 12px; color: #B0A8D8; text-align: right; line-height: 1.6; }
 
+/* ─── Phase Sections ─── */
+.sd-phase-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sd-phase-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sd-section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sd-section-program {
+  font-size: 10px;
+  font-weight: 700;
+  color: #9B93CC;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sd-section-phase {
+  font-size: 16px;
+  font-weight: 800;
+  color: #30248F;
+}
+
 /* ─── Course Grid ─── */
 .sd-course-grid {
   display: grid;
@@ -1002,69 +1225,76 @@ body {
             </span>
         </div>
 
-        <div class="sd-course-grid">
-            <?php if (empty($myAssignments)) { ?>
+        <div class="sd-phase-sections">
+            <?php if (empty($assignmentSections)) { ?>
                 <div class="sd-empty">No tienes cursos asignados aún.</div>
             <?php } else { ?>
-                <?php foreach ($myAssignments as $assignment) { ?>
+                <?php $cardPdo = get_pdo_connection(); ?>
+                <?php foreach ($assignmentSections as $section) { ?>
                     <?php
-                    $assignmentId   = (string) ($assignment['id'] ?? '');
-                    $program        = (string) ($assignment['program'] ?? 'technical');
-                    $programLabel   = upper_label($program === 'english' ? 'inglés' : 'técnico');
-                    $courseName     = trim((string) ($assignment['course_name'] ?? ''));
-                    if ($courseName === '') { $courseName = 'Course'; }
-                    $courseName     = upper_label($courseName);
-                    $unitName       = trim((string) ($assignment['unit_name'] ?? ''));
-                    if ($unitName === '' && $program === 'english') { $unitName = 'Units by phase'; }
-                    $unitName       = upper_label($unitName);
-                    $moduleName     = upper_label(trim((string) ($assignment['module_name'] ?? '')));
-                    $periodLabel    = upper_label((string) ($assignment['period'] ?? ''));
-                    $scoreSummary   = $scoreSummaryByAssignment[$assignmentId] ?? null;
-                    $cardPdo        = get_pdo_connection();
-                    $cardQuizHref   = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
-                    $avgPct         = is_array($scoreSummary) ? (int) ($scoreSummary['avg_percent'] ?? 0) : 0;
-                    $totalErrors    = is_array($scoreSummary) ? (int) ($scoreSummary['total_errors'] ?? 0) : 0;
-                    $totalQuestions = is_array($scoreSummary) ? (int) ($scoreSummary['total_questions'] ?? 0) : 0;
-                    $progressColor  = $avgPct >= 95 ? 'green' : 'orange';
-                    $errorsClass    = $totalErrors === 0 ? 'good' : 'warn';
-                    $displayName    = $unitName !== '' ? $unitName : $courseName;
+                    $sectionProgram = (string) ($section['program'] ?? 'technical');
+                    $sectionProgramLabel = upper_label($sectionProgram === 'english' ? 'basic program' : ($sectionProgram === 'technical' ? 'technical program' : 'programa'));
+                    $sectionPhaseLabel = upper_label((string) ($section['phase_label'] ?? ''));
                     ?>
-                    <div class="sd-course-card" data-program="<?php echo h($program); ?>">
-
-                        <div class="sd-course-badge">
-                            <?php echo h($programLabel); ?> · <?php echo h($courseName); ?>
+                    <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>">
+                        <div class="sd-section-head">
+                            <span class="sd-section-program"><?php echo h($sectionProgramLabel); ?></span>
+                            <h3 class="sd-section-phase"><?php echo h($sectionPhaseLabel); ?></h3>
                         </div>
+                        <div class="sd-course-grid">
+                            <?php foreach ((array) ($section['assignments'] ?? []) as $assignment) { ?>
+                                <?php
+                                $assignmentId   = (string) ($assignment['id'] ?? '');
+                                $program        = (string) ($assignment['program'] ?? 'technical');
+                                $programLabel   = upper_label($program === 'english' ? 'inglés' : 'técnico');
+                                $unitName       = upper_label((string) ($assignment['_resolved_unit_label'] ?? 'Unit'));
+                                $scoreSummary   = $scoreSummaryByAssignment[$assignmentId] ?? null;
+                                $cardQuizHref   = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
+                                $avgPct         = is_array($scoreSummary) ? (int) ($scoreSummary['avg_percent'] ?? 0) : 0;
+                                $totalErrors    = is_array($scoreSummary) ? (int) ($scoreSummary['total_errors'] ?? 0) : 0;
+                                $totalQuestions = is_array($scoreSummary) ? (int) ($scoreSummary['total_questions'] ?? 0) : 0;
+                                $progressColor  = $avgPct >= 95 ? 'green' : 'orange';
+                                $errorsClass    = $totalErrors === 0 ? 'good' : 'warn';
+                                ?>
+                                <div class="sd-course-card" data-program="<?php echo h($program); ?>">
 
-                        <h3 class="sd-unit-name"><?php echo h($displayName); ?></h3>
+                                    <div class="sd-course-badge">
+                                        <?php echo h($programLabel); ?> · <?php echo h($sectionPhaseLabel); ?>
+                                    </div>
 
-                        <p class="sd-course-teacher">
-                            Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong>
-                        </p>
+                                    <h3 class="sd-unit-name"><?php echo h($unitName); ?></h3>
 
-                        <?php if ($avgPct > 0) { ?>
-                            <div class="sd-progress-row">
-                                <div class="sd-progress-track">
-                                    <div class="sd-progress-fill <?php echo $progressColor; ?>" style="width:<?php echo min($avgPct, 100); ?>%"></div>
+                                    <p class="sd-course-teacher">
+                                        Teacher: <strong><?php echo h((string) ($assignment['teacher_name'] ?? 'Teacher')); ?></strong>
+                                    </p>
+
+                                    <?php if ($avgPct > 0) { ?>
+                                        <div class="sd-progress-row">
+                                            <div class="sd-progress-track">
+                                                <div class="sd-progress-fill <?php echo $progressColor; ?>" style="width:<?php echo min($avgPct, 100); ?>%"></div>
+                                            </div>
+                                            <span class="sd-progress-pct <?php echo $progressColor; ?>"><?php echo $avgPct; ?>%</span>
+                                        </div>
+                                    <?php } ?>
+
+                                    <?php if ($totalQuestions > 0) { ?>
+                                        <div class="sd-errors-badge <?php echo $errorsClass; ?>">
+                                            <?php echo $totalErrors; ?> / <?php echo $totalQuestions; ?> errores
+                                        </div>
+                                    <?php } ?>
+
+                                    <div class="sd-card-actions">
+                                        <a class="sd-btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Entrar</a>
+                                        <?php if ($cardQuizHref !== '') { ?>
+                                            <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
+                                        <?php } ?>
+                                        <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Puntajes</a>
+                                    </div>
+
                                 </div>
-                                <span class="sd-progress-pct <?php echo $progressColor; ?>"><?php echo $avgPct; ?>%</span>
-                            </div>
-                        <?php } ?>
-
-                        <?php if ($totalQuestions > 0) { ?>
-                            <div class="sd-errors-badge <?php echo $errorsClass; ?>">
-                                <?php echo $totalErrors; ?> / <?php echo $totalQuestions; ?> errores
-                            </div>
-                        <?php } ?>
-
-                        <div class="sd-card-actions">
-                            <a class="sd-btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Entrar</a>
-                            <?php if ($cardQuizHref !== '') { ?>
-                                <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
                             <?php } ?>
-                            <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Puntajes</a>
                         </div>
-
-                    </div>
+                    </section>
                 <?php } ?>
             <?php } ?>
         </div>
@@ -1075,18 +1305,18 @@ body {
 <script>
 (function () {
     var btns  = document.querySelectorAll('.sd-phase-btn');
-    var cards = document.querySelectorAll('.sd-course-card');
+    var sections = document.querySelectorAll('.sd-phase-section');
     var title = document.getElementById('sd-main-title');
     var labels = { english: 'English Courses', technical: 'Technical Courses', lifeskills: 'Life Skills' };
 
     function applyTab(tab) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
-        cards.forEach(function (card) {
-            var prog = card.dataset.program || '';
+        sections.forEach(function (section) {
+            var prog = section.dataset.program || '';
             var show = (tab === 'english'    && prog === 'english')
                     || (tab === 'technical'  && prog === 'technical')
                     || (tab === 'lifeskills');
-            card.style.display = show ? '' : 'none';
+            section.style.display = show ? '' : 'none';
         });
         if (title) { title.textContent = labels[tab] || 'Courses'; }
     }
