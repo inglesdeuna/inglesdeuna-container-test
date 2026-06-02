@@ -599,35 +599,93 @@ body{
     color:var(--text);
 }
 .page{max-width:1400px;margin:0 auto;padding:20px 20px 40px;}
-.header{
+.topbar{
     display:flex;
-    justify-content:space-between;
     align-items:center;
-    gap:20px;
-    padding-bottom:20px;
+    justify-content:space-between;
+    gap:18px;
+    padding:10px 0 18px;
+    margin-bottom:18px;
     border-bottom:1px solid var(--line);
-    margin-bottom:28px;
 }
-.header h1{
+.topbar-brand{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+.topbar-name{
     margin:0;
-    font-size:32px;
+    font-size:44px;
+    line-height:1;
+    letter-spacing:.02em;
     font-weight:700;
-    color:var(--orange);
+    color:#F97316;
     font-family:'Fredoka','Trebuchet MS',sans-serif;
 }
+.topbar-sub{
+    margin-top:4px;
+    font-size:9px;
+    font-weight:900;
+    letter-spacing:.28em;
+    text-transform:uppercase;
+    color:#AFA9EC;
+}
+.topbar-right{
+    display:flex;
+    align-items:center;
+    gap:12px;
+}
+.topbar-student{
+    text-align:right;
+}
+.topbar-student-name{
+    margin:0;
+    font-size:18px;
+    line-height:1.1;
+    color:#3C3489;
+    font-weight:900;
+    font-family:'Fredoka','Trebuchet MS',sans-serif;
+}
+.topbar-student-role{
+    margin:2px 0 0;
+    font-size:12px;
+    color:#8E86C8;
+    font-weight:700;
+}
+.topbar-avatar{
+    width:68px;
+    height:68px;
+    border-radius:50%;
+    border:4px solid #7F77DD;
+    background:#EEEDFE;
+    color:#534AB7;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    font-weight:900;
+    overflow:hidden;
+}
+.topbar-avatar img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
 .logout-btn{
-    display:inline-block;
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
     text-decoration:none;
-    color:#fff;
-    font-size:13px;
-    font-weight:800;
-    border-radius:999px;
-    padding:10px 16px;
-    background:#7F77DD;
-    box-shadow:0 6px 18px rgba(127,119,221,.18);
+    color:#1D1D1D;
+    font-size:16px;
+    font-weight:900;
+    border-radius:16px;
+    padding:12px 22px;
+    border:2px solid rgba(0,0,0,.23);
+    background:#fff;
     transition:filter .2s,transform .15s;
 }
-.logout-btn:hover{filter:brightness(1.07);transform:translateY(-1px);}
+.logout-btn:hover{filter:brightness(0.98);transform:translateY(-1px);}
 /* layout */
 .layout{display:grid;grid-template-columns:300px 1fr;gap:28px;align-items:start;}
 /* sidebar panel */
@@ -772,17 +830,55 @@ body{
 }
 @media (max-width:768px){
     .page{padding:14px;}
-    .header{flex-direction:column;align-items:flex-start;gap:10px;}
-    .header h1{font-size:26px;}
+    .topbar{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+    .topbar-right{
+        width:100%;
+        justify-content:space-between;
+    }
+    .topbar-name{font-size:34px;}
+    .topbar-avatar{
+        width:56px;
+        height:56px;
+        font-size:24px;
+    }
 }
 </style>
 </head>
 <body>
 <div class="page">
-    <div class="header">
-        <h1>Student Dashboard</h1>
-        <a class="logout-btn" href="logout.php">Log out</a>
-    </div>
+    <header class="topbar">
+        <div class="topbar-brand">
+            <svg width="64" height="64" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect width="36" height="36" rx="9" fill="#FFF0E6"/>
+                <circle cx="17" cy="15" r="8.5" fill="#F97316"/>
+                <polygon points="12,22 7,30 21,26" fill="#F97316"/>
+                <circle cx="17" cy="15" r="4.5" fill="#FFF0E6"/>
+                <circle cx="24" cy="9" r="3.5" fill="#7F77DD"/>
+                <circle cx="24" cy="9" r="1.75" fill="#ffffff"/>
+            </svg>
+            <div>
+                <p class="topbar-name">ONES</p>
+                <p class="topbar-sub">ONLINE ENGLISH SOLUTION</p>
+            </div>
+        </div>
+        <div class="topbar-right">
+            <div class="topbar-student">
+                <p class="topbar-student-name"><?php echo h($studentName); ?></p>
+                <p class="topbar-student-role">Estudiante · ID: <?php echo h($studentId !== '' ? $studentId : 'N/A'); ?></p>
+            </div>
+            <div class="topbar-avatar">
+                <?php if ($studentPhotoSrc !== '') { ?>
+                    <img src="<?php echo $studentPhotoSrc; ?>" alt="Student photo">
+                <?php } else { ?>
+                    <?php echo h($studentInitials); ?>
+                <?php } ?>
+            </div>
+            <a class="logout-btn" href="logout.php">↪ Salir</a>
+        </div>
+    </header>
 
     <?php if ($flashMessage !== '') { ?>
         <div class="notice notice-ok"><?php echo h($flashMessage); ?></div>
