@@ -824,6 +824,39 @@ body{
     font-weight:700;
     box-shadow:var(--shadow);
 }
+/* tab strip */
+.tab-strip{
+    display:flex;
+    gap:10px;
+    margin-bottom:24px;
+    flex-wrap:wrap;
+}
+.tab-btn{
+    display:inline-flex;
+    align-items:center;
+    padding:12px 28px;
+    border-radius:16px;
+    border:2px solid rgba(0,0,0,.18);
+    background:#fff;
+    font-size:15px;
+    font-weight:900;
+    color:#1D1D1D;
+    cursor:pointer;
+    transition:background .15s,color .15s,border-color .15s,box-shadow .15s;
+    font-family:'Nunito','Segoe UI',sans-serif;
+    box-shadow:var(--shadow-sm);
+    line-height:1;
+}
+.tab-btn.active{
+    background:var(--purple);
+    color:#fff;
+    border-color:var(--purple);
+    box-shadow:0 6px 18px rgba(127,119,221,.28);
+}
+.tab-btn:hover:not(.active){
+    background:var(--soft);
+    border-color:var(--purple);
+}
 @media (max-width:1024px){
     .layout{grid-template-columns:1fr;}
     .panel{position:static;}
@@ -844,6 +877,7 @@ body{
         height:56px;
         font-size:24px;
     }
+    .tab-btn{padding:10px 20px;font-size:14px;}
 }
 </style>
 </head>
@@ -886,6 +920,12 @@ body{
     <?php if ($flashError !== '') { ?>
         <div class="notice notice-error"><?php echo h($flashError); ?></div>
     <?php } ?>
+
+    <div class="tab-strip">
+        <button class="tab-btn active" data-tab="english">English</button>
+        <button class="tab-btn" data-tab="tai">TAI</button>
+        <button class="tab-btn" data-tab="progress">Progress</button>
+    </div>
 
     <div class="layout">
         <aside class="panel">
@@ -947,7 +987,7 @@ body{
                         $cardPdo = get_pdo_connection();
                         $cardQuizHref = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
                         ?>
-                        <div class="card">
+                        <div class="card" data-program="<?php echo h($program); ?>">
                             <h3><?php echo h($courseName); ?></h3>
                             <?php if ($moduleName !== '') { ?>
                                 <p class="student-module-label"><?php echo h($moduleName); ?></p>
@@ -978,5 +1018,25 @@ body{
         </main>
     </div>
 </div>
+<script>
+(function(){
+    var btns = document.querySelectorAll('.tab-btn');
+    var cards = document.querySelectorAll('.card');
+    function applyTab(tab){
+        btns.forEach(function(b){ b.classList.toggle('active', b.dataset.tab === tab); });
+        cards.forEach(function(card){
+            var prog = card.dataset.program || '';
+            var show = (tab === 'english' && prog === 'english')
+                    || (tab === 'tai'     && prog === 'technical')
+                    || (tab === 'progress');
+            card.style.display = show ? '' : 'none';
+        });
+    }
+    btns.forEach(function(btn){
+        btn.addEventListener('click', function(){ applyTab(this.dataset.tab); });
+    });
+    applyTab('english');
+})();
+</script>
 </body>
 </html>
