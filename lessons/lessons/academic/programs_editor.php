@@ -32,6 +32,11 @@ if ($programId === "prog_english_courses") {
 /* ==========================
    REDIRECCIONAR
    ========================== */
+if ($programId === "prog_english_courses") {
+    header("Location: english_structure_levels.php");
+    exit;
+}
+
 header("Location: courses_manager.php?program=" . urlencode($programId));
 exit;
 ?>
