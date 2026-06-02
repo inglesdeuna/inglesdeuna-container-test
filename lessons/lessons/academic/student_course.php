@@ -406,7 +406,7 @@ function load_units_for_assignment(PDO $pdo, array $assignment): array
         $orderBy = table_has_column($pdo, 'units', 'position') ? 'ORDER BY position ASC, id ASC' : 'ORDER BY id ASC';
 
         if ($program === 'english' && table_has_column($pdo, 'units', 'phase_id')) {
-            $stmt = $pdo->prepare("SELECT id, name FROM units WHERE phase_id::text = :course_id {$orderBy}");
+            $stmt = $pdo->prepare("SELECT id, name, NULL::text AS module_id, ''::text AS module_name FROM units WHERE phase_id::text = :course_id {$orderBy}");
             $stmt->execute(['course_id' => $courseId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             if (!empty($rows)) {
@@ -414,7 +414,41 @@ function load_units_for_assignment(PDO $pdo, array $assignment): array
             }
         }
 
-        $stmt = $pdo->prepare("SELECT id, name FROM units WHERE course_id::text = :course_id {$orderBy}");
+        if ($program === 'technical' && table_has_column($pdo, 'units', 'module_id')) {
+            $stmt = $pdo->prepare("
+                SELECT u.id, u.name, u.module_id::text AS module_id, COALESCE(m.name, '')::text AS module_name
+                FROM units u
+                LEFT JOIN technical_modules m ON m.id = u.module_id
+                WHERE u.course_id::text = :course_id
+                {$orderBy}
+            ");
+            $stmt->execute(['course_id' => $courseId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        }
+
+        $stmt = $pdo->prepare("SELECT id, name, NULL::text AS module_id, ''::text AS module_name FROM units WHERE course_id::text = :course_id {$orderBy}");
+        $stmt->execute(['course_id' => $courseId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
+function load_modules_for_assignment(PDO $pdo, array $assignment): array
+{
+    $courseId = trim((string) ($assignment['course_id'] ?? ''));
+    $program = trim((string) ($assignment['program'] ?? ''));
+    if ($courseId === '' || $program !== 'technical') {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->prepare("
+            SELECT id::text AS id, name
+            FROM technical_modules
+            WHERE course_id::text = :course_id
+            ORDER BY created_at ASC, id ASC
+        ");
         $stmt->execute(['course_id' => $courseId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -512,6 +546,10 @@ if ($selectedUnitId !== '' && $shouldResetActivity && $resetActivityId !== '') {
         'unit' => $selectedUnitId,
         'step' => (string) max(0, (int) ($_GET['step'] ?? 0)),
     ];
+    $redirectModuleId = trim((string) ($_GET['module'] ?? ''));
+    if ($redirectModuleId !== '') {
+        $redirectQuery['module'] = $redirectModuleId;
+    }
     header('Location: student_course.php?' . http_build_query($redirectQuery));
     exit;
 }
@@ -548,7 +586,39 @@ if ($selectedUnitId !== '' && $rawTotal >= 0) {
     }
 }
 
+$currentProgram = trim((string) ($assignment['program'] ?? ''));
+$isTechnicalProgram = ($currentProgram === 'technical');
 $allUnits = load_units_for_assignment($pdo, $assignment);
+$moduleOptions = $isTechnicalProgram ? load_modules_for_assignment($pdo, $assignment) : [];
+$selectedModuleId = trim((string) ($_GET['module'] ?? ''));
+$allowedModuleIds = [];
+foreach ($moduleOptions as $_moduleOption) {
+    $allowedModuleIds[] = (string) ($_moduleOption['id'] ?? '');
+}
+$allowedModuleIds = array_values(array_filter($allowedModuleIds, static fn ($id) => $id !== ''));
+if ($selectedModuleId !== '' && !in_array($selectedModuleId, $allowedModuleIds, true)) {
+    $selectedModuleId = '';
+}
+
+if ($isTechnicalProgram && $selectedModuleId === '' && $selectedUnitId !== '') {
+    foreach ($allUnits as $_unitRow) {
+        if ((string) ($_unitRow['id'] ?? '') === $selectedUnitId) {
+            $selectedModuleId = trim((string) ($_unitRow['module_id'] ?? ''));
+            break;
+        }
+    }
+}
+
+if ($isTechnicalProgram && $selectedModuleId === '' && !empty($allowedModuleIds)) {
+    $selectedModuleId = (string) $allowedModuleIds[0];
+}
+
+if ($isTechnicalProgram && $selectedModuleId !== '') {
+    $allUnits = array_values(array_filter($allUnits, static function ($unit) use ($selectedModuleId) {
+        return (string) ($unit['module_id'] ?? '') === $selectedModuleId;
+    }));
+}
+
 $unitResults = load_student_unit_results($pdo, $studentId, $assignmentId);
 $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
@@ -563,6 +633,17 @@ if ($selectedUnitId === '' && !empty($allUnits)) {
     $selectedUnitId = (string) ($allUnits[0]['id'] ?? '');
 }
 
+$selectedUnitExists = false;
+foreach ($allUnits as $_u) {
+    if ((string) ($_u['id'] ?? '') === $selectedUnitId) {
+        $selectedUnitExists = true;
+        break;
+    }
+}
+if (!$selectedUnitExists && !empty($allUnits)) {
+    $selectedUnitId = (string) ($allUnits[0]['id'] ?? '');
+}
+
 $selectedUnitName = 'Unit';
 foreach ($allUnits as $_u) {
     if ((string) ($_u['id'] ?? '') === $selectedUnitId) {
@@ -571,6 +652,7 @@ foreach ($allUnits as $_u) {
     }
 }
 $selectedUnitName = app_upper($selectedUnitName);
+$moduleQueryPart = ($isTechnicalProgram && $selectedModuleId !== '') ? '&module=' . urlencode($selectedModuleId) : '';
 
 /* ---- Activities for selected unit ---- */
 $step = max(0, (int) ($_GET['step'] ?? 0));
@@ -609,15 +691,19 @@ foreach ($activities as $activityIndex => $activityItem) {
 }
 
 $quizHref = $quizStepIndex !== null
-    ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $quizStepIndex)
+    ? 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart . '&step=' . urlencode((string) $quizStepIndex)
     : '';
 
 if ($quizHref === '' && $selectedUnitId !== '') {
-    $quizReturnTo = '../../academic/student_course.php?' . http_build_query([
+    $quizReturnParams = [
         'assignment' => $assignmentId,
         'unit' => $selectedUnitId,
         'step' => (string) max(9999, $total),
-    ]);
+    ];
+    if ($selectedModuleId !== '') {
+        $quizReturnParams['module'] = $selectedModuleId;
+    }
+    $quizReturnTo = '../../academic/student_course.php?' . http_build_query($quizReturnParams);
     $quizHref = '../activities/quiz/viewer.php?' . http_build_query([
         'unit' => $selectedUnitId,
         'assignment' => $assignmentId,
@@ -652,7 +738,7 @@ if ($current) {
     $activityPath = get_activity_base_path($type);
     if ($activityPath) {
         $nextReturnStep = $isLastActivity ? $total : $nextStep;
-        $returnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $nextReturnStep);
+        $returnUrl = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart . '&step=' . urlencode((string) $nextReturnStep);
         $query = http_build_query([
             'id'         => (string) ($current['id'] ?? ''),
             'unit'       => $selectedUnitId,
@@ -668,7 +754,7 @@ if ($current) {
 }
 
 // Pre-compute viewer URLs for every step so the fullscreen JS can navigate without a page reload
-$_fsBase = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId);
+$_fsBase = '../../academic/student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart;
 $allViewerHrefs = [];
 foreach ($activities as $_idx => $_act) {
     $_type = (string) ($_act['type'] ?? '');
@@ -705,7 +791,7 @@ $resultStatusClass = $isPassingScore ? 'result-badge-pass' : 'result-badge-fail'
 
 $backHref = 'student_dashboard.php';
 $completedStep = max(9999, $total);
-$completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . '&step=' . urlencode((string) $completedStep);
+$completedHref = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($selectedUnitId) . $moduleQueryPart . '&step=' . urlencode((string) $completedStep);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -876,6 +962,21 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 /* units sidebar strip */
 .units-strip{
     display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;
+}
+.modules-strip{
+    margin-bottom:12px;
+}
+.module-select{
+    min-width:220px;
+    max-width:360px;
+    width:100%;
+    padding:9px 12px;
+    border-radius:10px;
+    border:2px solid var(--line);
+    background:var(--card);
+    color:var(--muted);
+    font-size:14px;
+    font-weight:700;
 }
 .unit-chip{
     display:inline-flex;align-items:center;padding:8px 14px;border-radius:999px;
@@ -1057,7 +1158,7 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 <header class="topbar">
     <div class="topbar-inner">
         <a class="top-btn" href="<?php echo h($backHref); ?>">← Back</a>
-        <h1 class="topbar-title"><?php echo h(($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName); ?></h1>
+        <h1 class="topbar-title"><?php echo h($isTechnicalProgram ? $courseName : (($selectedUnitName !== '' && $selectedUnitName !== 'UNIT') ? $selectedUnitName : $courseName)); ?></h1>
         <div class="top-actions">
             <?php if ($selectedUnitId !== ''): ?>
             <a class="top-btn"
@@ -1080,13 +1181,33 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 <div class="page">
 <main class="content">
 
+    <?php if ($isTechnicalProgram && !empty($moduleOptions)): ?>
+    <div class="modules-strip">
+        <form method="get">
+            <input type="hidden" name="assignment" value="<?php echo h($assignmentId); ?>">
+            <select class="module-select" name="module" onchange="this.form.submit()">
+                <?php foreach ($moduleOptions as $_module): ?>
+                    <?php
+                    $_mid = (string) ($_module['id'] ?? '');
+                    $_mname = (string) ($_module['name'] ?? 'Módulo');
+                    ?>
+                    <option value="<?php echo h($_mid); ?>" <?php echo $_mid === $selectedModuleId ? 'selected' : ''; ?>>
+                        <?php echo h($_mname); ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <noscript><button class="top-btn" type="submit">Ver</button></noscript>
+        </form>
+    </div>
+    <?php endif; ?>
+
     <!-- Unit selector strip (only if multiple units) -->
     <?php if (count($allUnits) > 1): ?>
     <div class="units-strip">
         <?php foreach ($allUnits as $_unit):
             $_uid = (string) ($_unit['id'] ?? '');
             $_uname = (string) ($_unit['name'] ?? 'Unit');
-            $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid);
+            $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid) . $moduleQueryPart;
         ?>
             <a class="unit-chip <?php echo $_uid === $selectedUnitId ? 'active' : ''; ?>"
                href="<?php echo h($_href); ?>">
@@ -1130,7 +1251,7 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
                     <?php endif; ?>
                 <?php else: ?>
                     <a class="empty-btn"
-                       href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
+                       href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=0">
                        Repeat unit
                     </a>
                 <?php endif; ?>
@@ -1141,7 +1262,7 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
             <div class="result-actions">
                 <a class="empty-btn blue" href="<?php echo h($backHref); ?>">← My courses</a>
                 <a class="empty-btn"
-                   href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=0">
+                   href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=0">
                    Repeat unit
                 </a>
             </div>
@@ -1179,14 +1300,14 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
 
         <div class="controls">
             <a id="prevBtn" class="ctrl-btn blue <?php echo $hasPrev ? '' : 'disabled'; ?>"
-               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
+               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=<?php echo $hasPrev ? $prevStep : $step; ?>">
                 &larr; Previous
             </a>
             <div class="step-counter">
                 <strong><?php echo ($step + 1); ?></strong> / <?php echo $total; ?>
             </div>
             <a id="nextBtn" class="ctrl-btn <?php echo ($hasNext || $isLastActivity) ? '' : 'disabled'; ?>"
-               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo $isLastActivity ? $completedStep : ($hasNext ? $nextStep : $step); ?>">
+               href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=<?php echo $isLastActivity ? $completedStep : ($hasNext ? $nextStep : $step); ?>">
                 <?php echo $isLastActivity ? 'Finish unit' : 'Next &rarr;'; ?>
             </a>
         </div>
@@ -1249,8 +1370,8 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
     const SRCS   = <?php echo json_encode(array_values($allViewerHrefs)); ?>;
     let   step   = <?php echo (int) $step; ?>;
     const total  = <?php echo (int) $total; ?>;
-    const BASE   = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=';
-    const FINISH = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&step=<?php echo (int) $completedStep; ?>';
+    const BASE   = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=';
+    const FINISH = 'student_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?><?php echo h($moduleQueryPart); ?>&step=<?php echo (int) $completedStep; ?>';
 
     const prevBtn = document.getElementById('prevBtn');
     const nextBtn = document.getElementById('nextBtn');
