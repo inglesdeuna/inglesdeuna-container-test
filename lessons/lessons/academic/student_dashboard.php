@@ -84,9 +84,15 @@ function is_generic_course_label(string $value): bool
 function resolve_phase_label(array $assignment): string
 {
     $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
-    $courseName = normalize_label_spaces((string) ($assignment['course_name'] ?? ''));
+    $phaseName = normalize_label_spaces((string) ($assignment['phase_name'] ?? ''));
     $moduleName = normalize_label_spaces((string) ($assignment['module_name'] ?? ''));
+    $courseName = normalize_label_spaces((string) ($assignment['course_name'] ?? ''));
     $period = normalize_label_spaces((string) ($assignment['period'] ?? ''));
+
+    // Use the actual phase name from the database when available.
+    if ($phaseName !== '') {
+        return $phaseName;
+    }
 
     if ($program === 'technical' && $moduleName !== '') {
         return $moduleName;
@@ -164,6 +170,7 @@ function build_assignment_sections(array $assignments): array
         $unitLabel = resolve_unit_label($assignment);
         $phaseSort = phase_sort_order($assignment, $phaseLabel);
         $unitSort = unit_sort_order($unitLabel);
+        $phaseCreatedAt = normalize_label_spaces((string) ($assignment['phase_created_at'] ?? ''));
 
         $sectionKey = $program . '|' . lower_label($phaseLabel);
         if (!isset($sectionsByKey[$sectionKey])) {
@@ -171,6 +178,7 @@ function build_assignment_sections(array $assignments): array
                 'program' => $program,
                 'phase_label' => $phaseLabel,
                 'phase_sort' => $phaseSort,
+                'phase_created_at' => $phaseCreatedAt,
                 'assignments' => [],
             ];
         }
@@ -218,6 +226,13 @@ function build_assignment_sections(array $assignments): array
         $bWeight = $programWeight($bProgram);
         if ($aWeight !== $bWeight) {
             return $aWeight <=> $bWeight;
+        }
+
+        // Sort phases oldest to newest using DB creation timestamp when available.
+        $aCreated = (string) ($a['phase_created_at'] ?? '');
+        $bCreated = (string) ($b['phase_created_at'] ?? '');
+        if ($aCreated !== '' && $bCreated !== '' && $aCreated !== $bCreated) {
+            return $aCreated <=> $bCreated;
         }
 
         $aSort = (int) ($a['phase_sort'] ?? 9999);
@@ -557,7 +572,23 @@ function load_student_assignments(string $studentId): array
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,\n                   t.name AS teacher_name,\n                   c.name AS course_name,\n                   u.name AS unit_name,\n                   m.name AS module_name\n            FROM student_assignments sa\n            LEFT JOIN teachers t ON t.id = sa.teacher_id\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            LEFT JOIN units u ON u.id::text = sa.unit_id\n            LEFT JOIN technical_modules m ON m.id = u.module_id\n            WHERE sa.student_id = :student_id\n            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC\n        ");
+        $stmt = $pdo->prepare("
+            SELECT sa.id, sa.teacher_id, sa.course_id, sa.period, sa.unit_id, sa.level_id, sa.program, sa.updated_at,
+                   t.name AS teacher_name,
+                   c.name AS course_name,
+                   u.name AS unit_name,
+                   m.name AS module_name,
+                   ep.name AS phase_name,
+                   ep.created_at AS phase_created_at
+            FROM student_assignments sa
+            LEFT JOIN teachers t ON t.id = sa.teacher_id
+            LEFT JOIN courses c ON c.id::text = sa.course_id
+            LEFT JOIN units u ON u.id::text = sa.unit_id
+            LEFT JOIN technical_modules m ON m.id = u.module_id
+            LEFT JOIN english_phases ep ON ep.id = u.phase_id
+            WHERE sa.student_id = :student_id
+            ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC
+        ");
         $stmt->execute(['student_id' => $studentId]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         if (!is_array($rows)) return [];
@@ -1259,7 +1290,7 @@ body {
                                 <div class="sd-course-card" data-program="<?php echo h($program); ?>">
 
                                     <div class="sd-course-badge">
-                                        <?php echo h($programLabel); ?> · <?php echo h($sectionPhaseLabel); ?>
+                                        <?php echo h($sectionPhaseLabel); ?>
                                     </div>
 
                                     <h3 class="sd-unit-name"><?php echo h($unitName); ?></h3>
