@@ -247,35 +247,112 @@ function build_assignment_sections(array $assignments): array
     return $sections;
 }
 
-function build_sidebar_module_links(array $assignments): array
+function build_sidebar_navigation_groups(array $assignments): array
 {
-    $modulesById = [];
+    $technicalModulesByKey = [];
+    $englishPhasesByKey = [];
 
     foreach ($assignments as $assignment) {
         $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
-        if ($program !== 'technical') {
+        $unitLabel = resolve_unit_label($assignment);
+        $unitSort = unit_sort_order($unitLabel);
+        $unitKey = lower_label($unitLabel);
+
+        if ($program === 'technical') {
+            $moduleId = trim((string) ($assignment['module_id'] ?? ''));
+            $moduleName = normalize_label_spaces((string) ($assignment['module_name'] ?? ''));
+            if ($moduleName === '') {
+                continue;
+            }
+
+            $moduleKey = $moduleId !== '' ? $moduleId : lower_label($moduleName);
+            if (!isset($technicalModulesByKey[$moduleKey])) {
+                $technicalModulesByKey[$moduleKey] = [
+                    'name' => $moduleName,
+                    'sort' => extract_first_number($moduleName) ?? 9999,
+                    'units' => [],
+                ];
+            }
+
+            if (!isset($technicalModulesByKey[$moduleKey]['units'][$unitKey])) {
+                $technicalModulesByKey[$moduleKey]['units'][$unitKey] = [
+                    'label' => $unitLabel,
+                    'sort' => $unitSort,
+                ];
+            }
             continue;
         }
 
-        $moduleId = trim((string) ($assignment['module_id'] ?? ''));
-        $moduleName = normalize_label_spaces((string) ($assignment['module_name'] ?? ''));
-        $assignmentId = trim((string) ($assignment['id'] ?? ''));
-        if ($moduleId === '' || $moduleName === '' || $assignmentId === '') {
+        if ($program !== 'english') {
             continue;
         }
 
-        if (isset($modulesById[$moduleId])) {
+        $phaseOrder = extract_first_number((string) ($assignment['phase_name'] ?? ''));
+        if ($phaseOrder === null) {
+            $phaseOrder = extract_first_number((string) ($assignment['period'] ?? ''));
+        }
+        if ($phaseOrder === null || $phaseOrder < 1 || $phaseOrder > 3) {
             continue;
         }
 
-        $modulesById[$moduleId] = [
-            'id' => $moduleId,
-            'name' => $moduleName,
-            'href' => 'student_course.php?assignment=' . urlencode($assignmentId) . '&module=' . urlencode($moduleId),
-        ];
+        $phaseLabel = 'Phase ' . $phaseOrder;
+        $phaseKey = (string) $phaseOrder;
+        if (!isset($englishPhasesByKey[$phaseKey])) {
+            $englishPhasesByKey[$phaseKey] = [
+                'name' => $phaseLabel,
+                'sort' => $phaseOrder,
+                'units' => [],
+            ];
+        }
+
+        if (!isset($englishPhasesByKey[$phaseKey]['units'][$unitKey])) {
+            $englishPhasesByKey[$phaseKey]['units'][$unitKey] = [
+                'label' => $unitLabel,
+                'sort' => $unitSort,
+            ];
+        }
     }
 
-    return array_values($modulesById);
+    $normalizeUnits = static function (array $entries): array {
+        $normalized = array_values($entries);
+        usort($normalized, static function (array $a, array $b): int {
+            $aSort = (int) ($a['sort'] ?? 9999);
+            $bSort = (int) ($b['sort'] ?? 9999);
+            if ($aSort !== $bSort) {
+                return $aSort <=> $bSort;
+            }
+            return lower_label((string) ($a['label'] ?? '')) <=> lower_label((string) ($b['label'] ?? ''));
+        });
+        return $normalized;
+    };
+
+    $technicalModules = array_values($technicalModulesByKey);
+    usort($technicalModules, static function (array $a, array $b): int {
+        $aSort = (int) ($a['sort'] ?? 9999);
+        $bSort = (int) ($b['sort'] ?? 9999);
+        if ($aSort !== $bSort) {
+            return $aSort <=> $bSort;
+        }
+        return lower_label((string) ($a['name'] ?? '')) <=> lower_label((string) ($b['name'] ?? ''));
+    });
+    foreach ($technicalModules as &$module) {
+        $module['units'] = $normalizeUnits((array) ($module['units'] ?? []));
+    }
+    unset($module);
+
+    $englishPhases = array_values($englishPhasesByKey);
+    usort($englishPhases, static function (array $a, array $b): int {
+        return ((int) ($a['sort'] ?? 9999)) <=> ((int) ($b['sort'] ?? 9999));
+    });
+    foreach ($englishPhases as &$phase) {
+        $phase['units'] = $normalizeUnits((array) ($phase['units'] ?? []));
+    }
+    unset($phase);
+
+    return [
+        'technical' => $technicalModules,
+        'english' => $englishPhases,
+    ];
 }
 
 function student_initials(string $name): string
@@ -748,11 +825,7 @@ $studentPermission = load_student_permission($studentId);
 $_SESSION['student_permission'] = $studentPermission;
 $studentInitials = student_initials($studentName);
 $myAssignments = load_student_assignments($studentId);
-$sidebarModuleLinks = build_sidebar_module_links($myAssignments);
-$sidebarSelectedModuleId = trim((string) ($_GET['module'] ?? ''));
-if ($sidebarSelectedModuleId === '' && !empty($sidebarModuleLinks)) {
-    $sidebarSelectedModuleId = (string) ($sidebarModuleLinks[0]['id'] ?? '');
-}
+$sidebarNavigationGroups = build_sidebar_navigation_groups($myAssignments);
 $assignmentSections = build_assignment_sections($myAssignments);
 $scoreSummaryByAssignment = load_assignment_score_summary($studentId);
 
@@ -843,9 +916,9 @@ if ($firstAssignmentId !== '') {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Dashboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Nunito:wght@700;800&display=swap');
 /* ─── Reset ─── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1041,17 +1114,120 @@ body {
 .sd-action-btn:hover { background: #F5F3FF; }
 .sd-action-btn.locked { color: #B0A8D8; cursor: default; }
 .sd-action-btn.locked:hover { background: var(--white); }
-.sd-module-select {
+.sd-sidebar-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.sd-sidebar-group[data-program="english"],
+.sd-sidebar-group[data-program="technical"] {
+  display: none;
+}
+.sd-sidebar-group.visible {
+  display: block;
+}
+.sd-sidebar-toggle {
   width: 100%;
-  padding: 10px 12px;
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  background: var(--white);
-  color: #30248F;
+  border: 0;
+  border-radius: 9px;
+  padding: 8px 10px;
+  background: #7F77DD;
+  color: #FFFFFF;
   font-size: 13px;
   font-weight: 700;
-  font-family: 'Inter', sans-serif;
-  margin-bottom: 10px;
+  font-family: 'Nunito', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.sd-sidebar-group.is-open .sd-sidebar-toggle {
+  background: #6B63CC;
+}
+.sd-sidebar-chevron {
+  font-size: 12px;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+.sd-sidebar-group.is-open > .sd-sidebar-toggle .sd-sidebar-chevron,
+.sd-sidebar-item.is-open > .sd-sidebar-item-toggle .sd-sidebar-chevron {
+  transform: rotate(180deg);
+}
+.sd-sidebar-list {
+  margin-top: 8px;
+  display: none;
+  flex-direction: column;
+  gap: 7px;
+}
+.sd-sidebar-group.is-open .sd-sidebar-list {
+  display: flex;
+}
+.sd-sidebar-item {
+  background: #F5F3FF;
+  border: 0.5px solid #EDE9FA;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.sd-sidebar-item.is-open {
+  border: 1.5px solid #7F77DD;
+}
+.sd-sidebar-item-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #7F77DD;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
+  text-align: left;
+  padding: 7px 9px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+.sd-sidebar-item.is-open .sd-sidebar-item-toggle {
+  background: #EDE9FA;
+}
+.sd-sidebar-unit-list {
+  display: none;
+  padding: 7px 9px;
+  background: #F5F3FF;
+}
+.sd-sidebar-item.is-open .sd-sidebar-unit-list {
+  display: block;
+}
+.sd-sidebar-unit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #7F77DD;
+  font-family: 'Nunito', sans-serif;
+  line-height: 1.25;
+  margin-bottom: 5px;
+}
+.sd-sidebar-unit-row:last-child {
+  margin-bottom: 0;
+}
+.sd-sidebar-unit-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #F97316;
+  flex-shrink: 0;
+}
+.sd-sidebar-empty {
+  background: #F5F3FF;
+  border: 0.5px solid #EDE9FA;
+  border-radius: 8px;
+  padding: 8px 9px;
+  color: #7F77DD;
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'Nunito', sans-serif;
 }
 
 /* ─── Main Content ─── */
@@ -1272,21 +1448,73 @@ body {
 
         <!-- Actions card -->
         <div class="sd-card">
-            <?php if (!empty($sidebarModuleLinks)) { ?>
-                <span class="sd-actions-label">Módulos</span>
-                <select class="sd-module-select" aria-label="Módulo técnico" onchange="if (this.value) { window.location.href = this.value; }">
-                    <?php foreach ($sidebarModuleLinks as $moduleLink) { ?>
-                        <?php
-                        $moduleId = (string) ($moduleLink['id'] ?? '');
-                        $moduleName = (string) ($moduleLink['name'] ?? 'Módulo');
-                        $moduleHref = (string) ($moduleLink['href'] ?? '');
-                        ?>
-                        <option value="<?php echo h($moduleHref); ?>" <?php echo $moduleId === $sidebarSelectedModuleId ? 'selected' : ''; ?>>
-                            <?php echo h($moduleName); ?>
-                        </option>
-                    <?php } ?>
-                </select>
-            <?php } ?>
+            <div class="sd-sidebar-groups">
+                <div class="sd-sidebar-group visible" data-program="technical">
+                    <button class="sd-sidebar-toggle" type="button" aria-expanded="false">
+                        <span>Módulos</span>
+                        <span class="sd-sidebar-chevron">⌄</span>
+                    </button>
+                    <div class="sd-sidebar-list">
+                        <?php if (empty($sidebarNavigationGroups['technical'])) { ?>
+                            <div class="sd-sidebar-empty">No tienes módulos asignados.</div>
+                        <?php } else { ?>
+                            <?php foreach ((array) $sidebarNavigationGroups['technical'] as $moduleItem) { ?>
+                                <?php
+                                $moduleName = (string) ($moduleItem['name'] ?? 'Módulo');
+                                $moduleUnits = (array) ($moduleItem['units'] ?? []);
+                                ?>
+                                <div class="sd-sidebar-item">
+                                    <button class="sd-sidebar-item-toggle" type="button" aria-expanded="false">
+                                        <span><?php echo h($moduleName); ?></span>
+                                        <span class="sd-sidebar-chevron">⌄</span>
+                                    </button>
+                                    <div class="sd-sidebar-unit-list">
+                                        <?php foreach ($moduleUnits as $unitItem) { ?>
+                                            <div class="sd-sidebar-unit-row">
+                                                <span class="sd-sidebar-unit-dot"></span>
+                                                <span><?php echo h((string) ($unitItem['label'] ?? 'Unit')); ?></span>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        <?php } ?>
+                    </div>
+                </div>
+
+                <div class="sd-sidebar-group visible" data-program="english">
+                    <button class="sd-sidebar-toggle" type="button" aria-expanded="false">
+                        <span>Courses</span>
+                        <span class="sd-sidebar-chevron">⌄</span>
+                    </button>
+                    <div class="sd-sidebar-list">
+                        <?php if (empty($sidebarNavigationGroups['english'])) { ?>
+                            <div class="sd-sidebar-empty">No tienes fases asignadas.</div>
+                        <?php } else { ?>
+                            <?php foreach ((array) $sidebarNavigationGroups['english'] as $phaseItem) { ?>
+                                <?php
+                                $phaseName = (string) ($phaseItem['name'] ?? 'Phase');
+                                $phaseUnits = (array) ($phaseItem['units'] ?? []);
+                                ?>
+                                <div class="sd-sidebar-item">
+                                    <button class="sd-sidebar-item-toggle" type="button" aria-expanded="false">
+                                        <span><?php echo h($phaseName); ?></span>
+                                        <span class="sd-sidebar-chevron">⌄</span>
+                                    </button>
+                                    <div class="sd-sidebar-unit-list">
+                                        <?php foreach ($phaseUnits as $unitItem) { ?>
+                                            <div class="sd-sidebar-unit-row">
+                                                <span class="sd-sidebar-unit-dot"></span>
+                                                <span><?php echo h((string) ($unitItem['label'] ?? 'Unit')); ?></span>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
+                                </div>
+                            <?php } ?>
+                        <?php } ?>
+                    </div>
+                </div>
+            </div>
 
             <span class="sd-actions-label">Acciones</span>
 
@@ -1402,8 +1630,19 @@ body {
 (function () {
     var btns  = document.querySelectorAll('.sd-phase-btn');
     var sections = document.querySelectorAll('.sd-phase-section');
+    var sidebarGroups = document.querySelectorAll('.sd-sidebar-group');
+    var sidebarGroupToggles = document.querySelectorAll('.sd-sidebar-toggle');
+    var sidebarItemToggles = document.querySelectorAll('.sd-sidebar-item-toggle');
     var title = document.getElementById('sd-main-title');
     var labels = { english: 'English Courses', technical: 'Technical Courses', lifeskills: 'Life Skills' };
+
+    function syncSidebar(tab) {
+        sidebarGroups.forEach(function (group) {
+            var program = group.dataset.program || '';
+            var visible = tab === program;
+            group.classList.toggle('visible', visible);
+        });
+    }
 
     function applyTab(tab) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
@@ -1415,7 +1654,28 @@ body {
             section.style.display = show ? '' : 'none';
         });
         if (title) { title.textContent = labels[tab] || 'Courses'; }
+        syncSidebar(tab);
     }
+
+    sidebarGroupToggles.forEach(function (toggle) {
+        toggle.addEventListener('click', function () {
+            var group = this.closest('.sd-sidebar-group');
+            if (!group) { return; }
+            var nextOpen = !group.classList.contains('is-open');
+            group.classList.toggle('is-open', nextOpen);
+            this.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        });
+    });
+
+    sidebarItemToggles.forEach(function (toggle) {
+        toggle.addEventListener('click', function () {
+            var item = this.closest('.sd-sidebar-item');
+            if (!item) { return; }
+            var nextOpen = !item.classList.contains('is-open');
+            item.classList.toggle('is-open', nextOpen);
+            this.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+        });
+    });
 
     btns.forEach(function (btn) {
         btn.addEventListener('click', function () { applyTab(this.dataset.tab); });
