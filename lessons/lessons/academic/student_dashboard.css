@@ -1,0 +1,315 @@
+/* ═══════════════════════════════════════════════════
+   ONES – student_dashboard.css
+   Fredoka One titles · Nunito body
+   Orange #F97316 · Purple #7F77DD · Kicker #FFF0E6
+   ═══════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: #F9F8FF;
+  min-height: 100vh;
+}
+
+/* ════════════════════════
+   FLASH NOTICES
+   ════════════════════════ */
+.flash {
+  padding: 10px 1.5rem;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+.flash-ok    { background: #EAF3DE; border-bottom: 2px solid #C0DD97; color: #27500A; }
+.flash-error { background: #FCEBEB; border-bottom: 2px solid #F3C4C4; color: #791F1F; }
+
+/* ════════════════════════
+   TOPBAR
+   ════════════════════════ */
+.topbar {
+  background: #ffffff;
+  border-bottom: 1px solid #EDE9FA;
+  height: 56px;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.topbar-brand { display: flex; align-items: center; gap: 9px; }
+.topbar-name  { font-family: 'Fredoka One', sans-serif; font-size: 17px; color: #F97316; }
+.topbar-sub   { font-size: 7px; font-weight: 800; color: #AFA9EC; letter-spacing: 1.5px; text-transform: uppercase; line-height: 1.4; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+
+.topbar-student-name { font-size: 13px; font-weight: 800; color: #3C3489; text-align: right; }
+.topbar-student-role { font-size: 10px; color: #9B8FCC; text-align: right; }
+
+.topbar-avatar {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: #EDE9FA; border: 2px solid #7F77DD;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; color: #534AB7;
+}
+
+.btn-logout {
+  height: 30px; padding: 0 12px;
+  background: #EEEDFE; border: 1.5px solid #7F77DD; border-radius: 0;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700; color: #534AB7;
+  cursor: pointer; display: flex; align-items: center; gap: 5px;
+  text-decoration: none;
+}
+.btn-logout:hover { opacity: 0.82; }
+
+/* ════════════════════════
+   PHASE NAVIGATION
+   ════════════════════════ */
+.phase-bar {
+  background: #ffffff;
+  border-bottom: 1px solid #EDE9FA;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.phase-tab {
+  height: 44px; padding: 0 20px;
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 700; color: #9B8FCC;
+  border-bottom: 3px solid transparent;
+  background: none; border-left: none; border-right: none; border-top: none;
+  cursor: pointer; text-decoration: none;
+  transition: color 0.15s;
+}
+.phase-tab i { font-size: 15px; }
+.phase-tab.active { color: #F97316; border-bottom-color: #F97316; }
+.phase-tab:hover:not(.active) { color: #7F77DD; }
+
+/* ════════════════════════
+   BODY LAYOUT
+   ════════════════════════ */
+.dash-body {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.25rem 1.5rem;
+  align-items: flex-start;
+}
+
+/* ════════════════════════
+   SIDEBAR
+   ════════════════════════ */
+.sidebar { width: 200px; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+
+.profile-card {
+  background: #ffffff; border: 1px solid #EDE9FA;
+  padding: 1.25rem 1rem;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+
+.profile-avatar {
+  width: 68px; height: 68px; border-radius: 50%;
+  background: #EDE9FA; border: 3px solid #7F77DD;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 800; color: #534AB7;
+  overflow: hidden;
+}
+.profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+.profile-name { font-family: 'Fredoka One', sans-serif; font-size: 15px; color: #F97316; text-align: center; }
+.profile-role { font-size: 11px; color: #9B8FCC; }
+.profile-divider { width: 100%; height: 1px; background: #EDE9FA; margin: 2px 0; }
+
+.stat-row { display: flex; gap: 6px; width: 100%; }
+.stat-chip { flex: 1; background: #F9F8FF; border: 1px solid #EDE9FA; padding: 6px 4px; text-align: center; }
+.stat-value { font-family: 'Fredoka One', sans-serif; font-size: 18px; color: #F97316; }
+.stat-label { font-size: 9px; font-weight: 700; color: #9B8FCC; letter-spacing: 0.5px; }
+
+.photo-label {
+  font-size: 9px; font-weight: 800; color: #C4BDED;
+  letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; width: 100%;
+}
+.photo-input { font-size: 10px; color: #9B8FCC; width: 100%; }
+
+/* Sidebar actions */
+.sidebar-actions {
+  background: #ffffff; border: 1px solid #EDE9FA;
+  padding: 0.875rem 1rem;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.sidebar-section-label {
+  font-size: 9px; font-weight: 800; color: #C4BDED;
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 2px;
+}
+.sdbtn {
+  width: 100%; height: 34px; border-radius: 0;
+  font-family: 'Nunito', sans-serif; font-size: 11px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+  text-decoration: none;
+}
+.sdbtn i { font-size: 12px; }
+.sdbtn-purple { background: #EEEDFE; border: 1.5px solid #7F77DD; color: #534AB7; }
+.sdbtn-orange { background: #FFF0E6; border: 1.5px solid #F97316; color: #993C1D; }
+.sdbtn-ghost  { background: #ffffff;  border: 1.5px solid #EDE9FA; color: #9B8FCC; }
+.sdbtn-locked { background: #F9F8FF; border: 1.5px solid #EDE9FA; color: #C4BDED; cursor: default; }
+.sdbtn:hover  { opacity: 0.82; }
+.sdbtn-locked:hover { opacity: 1; }
+
+/* ════════════════════════
+   MAIN CONTENT AREA
+   ════════════════════════ */
+.main-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+
+.grid-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+.grid-title  { font-family: 'Fredoka One', sans-serif; font-size: 18px; color: #7F77DD; }
+.grid-meta   { font-size: 11px; color: #C4BDED; }
+
+/* ════════════════════════
+   COURSE GRID
+   ════════════════════════ */
+.course-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 10px;
+}
+
+.course-card {
+  background: #ffffff; border: 1px solid #EDE9FA;
+  padding: 1rem;
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.course-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 8px; font-size: 9px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase; width: fit-content;
+}
+.badge-english  { background: #EEEDFE; color: #534AB7; }
+.badge-technical{ background: #FFF0E6; color: #993C1D; }
+
+.course-unit {
+  font-family: 'Fredoka One', sans-serif; font-size: 13px;
+  color: #3C3489; line-height: 1.25; min-height: 34px;
+}
+.course-teacher { font-size: 10px; color: #9B8FCC; }
+.course-teacher b { color: #534AB7; font-weight: 700; }
+
+.score-wrap   { display: flex; align-items: center; gap: 6px; }
+.score-bar-bg { flex: 1; height: 5px; background: #EDE9FA; }
+.score-bar-fill { height: 5px; }
+.score-pct    { font-size: 10px; font-weight: 800; min-width: 28px; text-align: right; }
+
+.errors-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 7px; font-size: 9px; font-weight: 700; width: fit-content;
+}
+.chip-warn { background: #FFF0E6; border: 1px solid #F5C4B3; color: #993C1D; }
+.chip-good { background: #EAF3DE; border: 1px solid #C0DD97; color: #27500A; }
+
+.card-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+.cbtn {
+  height: 28px; padding: 0 10px; border-radius: 0;
+  font-family: 'Nunito', sans-serif; font-size: 10px; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; gap: 4px;
+}
+.cbtn i { font-size: 11px; }
+.cbtn:hover { opacity: 0.82; }
+.cbtn-primary        { background: #F97316; border: none; color: #ffffff; }
+.cbtn-outline-purple { background: #EEEDFE; border: 1.5px solid #7F77DD; color: #534AB7; }
+.cbtn-outline-green  { background: #EAF3DE; border: 1.5px solid #3B6D11; color: #27500A; }
+
+/* ════════════════════════
+   PROGRESS TAB
+   ════════════════════════ */
+.hero-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.hero-card {
+  background: #ffffff; border: 1px solid #EDE9FA;
+  padding: 1rem;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.hero-label { font-size: 9px; font-weight: 800; color: #C4BDED; letter-spacing: 1.5px; text-transform: uppercase; }
+.hero-value { font-family: 'Fredoka One', sans-serif; font-size: 26px; line-height: 1; }
+.hero-value span { font-size: 13px; color: #C4BDED; font-family: 'Nunito', sans-serif; font-weight: 600; }
+.hero-sub   { font-size: 10px; color: #9B8FCC; }
+.hero-bar-bg   { height: 4px; background: #EDE9FA; margin-top: 4px; }
+.hero-bar-fill { height: 4px; }
+
+/* Unit table */
+.section-card { background: #ffffff; border: 1px solid #EDE9FA; padding: 1rem; }
+.sec-header   { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sec-title    { font-family: 'Fredoka One', sans-serif; font-size: 15px; color: #7F77DD; }
+.sec-badge    { font-size: 9px; font-weight: 800; background: #EEEDFE; color: #534AB7; padding: 3px 8px; letter-spacing: 1px; }
+
+.unit-table   { width: 100%; border-collapse: collapse; }
+.unit-table th {
+  font-size: 9px; font-weight: 800; color: #C4BDED;
+  letter-spacing: 1px; text-transform: uppercase;
+  text-align: left; padding: 4px 6px; border-bottom: 1px solid #EDE9FA;
+}
+.unit-table td {
+  font-size: 11px; color: #3C3489;
+  padding: 7px 6px; border-bottom: 1px solid #F9F8FF; vertical-align: middle;
+}
+.unit-table tr:last-child td { border-bottom: none; }
+.unit-name  { font-weight: 700; color: #534AB7; }
+
+.score-pill { display: inline-block; padding: 2px 8px; font-size: 10px; font-weight: 800; font-family: 'Fredoka One', sans-serif; }
+.score-green  { background: #EAF3DE; color: #27500A; }
+.score-orange { background: #FFF0E6; color: #993C1D; }
+.score-red    { background: #FCEBEB; color: #791F1F; }
+
+.mini-bar-bg   { width: 80px; height: 5px; background: #EDE9FA; display: inline-block; vertical-align: middle; }
+.mini-bar-fill { height: 5px; display: block; }
+
+.total-row {
+  margin-top: 10px; border-top: 2px solid #EDE9FA; padding-top: 8px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.total-label  { font-size: 11px; font-weight: 800; color: #534AB7; }
+.total-values { display: flex; align-items: center; gap: 16px; }
+.total-pts    { font-family: 'Fredoka One', sans-serif; font-size: 18px; color: #F97316; }
+.total-avg    { font-family: 'Fredoka One', sans-serif; font-size: 18px; color: #7F77DD; }
+.total-err    { font-size: 11px; font-weight: 700; color: #993C1D; }
+.total-small  { font-size: 11px; color: #C4BDED; font-family: 'Nunito', sans-serif; font-weight: 600; }
+
+/* S/W cards */
+.sw-row  { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sw-card { background: #ffffff; border: 1px solid #EDE9FA; padding: 1rem; }
+.sw-title { display: flex; align-items: center; gap: 6px; font-family: 'Fredoka One', sans-serif; font-size: 14px; margin-bottom: 10px; }
+.sw-title i { font-size: 18px; }
+
+.sw-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid #F9F8FF;
+  font-size: 11px; color: #3C3489; line-height: 1.5;
+}
+.sw-item:last-child { border-bottom: none; }
+.sw-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+
+/* ════════════════════════
+   HIDDEN PANELS
+   ════════════════════════ */
+.tab-panel { display: none; }
+.tab-panel.active { display: flex; flex-direction: column; gap: 12px; }
+
+/* ════════════════════════
+   RESPONSIVE
+   ════════════════════════ */
+@media (max-width: 768px) {
+  .dash-body { flex-direction: column; padding: 1rem; }
+  .sidebar   { width: 100%; }
+  .hero-row  { grid-template-columns: 1fr 1fr; }
+  .sw-row    { grid-template-columns: 1fr; }
+  .course-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .course-grid { grid-template-columns: 1fr; }
+  .hero-row    { grid-template-columns: 1fr; }
+}
