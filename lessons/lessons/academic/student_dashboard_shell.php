@@ -65,14 +65,17 @@
 
   <div class="topbar-right">
     <div>
-      <!-- PHP_PLACEHOLDER: echo $student_name and $student_id -->
-      <div class="topbar-student-name">Estudiante Prueba</div>
-      <div class="topbar-student-role">Estudiante &middot; ID: 00142</div>
+      <!-- PHP_PLACEHOLDER: echo $studentName and $studentId -->
+      <div class="topbar-student-name"><?php echo h($studentName); ?></div>
+      <div class="topbar-student-role">Estudiante &middot; ID: <?php echo h($studentId); ?></div>
     </div>
-    <div class="topbar-avatar">
-      <!-- PHP_PLACEHOLDER: if student has photo, use <img>, else initials -->
-      EP
-    </div>
+      <div class="topbar-avatar">
+        <?php if (!empty($studentPhotoSrc)): ?>
+          <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>
+        <?php else: ?>
+          <?php echo h($studentInitials); ?>
+        <?php endif; ?>
+      </div>
     <a href="logout.php" class="btn-logout">
       <i class="ti ti-logout" aria-hidden="true"></i>Salir
     </a>
@@ -86,14 +89,28 @@
   <button class="phase-tab active" onclick="switchTab('english', this)" aria-controls="tab-english">
     <i class="ti ti-language" aria-hidden="true"></i>English
   </button>
-  <?php /* PHP_PLACEHOLDER: if student has technical courses, render this tab */ ?>
+  <?php if (!empty($technical_courses)): ?>
   <button class="phase-tab" onclick="switchTab('technical', this)" aria-controls="tab-technical">
     <i class="ti ti-tool" aria-hidden="true"></i>Technical
   </button>
+  <?php endif; ?>
   <button class="phase-tab" onclick="switchTab('progress', this)" aria-controls="tab-progress">
     <i class="ti ti-chart-bar" aria-hidden="true"></i>Progress
   </button>
 </nav>
+
+<?php if (!empty($flashMessage)): ?>
+  <div class="flash flash-ok">
+    <i class="ti ti-circle-check" aria-hidden="true"></i>
+    <?php echo h($flashMessage); ?>
+  </div>
+<?php endif; ?>
+<?php if (!empty($flashError)): ?>
+  <div class="flash flash-error">
+    <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+    <?php echo h($flashError); ?>
+  </div>
+<?php endif; ?>
 
 <!-- ═══════════════════════════════════════════
      BODY
@@ -105,30 +122,34 @@
 
     <div class="profile-card">
       <div class="profile-avatar">
-        <!-- PHP_PLACEHOLDER: if photo exists: <img src="<?= $photo_url ?>" alt="Foto de perfil"/> else initials -->
-        EP
+        <?php if (!empty($studentPhotoSrc)): ?>
+          <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil"/>
+        <?php else: ?>
+          <?php echo h($studentInitials); ?>
+        <?php endif; ?>
       </div>
-      <!-- PHP_PLACEHOLDER: echo student name and role -->
-      <div class="profile-name">Estudiante Prueba</div>
+      <div class="profile-name"><?php echo h($studentName); ?></div>
       <div class="profile-role">Estudiante</div>
       <div class="profile-divider"></div>
       <div class="stat-row">
         <div class="stat-chip">
-          <!-- PHP_PLACEHOLDER: echo count($courses) -->
-          <div class="stat-value">6</div>
+          <div class="stat-value"><?php echo count($myAssignments); ?></div>
           <div class="stat-label">Cursos</div>
         </div>
         <div class="stat-chip">
-          <!-- PHP_PLACEHOLDER: echo round($avg_score) . '%' -->
-          <div class="stat-value">90%</div>
+          <?php
+          $_avgScores = array_filter(array_map(fn($s) => (int)($s['avg_percent'] ?? 0), $scoreSummaryByAssignment));
+          $_dashAvg   = count($_avgScores) > 0 ? (int) round(array_sum($_avgScores) / count($_avgScores)) : 0;
+          ?>
+          <div class="stat-value"><?php echo $_dashAvg; ?>%</div>
           <div class="stat-label">Prom.</div>
         </div>
       </div>
       <div class="photo-label">Foto de perfil</div>
       <form method="POST" enctype="multipart/form-data" style="width:100%;">
-        <!-- PHP_PLACEHOLDER: keep original photo upload form fields here -->
-        <input type="file" name="photo" accept="image/*" class="photo-input"/>
-        <button type="submit" name="update_photo" class="sdbtn sdbtn-purple" style="margin-top:6px;width:100%;">
+        <input type="hidden" name="action" value="upload_student_photo"/>
+        <input type="file" name="student_photo" accept="image/jpeg,image/png,image/webp,image/gif" class="photo-input"/>
+        <button type="submit" class="sdbtn sdbtn-purple" style="margin-top:6px;width:100%;">
           <i class="ti ti-upload" aria-hidden="true"></i>Actualizar foto
         </button>
       </form>
@@ -136,11 +157,16 @@
 
     <div class="sidebar-actions">
       <div class="sidebar-section-label">Acciones</div>
-      <!-- PHP_PLACEHOLDER: keep original href values for these links -->
-      <a href="quiz.php" class="sdbtn sdbtn-purple">
-        <i class="ti ti-clipboard-check" aria-hidden="true"></i>Ir al Quiz
-      </a>
-      <a href="change_password.php" class="sdbtn sdbtn-orange">
+      <?php if (!empty($quizUnlocked) && !empty($quizGoHref)): ?>
+        <a href="<?php echo h($quizGoHref); ?>" class="sdbtn sdbtn-purple">
+          <i class="ti ti-clipboard-check" aria-hidden="true"></i>Ir al Quiz
+        </a>
+      <?php else: ?>
+        <span class="sdbtn sdbtn-locked" title="Pide a tu maestro que desbloquee el quiz">
+          <i class="ti ti-lock" aria-hidden="true"></i>Quiz bloqueado
+        </span>
+      <?php endif; ?>
+      <a href="change_password_student.php" class="sdbtn sdbtn-orange">
         <i class="ti ti-key" aria-hidden="true"></i>Cambiar clave
       </a>
       <a href="logout.php" class="sdbtn sdbtn-ghost">
@@ -414,10 +440,10 @@
             <tr>
               <td><span class="unit-name">Unit 3 &mdash; I can count to 9</span></td>
               <td style="color:#9B8FCC;">P1</td>
-              <td><span class="score-pill score-green">86</span></td>
+              <td><span class="score-pill score-orange">86</span></td>
               <td><span class="mini-bar-bg"><span class="mini-bar-fill" style="width:86%;background:#F97316;"></span></span></td>
               <td style="color:#9B8FCC;font-size:10px;">3 / 21</td>
-              <td><i class="ti ti-circle-check" style="color:#3B6D11;font-size:14px;" aria-hidden="true"></i></td>
+              <td><i class="ti ti-alert-circle" style="color:#F97316;font-size:14px;" aria-hidden="true"></i></td>
             </tr>
             <tr>
               <td><span class="unit-name">Unit 2 &mdash; Putting on your clothes</span></td>
