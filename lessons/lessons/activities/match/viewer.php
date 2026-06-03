@@ -957,6 +957,19 @@ function scoreSummary() {
     return { correct: checked.size, wrong: wrongs, percent: pct };
 }
 
+function persistenceSummary() {
+    if (revealedByAnswer) {
+        return { percent: 0, errors: TOTAL, total: TOTAL };
+    }
+
+    const correct = checked.size;
+    const total = Math.max(0, TOTAL);
+    const errors = Math.max(0, total - correct);
+    const percent = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+    return { percent, errors, total };
+}
+
 /* ── Check ── */
 function checkAnswers() {
     if (finished) return;
@@ -1067,10 +1080,10 @@ function updateScores(show) {
 /* ── Persist ── */
 async function persistScore() {
     if (!RETURN_TO || !ACT_ID) return true;
-    const summary = scoreSummary();
+    const summary = persistenceSummary();
     const pct = summary.percent;
     const sep = RETURN_TO.includes('?') ? '&' : '?';
-    const url = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + summary.wrong + '&activity_total=' + TOTAL + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
+    const url = RETURN_TO + sep + 'activity_percent=' + pct + '&activity_errors=' + summary.errors + '&activity_total=' + summary.total + '&activity_id=' + encodeURIComponent(ACT_ID) + '&activity_type=match';
     try {
         const r = await fetch(url, {method:'GET',credentials:'same-origin',cache:'no-store'});
         if (!r.ok) {
