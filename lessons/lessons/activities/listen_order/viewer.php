@@ -105,10 +105,12 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-audio-play{width:44px;height:44px;border-radius:50%;background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.28);display:flex;align-items:center;justify-content:center;border:0;cursor:pointer;flex-shrink:0;color:#fff;font-size:18px;transition:transform .12s}
 .lo-audio-play:hover{transform:scale(1.07)}
 /* video player */
-.lo-video-player{border-radius:18px;overflow:hidden;background:#000;margin-bottom:18px}
-.lo-video-player video{width:100%;display:block;max-height:340px;object-fit:contain}
+.lo-board-inner{display:flex;flex-direction:column;gap:16px;margin-bottom:14px}
+.lo-media-col,.lo-grid-col{width:100%}
+.lo-video-player{border-radius:18px;overflow:hidden;background:#000}
+.lo-video-player video{width:100%;display:block;max-height:420px;object-fit:contain}
 /* image grid */
-.lo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(clamp(130px,16vw,190px),1fr));gap:16px;justify-content:center;margin-bottom:14px}
+.lo-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;justify-content:center}
 .lo-card{width:100%;aspect-ratio:1/1;border-radius:18px;border:2px solid #EDE9FA;background:#fff;box-shadow:0 4px 14px rgba(127,119,221,.10);cursor:pointer;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:border-color .15s,background .15s,box-shadow .15s,transform .15s;overflow:hidden;padding:4px 4px 12px}
 .lo-card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(127,119,221,.16)}
 .lo-card img{width:100%;height:calc(100% - 2mm)!important;margin:1mm 0!important;object-fit:contain!important;object-position:center;display:block;border-radius:12px}
@@ -144,9 +146,13 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lo-done-text{margin:0;max-width:520px;color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5}
 .lo-done-score{margin:0;color:#666;font-size:14px;font-weight:800}
 .lo-done-restart{border:none;border-radius:999px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+@media(min-width:720px){
+    .lo-board-inner{display:grid;grid-template-columns:minmax(260px,5fr) minmax(340px,7fr);gap:20px;align-items:start}
+    .lo-media-col{position:sticky;top:20px}
+}
 @media(max-width:640px){
     .lo-shell{padding:12px}.lo-board{border-radius:22px;padding:14px}
-    .lo-grid{grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+    .lo-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
     .lo-card{border-radius:14px;padding:3px 3px 10px}
     .lo-card-badge{top:6px;left:6px;width:22px;height:22px;font-size:11px}
     .lo-actions{flex-direction:column;align-items:center}.lo-btn{width:100%;max-width:280px}
@@ -164,20 +170,25 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     </div>
 
     <div class="lo-board" id="lo-board">
-        <!-- media area: only one is shown at a time, switched by JS based on block data -->
-        <div id="lo-audio-player" class="lo-audio-player" style="display:none">
-            <div class="lo-audio-info">
-                <div class="lo-audio-track"><div class="lo-audio-fill" id="lo-audio-fill"></div></div>
-                <div class="lo-audio-time" id="lo-audio-time">0:00</div>
+        <div class="lo-board-inner">
+            <div class="lo-media-col">
+                <!-- media area: only one is shown at a time, switched by JS based on block data -->
+                <div id="lo-audio-player" class="lo-audio-player" style="display:none">
+                    <div class="lo-audio-info">
+                        <div class="lo-audio-track"><div class="lo-audio-fill" id="lo-audio-fill"></div></div>
+                        <div class="lo-audio-time" id="lo-audio-time">0:00</div>
+                    </div>
+                    <button type="button" class="lo-audio-play" id="lo-listen-btn">▶</button>
+                </div>
+
+                <div id="lo-video-player" class="lo-video-player" style="display:none">
+                    <video id="lo-video-el" controls preload="metadata"></video>
+                </div>
             </div>
-            <button type="button" class="lo-audio-play" id="lo-listen-btn">▶</button>
+            <div class="lo-grid-col">
+                <div id="lo-grid" class="lo-grid"></div>
+            </div>
         </div>
-
-        <div id="lo-video-player" class="lo-video-player" style="display:none">
-            <video id="lo-video-el" controls preload="metadata"></video>
-        </div>
-
-        <div id="lo-grid" class="lo-grid"></div>
 
         <div id="lo-hint" class="lo-hint">
             <span class="lo-hint-neutral">Tap an image to select it, then tap another to swap</span>
