@@ -1329,8 +1329,8 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
             $_href = 'student_course.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($_uid) . $moduleQueryPart;
             $_isActive = $_uid === $selectedUnitId;
             $_tabStyle = $_isActive
-                ? "background:#7F77DD;color:#fff;border:1.5px solid #7F77DD;border-radius:20px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;text-decoration:none;"
-                : "background:#fff;color:#9B8FCC;border:1.5px solid #EDE9FA;border-radius:20px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;text-decoration:none;";
+                ? "background:#7F77DD;color:#fff;border:1.5px solid #7F77DD;border-radius:4px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;text-decoration:none;"
+                : "background:#fff;color:#9B8FCC;border:1.5px solid #EDE9FA;border-radius:4px;font-family:'Nunito',sans-serif;font-size:12px;font-weight:600;padding:5px 13px;cursor:pointer;text-decoration:none;";
         ?>
             <a style="<?php echo h($_tabStyle); ?>"
                href="<?php echo h($_href); ?>">
