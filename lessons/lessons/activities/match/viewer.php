@@ -407,7 +407,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-subtitle{margin:0;font-size:clamp(12px,1.6vw,15px);font-weight:800;color:var(--m-muted);}
 
 /* ── Board ── */
-.m-board{height:100%;min-height:0;background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(12px,2vw,20px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto auto;gap:12px;overflow:hidden;}
+.m-board{height:100%;min-height:0;background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(12px,2vw,20px);box-shadow:0 8px 40px rgba(127,119,221,.12);display:grid;grid-template-rows:auto auto minmax(0,1fr) auto auto;gap:12px;overflow:hidden;}
 
 .m-page.is-completed{align-items:flex-start;overflow-y:auto;}
 .m-app.is-completed{height:auto;grid-template-rows:auto auto;}
@@ -426,10 +426,15 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-hint.is-wrong{background:#FEF2F2;border-color:#FECACA;color:#B91C1C;}
 .m-hint.is-complete{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
 
-/* ── Pairs table (prompt + slot) ── */
+/* ── Match workspace (left targets + right answers) ── */
+.m-match-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,320px);gap:14px;min-height:0;overflow:hidden;align-items:stretch;}
+.m-pairs-wrap{display:grid;grid-template-rows:auto minmax(0,1fr);gap:8px;min-height:0;}
+.m-column-label{font-size:11px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;}
+.m-column-label.left{text-align:left;}
+.m-column-label.right{text-align:center;}
 .m-pairs{display:grid;gap:10px;min-height:0;overflow:auto;padding-right:4px;align-content:start;}
-.m-pair-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:center;}
-.m-pair-row.has-images{grid-template-columns:1fr 1fr;}
+.m-pair-row{display:grid;grid-template-columns:minmax(120px,34%) minmax(0,1fr);gap:12px;align-items:center;}
+.m-pair-row.has-images{grid-template-columns:minmax(140px,36%) minmax(0,1fr);}
 .m-pair-row.has-images .m-prompt,
 .m-pair-row.has-images .m-slot{min-height:clamp(90px,14vw,130px);padding:10px;}
 
@@ -445,7 +450,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 }
 .m-prompt img{max-width:min(100%,140px);max-height:100px;object-fit:contain;border-radius:10px;}
 
-/* ── Drop slot (right, target) ── */
+/* ── Drop slot (left, target) ── */
 .m-slot{
     position:relative;
     display:flex;align-items:center;justify-content:center;
@@ -491,7 +496,7 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 /* ── Pool ── */
 .m-pool-label{font-size:11px;font-weight:900;color:var(--m-muted);text-transform:uppercase;letter-spacing:.08em;text-align:center;margin-bottom:8px;}
 .m-pool{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:56px;padding:14px;border:2px dashed #DDD9F8;border-radius:20px;background:#FAFAFE;transition:background .18s,border-color .18s;}
-.m-pool{max-height:clamp(88px,18vh,170px);overflow:auto;align-content:flex-start;}
+.m-pool{max-height:none;height:100%;overflow:auto;align-content:flex-start;align-items:flex-start;}
 .m-pool.drag-over{background:var(--m-purple-soft);border-color:var(--m-purple);}
 
 .m-pairs::-webkit-scrollbar,.m-pool::-webkit-scrollbar{width:8px;height:8px;}
@@ -546,6 +551,9 @@ body{margin:0!important;padding:0!important;background:var(--m-bg)!important;fon
 .m-tile.popped{animation:m-pop .22s ease;}
 
 @media(max-width:640px){
+    .m-match-layout{grid-template-columns:1fr;overflow:auto;}
+    .m-pairs-wrap{min-height:auto;}
+    .m-column-label.right{text-align:left;}
     .m-pair-row{grid-template-columns:1fr 1fr;}
     .m-page{padding:10px;}
     .m-board{padding:12px;border-radius:22px;gap:10px;}
@@ -591,16 +599,18 @@ $rightHasImages = (bool) array_reduce($pairs, fn($c,$p) => $c || trim((string)($
             </div>
 
             <div class="m-hint-wrap">
-                <div class="m-hint" id="m-hint">Drag an answer onto its prompt</div>
+                <div class="m-hint" id="m-hint">Drag answers from right to left onto matching prompts</div>
             </div>
 
-            <!-- Pair rows: prompt (left) + drop slot (right) -->
-            <div class="m-pairs" id="m-pairs"></div>
-
-            <!-- Answer pool -->
-            <div>
-                <div class="m-pool-label">Answers — drag to the matching prompt</div>
-                <div class="m-pool" id="m-pool"></div>
+            <div class="m-match-layout">
+                <div class="m-pairs-wrap">
+                    <div class="m-column-label left">Drop Targets</div>
+                    <div class="m-pairs" id="m-pairs"></div>
+                </div>
+                <div>
+                    <div class="m-column-label right">Answer Bank (Drag right → left)</div>
+                    <div class="m-pool" id="m-pool"></div>
+                </div>
             </div>
 
             <!-- Score -->
@@ -759,8 +769,8 @@ function render() {
             }
         }
         return `<div class="m-pair-row ${pairHasImages ? 'has-images' : ''}" data-pair-row="${esc(pid)}">
-            ${promptHTML(p)}
             <div class="${slotCls}" data-slot="${esc(pid)}">${slotContent}</div>
+            ${promptHTML(p)}
         </div>`;
     }).join('');
 
@@ -858,7 +868,7 @@ function dropTileOnSlot(tileId, targetPairId, fromSlot) {
 
     slots[targetPairId] = tileId;
     render();
-    setHint('Placed! Keep going…', null);
+    setHint('Placed on left side. Keep going…', null);
 }
 
 /* ── Touch drag ── */
@@ -1068,7 +1078,7 @@ function resetGame() {
     if (completedEl) completedEl.classList.remove('active');
     checkBtn.disabled = false;
     answerBtn.disabled = false;
-    setHint('Drag an answer onto its prompt');
+    setHint('Drag answers from right to left onto matching prompts');
     updateScores(false);
     render();
 }
