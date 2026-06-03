@@ -357,7 +357,7 @@ body {
     text-align: center;
 }
 
-/* One sentence list only, like the CodePen. There is no separate drag zone. */
+/* Sentence list — no internal scroll so all sentences stay visible while listening */
 .os-list {
     list-style: none;
     margin: 0;
@@ -365,28 +365,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 9px;
-    max-height: clamp(260px, 50vh, 480px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    scroll-behavior: smooth;
-}
-
-.os-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.os-list::-webkit-scrollbar-track {
-    background: #F4F2FD;
-    border-radius: 999px;
-}
-
-.os-list::-webkit-scrollbar-thumb {
-    background: #C4BFEE;
-    border-radius: 999px;
-}
-
-.os-list::-webkit-scrollbar-thumb:hover {
-    background: #7F77DD;
 }
 
 .os-chip {
@@ -646,6 +624,43 @@ body {
     cursor: pointer;
 }
 
+/* Two-column board: media column (sticky) + sentence list column */
+.os-board-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.os-media-col {
+    width: 100%;
+}
+
+.os-list-col {
+    width: 100%;
+}
+
+/* On screens wide enough: media sits on the left (sticky) so students can see the
+   video the entire time; all sentences are visible on the right without any scroll. */
+@media (min-width: 720px) {
+    .os-board-inner {
+        display: grid;
+        grid-template-columns: minmax(240px, 5fr) minmax(280px, 7fr);
+        gap: 20px;
+        align-items: start;
+    }
+
+    .os-media-col {
+        position: sticky;
+        top: 20px;
+    }
+
+    .os-media-area video,
+    .os-media-area iframe {
+        max-height: 220px;
+    }
+}
+
 @media (max-width: 640px) {
     .os-page {
         padding: 12px;
@@ -669,11 +684,11 @@ body {
     }
 
     .os-media-area video {
-        max-height: 220px;
+        max-height: 200px;
     }
 
     .os-media-area iframe {
-        max-height: 220px;
+        max-height: 200px;
     }
 
     .os-chip {
@@ -721,58 +736,66 @@ body {
 
         <div class="os-board">
 
-            <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
-                <?php
-                    $osVideoUrl   = (string)($activity['media_url'] ?? '');
-                    $osEmbedUrl   = os_viewer_video_embed_url($osVideoUrl);
-                    $osDirectVideo = os_viewer_is_direct_video($osVideoUrl);
-                ?>
-                <div class="os-media-area" id="os-media-wrap">
-                    <?php if ($osEmbedUrl !== ''): ?>
-                        <iframe
-                            src="<?= htmlspecialchars($osEmbedUrl, ENT_QUOTES, 'UTF-8') ?>"
-                            title="Activity video"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                            allowfullscreen>
-                        </iframe>
+            <div class="os-board-inner" id="os-board-inner">
+
+                <div class="os-media-col" id="os-media-wrap">
+                    <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
+                        <?php
+                            $osVideoUrl   = (string)($activity['media_url'] ?? '');
+                            $osEmbedUrl   = os_viewer_video_embed_url($osVideoUrl);
+                            $osDirectVideo = os_viewer_is_direct_video($osVideoUrl);
+                        ?>
+                        <div class="os-media-area">
+                            <?php if ($osEmbedUrl !== ''): ?>
+                                <iframe
+                                    src="<?= htmlspecialchars($osEmbedUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                    title="Activity video"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                                    allowfullscreen>
+                                </iframe>
+                            <?php else: ?>
+                                <video controls preload="metadata"
+                                       src="<?= htmlspecialchars($osVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
+                                </video>
+                            <?php endif; ?>
+                        </div>
+
+                    <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
+                        <div class="os-tts-area">
+                            <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+                        </div>
+
+                    <?php elseif (!empty($activity['tts_audio_url'])): ?>
+                        <div class="os-tts-area">
+                            <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
+                        </div>
+
                     <?php else: ?>
-                        <video controls preload="metadata"
-                               src="<?= htmlspecialchars($osVideoUrl, ENT_QUOTES, 'UTF-8') ?>">
-                        </video>
+                        <div class="os-tts-area">
+                            <div class="os-listen-panel">
+                                <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
+                                <span class="os-listen-text">Listen and put the sentences in order.</span>
+                            </div>
+                        </div>
                     <?php endif; ?>
                 </div>
 
-            <?php elseif (($activity['media_type'] ?? '') === 'audio' && !empty($activity['media_url'])): ?>
-                <div class="os-tts-area" id="os-media-wrap">
-                    <audio controls src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio>
+                <div class="os-list-col">
+                    <div class="os-zone-label" id="os-zone-label">Drag the sentences to change their order</div>
+
+                    <ul class="os-list" id="os-list">
+                        <?php foreach ($shuffled as $index => $s): ?>
+                            <li class="os-chip"
+                                draggable="true"
+                                data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
+                                <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
+                                <span class="os-chip-badge"><?= (int)($index + 1) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
                 </div>
 
-            <?php elseif (!empty($activity['tts_audio_url'])): ?>
-                <div class="os-tts-area" id="os-media-wrap">
-                    <audio id="os-tts-audio" src="<?= htmlspecialchars($activity['tts_audio_url'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none" style="width:100%;height:42px"></audio>
-                </div>
-
-            <?php else: ?>
-                <div class="os-tts-area" id="os-media-wrap">
-                    <div class="os-listen-panel">
-                        <button type="button" id="os-tts-btn" class="os-btn os-btn-tts">Listen</button>
-                        <span class="os-listen-text">Listen and put the sentences in order.</span>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="os-zone-label" id="os-zone-label">Drag the sentences to change their order</div>
-
-            <ul class="os-list" id="os-list">
-                <?php foreach ($shuffled as $index => $s): ?>
-                    <li class="os-chip"
-                        draggable="true"
-                        data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
-                        <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
-                        <span class="os-chip-badge"><?= (int)($index + 1) ?></span>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+            </div><!-- /.os-board-inner -->
 
             <div class="os-controls" id="os-controls">
                 <button type="button" class="os-btn os-btn-check" id="os-check">Check Answers</button>
@@ -831,6 +854,7 @@ var completedEl = document.getElementById('os-completed');
 var controlsEl  = document.getElementById('os-controls');
 var zoneLabelEl = document.getElementById('os-zone-label');
 var mediaWrapEl = document.getElementById('os-media-wrap');
+var boardInnerEl= document.getElementById('os-board-inner');
 var scoreEl     = document.getElementById('os-score');
 var scoreGridEl = document.getElementById('os-score-grid');
 var scoreCorrectEl = document.getElementById('os-score-correct');
@@ -986,9 +1010,7 @@ function navigateReturn(pct, errors, total) {
 
 async function showCompleted() {
     done = true;
-    if (mediaWrapEl) mediaWrapEl.style.display = 'none';
-    if (zoneLabelEl) zoneLabelEl.style.display = 'none';
-    if (listEl) listEl.style.display = 'none';
+    if (boardInnerEl) boardInnerEl.style.display = 'none';
     if (controlsEl) controlsEl.style.display = 'none';
     completedEl.classList.add('active');
     playSound(doneSound);
@@ -1169,9 +1191,7 @@ window.osRestart = function() {
     touchSel     = null;
 
     completedEl.classList.remove('active');
-    if (mediaWrapEl) mediaWrapEl.style.display = '';
-    if (zoneLabelEl) zoneLabelEl.style.display = '';
-    if (listEl) listEl.style.display = '';
+    if (boardInnerEl) boardInnerEl.style.display = '';
     if (controlsEl) controlsEl.style.display = '';
     checkBtn.disabled      = false;
     showBtn.disabled       = false;
