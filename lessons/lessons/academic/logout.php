@@ -4,7 +4,7 @@ session_start();
 /* DETECTAR ROL ANTES DE DESTRUIR */
 $isAdmin   = isset($_SESSION["admin_id"]);
 $isTeacher = isset($_SESSION["teacher_id"]);
-$isStudent = isset($_SESSION["student_id"]);
+$isStudent = isset($_SESSION["student_logged"]) && $_SESSION["student_logged"] === true;
 
 /* CERRAR SESION */
 $_SESSION = [];
