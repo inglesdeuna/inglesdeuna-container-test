@@ -66,7 +66,7 @@ if($mode==='result'&&count($answers)>=$total&&$total>0&&$qzHasDb){$rC=0;$rS=0;fo
 .qz-us-feedback.bad{color:#b91c1c;}
 .qz-dd-instruction{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:#fbfaff;margin-bottom:14px;}
 .qz-dd-text{font-size:18px;font-weight:800;color:#4338CA;}
-.qz-dd-slot{display:inline-flex;align-items:center;justify-content:center;min-width:110px;min-height:52px;padding:8px 10px;border-radius:14px;border:2px dashed #BDB5EE;background:#fff;transition:border-color .15s,background .15s;}
+.qz-dd-slot{display:inline-flex;align-items:center;justify-content:flex-start;min-width:110px;min-height:52px;padding:8px 10px;border-radius:14px;border:2px dashed #BDB5EE;background:#fff;transition:border-color .15s,background .15s;}
 .qz-dd-slot.qz-drag-over{border-color:#7F77DD;background:#F5F3FF;}
 .qz-dd-slot.qz-dd-filled{border-style:solid;}
 .qz-dd-placeholder{font-size:13px;font-weight:900;color:#9B94BE;pointer-events:none;}
