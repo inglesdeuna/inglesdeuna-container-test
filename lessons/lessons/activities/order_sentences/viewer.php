@@ -211,7 +211,7 @@ body {
 }
 
 .os-app {
-    width: min(860px, 100%);
+    width: min(1060px, 100%);
     margin: 0 auto;
 }
 
@@ -278,7 +278,7 @@ body {
     border-radius: 34px;
     padding: clamp(16px, 2.6vw, 26px);
     box-shadow: 0 8px 40px rgba(127,119,221,.13);
-    width: min(760px, 100%);
+    width: min(980px, 100%);
     margin: 0 auto;
     box-sizing: border-box;
     position: relative;
@@ -645,7 +645,7 @@ body {
 @media (min-width: 720px) {
     .os-board-inner {
         display: grid;
-        grid-template-columns: minmax(240px, 5fr) minmax(280px, 7fr);
+        grid-template-columns: minmax(240px, 4fr) minmax(340px, 8fr);
         gap: 20px;
         align-items: start;
     }
@@ -657,7 +657,7 @@ body {
 
     .os-media-area video,
     .os-media-area iframe {
-        max-height: 220px;
+        max-height: 260px;
     }
 }
 
