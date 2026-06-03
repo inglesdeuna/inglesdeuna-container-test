@@ -1569,9 +1569,15 @@ body {
                             <?php foreach ((array) ($section['assignments'] ?? []) as $assignment) { ?>
                                 <?php
                                 $assignmentId   = (string) ($assignment['id'] ?? '');
+                                $assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
                                 $program        = (string) ($assignment['program'] ?? 'technical');
                                 $programLabel   = upper_label($program === 'english' ? 'inglés' : 'técnico');
                                 $unitName       = upper_label((string) ($assignment['_resolved_unit_label'] ?? 'Unit'));
+                                $courseHrefParams = ['assignment' => $assignmentId];
+                                if ($assignmentUnitId !== '') {
+                                    $courseHrefParams['unit'] = $assignmentUnitId;
+                                }
+                                $courseHref = 'student_course.php?' . http_build_query($courseHrefParams);
                                 $scoreSummary   = $scoreSummaryByAssignment[$assignmentId] ?? null;
                                 $cardQuizHref   = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
                                 $avgPct         = is_array($scoreSummary) ? (int) ($scoreSummary['avg_percent'] ?? 0) : 0;
@@ -1608,7 +1614,7 @@ body {
                                     <?php } ?>
 
                                     <div class="sd-card-actions">
-                                        <a class="sd-btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Entrar</a>
+                                        <a class="sd-btn" href="<?php echo h($courseHref); ?>">Entrar</a>
                                         <?php if ($cardQuizHref !== '') { ?>
                                             <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
                                         <?php } ?>
