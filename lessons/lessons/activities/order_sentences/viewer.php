@@ -305,7 +305,7 @@ body {
 .os-media-area video {
     width: 100%;
     height: auto;
-    max-height: 320px;
+    max-height: 420px;
     object-fit: contain;
     display: block;
     background: #000000;
@@ -314,7 +314,7 @@ body {
 .os-media-area iframe {
     width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: 320px;
+    max-height: 420px;
     border: none;
     display: block;
     background: #000000;
@@ -645,7 +645,7 @@ body {
 @media (min-width: 720px) {
     .os-board-inner {
         display: grid;
-        grid-template-columns: minmax(240px, 4fr) minmax(340px, 8fr);
+        grid-template-columns: minmax(260px, 5fr) minmax(340px, 7fr);
         gap: 20px;
         align-items: start;
     }
@@ -653,11 +653,6 @@ body {
     .os-media-col {
         position: sticky;
         top: 20px;
-    }
-
-    .os-media-area video,
-    .os-media-area iframe {
-        max-height: 260px;
     }
 }
 
