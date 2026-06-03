@@ -704,6 +704,8 @@ let checked = new Set(); // pairIds that passed check
 let answered= false;
 let finished = false;
 let revealedByAnswer = false;
+let preservedScoreSummary = null;
+let preservedPersistenceSummary = null;
 let poolOrder = [];  // shuffled ids for answer pool rendering
 
 function playSound(el) {
@@ -948,8 +950,8 @@ function setHint(text, state) {
 }
 
 function scoreSummary() {
-    if (revealedByAnswer) {
-        return { correct: 0, wrong: 0, percent: 0 };
+    if (revealedByAnswer && preservedScoreSummary) {
+        return preservedScoreSummary;
     }
 
     const attempts = checked.size + wrongs;
@@ -958,8 +960,8 @@ function scoreSummary() {
 }
 
 function persistenceSummary() {
-    if (revealedByAnswer) {
-        return { percent: 0, errors: TOTAL, total: TOTAL };
+    if (revealedByAnswer && preservedPersistenceSummary) {
+        return preservedPersistenceSummary;
     }
 
     const correct = checked.size;
@@ -1026,9 +1028,10 @@ function checkAnswers() {
 function showAnswers() {
     if (finished) return;
 
+    preservedScoreSummary = scoreSummary();
+    preservedPersistenceSummary = persistenceSummary();
     answered = true;
     revealedByAnswer = true;
-    wrongs = 0;
     PAIRS.forEach(p => {
         slots[String(p.id)] = String(p.id);
         checked.add(String(p.id));
@@ -1050,6 +1053,8 @@ function resetGame() {
     answered= false;
     finished = false;
     revealedByAnswer = false;
+    preservedScoreSummary = null;
+    preservedPersistenceSummary = null;
     poolOrder = shuffle(PAIRS.map(p => String(p.id)));
     PAIRS.forEach(p => { slots[String(p.id)] = null; });
     if (progressEl) progressEl.style.display = '';
