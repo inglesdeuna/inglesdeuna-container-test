@@ -923,7 +923,7 @@ function computeScore() {
         wrong: wrong,
         revealed: revealed,
         total: OS_TOTAL,
-        errors: wrong,
+        errors: wrong + revealed,
         percent: pct
     };
 }
