@@ -396,18 +396,27 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
 function load_units_for_assignment(PDO $pdo, array $assignment): array
 {
     $courseId = trim((string) ($assignment['course_id'] ?? ''));
-    if ($courseId === '') {
-        return [];
+    $phaseId = trim((string) ($assignment['level_id'] ?? ''));
+    $program = trim((string) ($assignment['program'] ?? ''));
+
+    if ($program === 'english' && $phaseId === '') {
+        $phaseId = $courseId;
     }
 
-    $program = trim((string) ($assignment['program'] ?? ''));
+    if ($program === 'english') {
+        if ($phaseId === '') {
+            return [];
+        }
+    } elseif ($courseId === '') {
+        return [];
+    }
 
     try {
         $orderBy = table_has_column($pdo, 'units', 'position') ? 'ORDER BY position ASC, id ASC' : 'ORDER BY id ASC';
 
         if ($program === 'english' && table_has_column($pdo, 'units', 'phase_id')) {
-            $stmt = $pdo->prepare("SELECT id, name, NULL::text AS module_id, ''::text AS module_name FROM units WHERE phase_id::text = :course_id {$orderBy}");
-            $stmt->execute(['course_id' => $courseId]);
+            $stmt = $pdo->prepare("SELECT id, name, NULL::text AS module_id, ''::text AS module_name FROM units WHERE phase_id::text = :phase_id {$orderBy}");
+            $stmt->execute(['phase_id' => $phaseId]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
             if (!empty($rows)) {
                 return $rows;
