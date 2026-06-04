@@ -222,6 +222,7 @@ $skill_reading_acts=is_array($skill_reading_acts??null)?$skill_reading_acts:[];
 $phase_units=is_array($phase_units??null)?$phase_units:[['label'=>'Unit '.$unitId,'score'=>round($unit_score),'is_current'=>true]];
 $unit_final=round(($unit_score*0.6)+($quiz_score*0.4),1);
 $render_phase_avg=round($phase_avg);$render_unit_score=round($unit_score);$render_quiz_score=round($quiz_score);$render_unit_final=round($unit_final,1);
+$_fu=round($unit_score,1);$_fq=round($quiz_score,1);$_fu_part=round($_fu*0.6,1);$_fq_part=round($_fq*0.4,1);
 if($mode==='result'){qz_log_result_score_flow(['student_id'=>$qzStudentId,'assignment_id'=>$assignment,'unit_id'=>$unitId,'db_enabled'=>$qzHasDb,'source'=>['quiz_correct'=>$correct,'quiz_total'=>$score_total??$total,'quiz_percent_calculated'=>(float)$percent,'unit_score_stored'=>(float)$unit_score,'quiz_score_stored'=>(float)$quiz_score,'phase_avg_stored'=>(float)$phase_avg,'phase_units_count'=>is_array($phase_units)?count($phase_units):0],'rendered'=>['phase_teacher_percent'=>(float)$render_phase_avg,'unit_score_percent'=>(float)$render_unit_score,'activities_avg_percent'=>(float)$render_unit_score,'quiz_score_percent'=>(float)$render_quiz_score,'final_score_percent'=>(float)$render_unit_final]]);}
 $pass=$unit_final>=60;
 if(!function_exists('result_ring')){function result_ring($pct,$color,$label_top,$label_bottom=''){ $pct=max(0,min(100,(float)$pct));$dash=226;$offset=$dash-($dash*$pct/100);$val=round($pct).'%';ob_start(); ?>
@@ -298,8 +299,8 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
       <div style="background:#F9F8FF;border:1px solid #EDE9FA;border-radius:14px;padding:14px;">
         <div style="font-weight:800;font-size:13px;color:#271B5D;margin-bottom:8px;">Score formula</div>
         <div style="display:flex;flex-direction:column;gap:6px;">
-          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Activities avg <span style="background:#EDE9FA;color:#7F77DD;border-radius:999px;padding:1px 8px;font-size:11px;">60%</span></span><span><?= round($unit_score) ?>% × 0.6 = <b style="color:#271B5D"><?= round($unit_score*0.6,1) ?></b></span></div>
-          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Quiz score <span style="background:#FFF0E6;color:#C2580A;border-radius:999px;padding:1px 8px;font-size:11px;">40%</span></span><span><?= round($quiz_score) ?>% × 0.4 = <b style="color:#271B5D"><?= round($quiz_score*0.4,1) ?></b></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Activities avg <span style="background:#EDE9FA;color:#7F77DD;border-radius:999px;padding:1px 8px;font-size:11px;">60%</span></span><span><?= $_fu ?>% × 0.6 = <b style="color:#271B5D"><?= $_fu_part ?></b></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Quiz score <span style="background:#FFF0E6;color:#C2580A;border-radius:999px;padding:1px 8px;font-size:11px;">40%</span></span><span><?= $_fq ?>% × 0.4 = <b style="color:#271B5D"><?= $_fq_part ?></b></span></div>
           <hr style="border:none;border-top:1px solid #F0EEF8;margin:4px 0">
           <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;"><span style="color:#271B5D;">Unit final</span><span style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:22px;"><?= round($unit_final,1) ?>%</span></div>
         </div>
