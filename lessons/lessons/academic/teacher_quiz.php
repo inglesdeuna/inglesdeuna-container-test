@@ -221,7 +221,7 @@ body{
 
 <main class="page">
   <section class="card">
-    <h2 class="title">ð§  EvaluaciÃ³n final de la unidad</h2>
+    <h2 class="title">🧠 Evaluación final de la unidad</h2>
     <div class="badges">
       <span class="badge">Curso: <?php echo h($courseName); ?></span>
       <span class="badge">Unidad: <?php echo h($unitName); ?></span>
