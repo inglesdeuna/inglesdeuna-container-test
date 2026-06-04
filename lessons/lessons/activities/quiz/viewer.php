@@ -268,7 +268,7 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
       <div style="display:flex;justify-content:center;gap:32px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
         <?= result_ring($quiz_score,'#F97316','Quiz score') ?>
         <?= result_ring($unit_score,'#7F77DD','Unit score') ?>
-        <?= result_ring($phase_avg,'#1D9E75',$phase_name,$teacher_name) ?>
+        <?= result_ring($phase_avg,'#1D9E75','Total score') ?>
       </div>
       <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
         <?php if($pass): ?><span style="background:#DCFCE7;color:#166534;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✓ Passed</span><?php else: ?><span style="background:#FEE2E2;color:#991B1B;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✗ Not passed</span><?php endif; ?>
