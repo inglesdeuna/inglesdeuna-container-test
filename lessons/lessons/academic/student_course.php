@@ -93,6 +93,7 @@ function ensure_student_performance_tables(PDO $pdo): void
         $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_unit_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              quiz_errors INTEGER NOT NULL DEFAULT 0,\n              quiz_total INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
         $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_activity_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              activity_id TEXT NOT NULL,\n              activity_type TEXT NOT NULL DEFAULT '',\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              errors_count INTEGER NOT NULL DEFAULT 0,\n              total_count INTEGER NOT NULL DEFAULT 0,\n              attempts_count INTEGER NOT NULL DEFAULT 1,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)\n            )\n        ");
         $pdo->exec("ALTER TABLE student_activity_results ADD COLUMN IF NOT EXISTS attempts_count INTEGER NOT NULL DEFAULT 1");
+        $pdo->exec("ALTER TABLE student_unit_results ADD COLUMN IF NOT EXISTS quiz_score_percent INTEGER");
     } catch (Throwable $e) {
     }
 }
@@ -196,6 +197,7 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
 
         $existingErrors = max(0, (int) ($existing['errors_count'] ?? 0));
         $existingTotal = max(0, (int) ($existing['total_count'] ?? 0));
+        $existingPercent = max(0, min(100, (int) ($existing['completion_percent'] ?? 0)));
         $existingAttempts = 1;
         if ($hasAttemptsColumn) {
             $existingAttempts = max(1, (int) ($existing['attempts_count'] ?? 1));
@@ -205,19 +207,28 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
         }
 
         $maxAttempts = 2;
-
-        if ($existingAttempts >= $maxAttempts) {
+        $isDuplicatePayload = $cleanErrors === $existingErrors && $cleanTotal === $existingTotal && $cleanPercent === $existingPercent;
+        if ($isDuplicatePayload) {
             return;
         }
 
-        $newErrors = $existingErrors + $cleanErrors;
-        $newTotal = $existingTotal + $cleanTotal;
-        if ($newTotal > 0 && $newErrors > $newTotal) {
-            $newErrors = $newTotal;
+        $isBetterAttempt = false;
+        if ($cleanTotal > 0 && $existingTotal <= 0) {
+            $isBetterAttempt = true;
+        } elseif ($cleanPercent > $existingPercent) {
+            $isBetterAttempt = true;
+        } elseif ($cleanPercent === $existingPercent && $cleanTotal > 0 && ($existingTotal <= 0 || $cleanErrors < $existingErrors)) {
+            $isBetterAttempt = true;
         }
-        $newPercent = $newTotal > 0
-            ? max(0, min(100, (int) round((($newTotal - $newErrors) / $newTotal) * 100)))
-            : 0;
+
+        if ($existingAttempts >= $maxAttempts && !$isBetterAttempt) {
+            return;
+        }
+
+        $nextAttempts = $hasAttemptsColumn ? min($maxAttempts, $existingAttempts + 1) : $existingAttempts;
+        $newErrors = $isBetterAttempt ? $cleanErrors : $existingErrors;
+        $newTotal = $isBetterAttempt ? $cleanTotal : $existingTotal;
+        $newPercent = $isBetterAttempt ? $cleanPercent : $existingPercent;
 
         if ($hasAttemptsColumn) {
             $updateStmt = $pdo->prepare("\n                UPDATE student_activity_results\n                SET activity_type = :activity_type,\n                    completion_percent = :completion_percent,\n                    errors_count = :errors_count,\n                    total_count = :total_count,\n                    attempts_count = :attempts_count,\n                    updated_at = NOW()\n                WHERE student_id = :student_id\n                  AND assignment_id = :assignment_id\n                  AND unit_id = :unit_id\n                  AND activity_id = :activity_id\n            ");
@@ -226,7 +237,7 @@ function save_student_activity_performance(PDO $pdo, string $studentId, string $
                 'completion_percent' => $newPercent,
                 'errors_count' => $newErrors,
                 'total_count' => $newTotal,
-                'attempts_count' => min($maxAttempts, $existingAttempts + 1),
+                'attempts_count' => $nextAttempts,
                 'student_id' => $studentId,
                 'assignment_id' => $assignmentId,
                 'unit_id' => $unitId,
@@ -355,7 +366,7 @@ function load_student_unit_results(PDO $pdo, string $studentId, string $assignme
     }
 
     try {
-        $stmt = $pdo->prepare("\n            SELECT unit_id, completion_percent, quiz_errors, quiz_total\n            FROM student_unit_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n        ");
+        $stmt = $pdo->prepare("\n            SELECT unit_id, completion_percent, quiz_errors, quiz_total, COALESCE(quiz_score_percent, 0) AS quiz_score_percent\n            FROM student_unit_results\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n        ");
         $stmt->execute([
             'student_id' => $studentId,
             'assignment_id' => $assignmentId,
@@ -372,12 +383,33 @@ function load_student_unit_results(PDO $pdo, string $studentId, string $assignme
                 'completion_percent' => (int) ($row['completion_percent'] ?? 0),
                 'quiz_errors' => (int) ($row['quiz_errors'] ?? 0),
                 'quiz_total' => (int) ($row['quiz_total'] ?? 0),
+                'quiz_score_percent' => (int) ($row['quiz_score_percent'] ?? 0),
             ];
         }
 
         return $mapped;
     } catch (Throwable $e) {
         return [];
+    }
+}
+
+function has_completed_quiz_attempt(PDO $pdo, string $studentId, string $assignmentId, string $unitId): bool
+{
+    if ($studentId === '' || $assignmentId === '' || $unitId === '') {
+        return false;
+    }
+
+    try {
+        $stmt = $pdo->prepare("\n            SELECT 1\n            FROM student_quiz_state\n            WHERE student_id = :student_id\n              AND assignment_id = :assignment_id\n              AND unit_id = :unit_id\n              AND is_completed = TRUE\n            LIMIT 1\n        ");
+        $stmt->execute([
+            'student_id' => $studentId,
+            'assignment_id' => $assignmentId,
+            'unit_id' => $unitId,
+        ]);
+
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
     }
 }
 
@@ -785,10 +817,15 @@ foreach ($activities as $_idx => $_act) {
     }
 }
 
-$unitResult = $unitResults[$selectedUnitId] ?? ['completion_percent' => 0, 'quiz_errors' => 0, 'quiz_total' => 0];
+$unitResult = $unitResults[$selectedUnitId] ?? ['completion_percent' => 0, 'quiz_errors' => 0, 'quiz_total' => 0, 'quiz_score_percent' => 0];
 $completionPercent = (int) ($unitResult['completion_percent'] ?? 0);
 $quizErrors = (int) ($unitResult['quiz_errors'] ?? 0);
 $quizTotal = (int) ($unitResult['quiz_total'] ?? 0);
+$quizScorePercent = (int) ($unitResult['quiz_score_percent'] ?? 0);
+$hasCompletedQuizAttempt = has_completed_quiz_attempt($pdo, $studentId, $assignmentId, $selectedUnitId);
+$finalPercent = $hasCompletedQuizAttempt
+    ? (int) round(($completionPercent * 0.6) + (max(0, min(100, $quizScorePercent)) * 0.4))
+    : $completionPercent;
 $hasUnitResult = $quizTotal > 0;
 $passThreshold = 60;
 $isPassingScore = $hasUnitResult && $completionPercent >= $passThreshold;
@@ -810,7 +847,7 @@ $pdfUrl = $selectedUnitId !== ''
     ? 'unit_pdf.php?unit=' . urlencode($selectedUnitId) . '&assignment=' . urlencode($assignmentId)
     : '';
 $downloadableUrl = $topWorksheetDownloadUrl;
-$score = $completionPercent;
+$score = $finalPercent;
 $errors = $quizErrors;
 $phaseName = trim((string) ($assignment['period'] ?? ''));
 if ($phaseName === '') {
@@ -1360,7 +1397,8 @@ body{margin:0;font-family:'Nunito','Segoe UI',sans-serif;background:linear-gradi
           <div style="height:7px;border-radius:6px;background:linear-gradient(90deg,#F97316,#7F77DD);width:<?php echo (int) max(0, min(100, $score)); ?>%;"></div>
         </div>
 
-        <div style="font-size:12px;font-weight:700;color:#F97316;">Errors: <?php echo (int) $errors; ?> / <?php echo (int) $total; ?></div>
+        <?php $errorDenominator = $quizTotal > 0 ? $quizTotal : $total; ?>
+        <div style="font-size:12px;font-weight:700;color:#F97316;">Errors: <?php echo (int) $errors; ?> / <?php echo (int) $errorDenominator; ?></div>
 
         <div style="display:flex;gap:7px;justify-content:center;flex-wrap:wrap;">
           <div style="background:#FAFAFA;border:1.5px solid #EDE9FA;border-radius:8px;padding:5px 13px;font-size:12px;font-weight:700;color:#7F77DD;">
