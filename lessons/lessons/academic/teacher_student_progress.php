@@ -161,10 +161,15 @@ function load_student_assignment(PDO $pdo, string $assignmentId, string $teacher
         $stmt = $pdo->prepare("
             SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period, 
                    COALESCE(NULLIF(TRIM(c.name), ''), 'Curso') AS course_name,
-                   COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id) AS student_name
+                   COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id) AS student_name,
+                   t.name AS teacher_name,
+                   ep.name AS phase_name
             FROM student_assignments sa
             LEFT JOIN courses c ON c.id::text = sa.course_id
             LEFT JOIN students s ON s.id = sa.student_id
+            LEFT JOIN teachers t ON t.id = sa.teacher_id
+            LEFT JOIN units u ON u.id::text = sa.unit_id
+            LEFT JOIN english_phases ep ON ep.id = u.phase_id
             WHERE sa.id = :id
               AND sa.teacher_id = :teacher_id
             LIMIT 1
@@ -285,6 +290,7 @@ $courseName = h(app_upper(trim((string) ($assignment['course_name'] ?? 'Curso'))
 $studentName = h(app_upper(trim((string) ($assignment['student_name'] ?? 'Estudiante'))));
 $programLabel = app_upper((string) ($assignment['program'] ?? '') === 'english' ? 'INGLÉS' : 'TÉCNICO');
 $period = h(app_upper(trim((string) ($assignment['period'] ?? ''))));
+$phaseName = trim((string) ($assignment['phase_name'] ?? ''));
 $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_enabled'] === '1';
 ?>
 <!DOCTYPE html>
@@ -577,9 +583,7 @@ $showQuizEnabledMessage = isset($_GET['quiz_enabled']) && (string) $_GET['quiz_e
         
         <p class="meta">
             <strong>Estudiante:</strong> <?php echo $studentName; ?> · 
-            <strong>Curso:</strong> <?php echo $courseName; ?> · 
-            <strong>Programa:</strong> <?php echo $programLabel; ?> · 
-            <strong>Período:</strong> <?php echo $period; ?>
+            <strong>Programa:</strong> <?php echo $programLabel; ?><?php if ($phaseName !== '') { ?> · <strong>Fase:</strong> <?php echo h($phaseName); ?><?php } ?><?php if ($period !== '') { ?> · <strong>Período:</strong> <?php echo $period; ?><?php } ?>
         </p>
 
         <?php if ($showQuizEnabledMessage): ?>

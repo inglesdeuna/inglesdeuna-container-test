@@ -69,7 +69,19 @@ function get_pdo_connection(): ?PDO
 function load_assignment(PDO $pdo, string $assignmentId): ?array
 {
     try {
-        $stmt = $pdo->prepare("\n            SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period, c.name AS course_name\n            FROM student_assignments sa\n            LEFT JOIN courses c ON c.id::text = sa.course_id\n            WHERE sa.id = :id\n            LIMIT 1\n        ");
+        $stmt = $pdo->prepare("
+            SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period,
+                   c.name AS course_name,
+                   t.name AS teacher_name,
+                   ep.name AS phase_name
+            FROM student_assignments sa
+            LEFT JOIN courses c ON c.id::text = sa.course_id
+            LEFT JOIN teachers t ON t.id = sa.teacher_id
+            LEFT JOIN units u ON u.id::text = sa.unit_id
+            LEFT JOIN english_phases ep ON ep.id = u.phase_id
+            WHERE sa.id = :id
+            LIMIT 1
+        ");
         $stmt->execute(['id' => $assignmentId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return is_array($row) ? $row : null;
@@ -172,6 +184,8 @@ $toUpper = function (string $value): string {
 $courseName = $toUpper($courseName);
 $periodLabel = $toUpper((string) ($assignment['period'] ?? ''));
 $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'INGLÉS' : 'TÉCNICO';
+$teacherName = trim((string) ($assignment['teacher_name'] ?? ''));
+$phaseName   = trim((string) ($assignment['phase_name'] ?? ''));
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -226,7 +240,7 @@ th{color:var(--title)}
     <a class="back" href="student_dashboard.php">← Back</a>
   </div>
 
-  <p class="meta">Course: <strong><?php echo h($courseName); ?></strong> · Program: <strong><?php echo h($programLabel); ?></strong> · Period: <strong><?php echo h($periodLabel); ?></strong></p>
+  <p class="meta">Program: <strong><?php echo h($programLabel); ?></strong><?php if ($phaseName !== '') { ?> · Phase: <strong><?php echo h($phaseName); ?></strong><?php } ?><?php if ($teacherName !== '') { ?> · Teacher: <strong><?php echo h($teacherName); ?></strong><?php } ?><?php if ($periodLabel !== '') { ?> · Period: <strong><?php echo h($periodLabel); ?></strong><?php } ?></p>
 
   <div class="card">
     <?php if (empty($rows)) { ?>
