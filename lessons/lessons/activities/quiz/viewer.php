@@ -179,4 +179,122 @@ Array.from(wordBank.querySelectorAll('.qz-bank-chip')).forEach(function(c){
 });
 if(listenBtn){listenBtn.addEventListener('click',speakSentence);setTimeout(speakSentence,150);}
 })();</script><?php elseif($q['type']==='match'):?><form method="post"><div class="question"><?php echo qz_h($q['question']);?></div><div class="match-grid"><?php $rights=array_column($q['pairs'],'right');foreach($q['pairs']as$i=>$p):?><div class="match-left"><?php echo qz_h($p['left']);?></div><select class="select" name="answer[<?php echo$i;?>]" required><option value="">Choose</option><?php foreach($rights as$r):?><option value="<?php echo qz_h($r);?>"><?php echo qz_h($r);?></option><?php endforeach;?></select><?php endforeach;?></div><div class="actions"><button class="btn btn-purple" type="submit">Next</button><button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div></form><?php elseif($q['type']==='fill'||$q['type']==='writing_practice'):?><form method="post" id="fill-form"><?php if(!empty($q['audio'])):?><div style="margin-bottom:12px;"><button type="button" class="btn btn-light" id="qz-fill-listen">🔊 Listen</button></div><?php endif;?><?php if(!empty($q['image'])):?><div style="margin-bottom:14px;"><img src="<?php echo qz_h($q['image']);?>" alt="Fill question image" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#fff;"></div><?php endif;?><?php $qzHasBlanks=$q['type']==='fill'&&strpos((string)$q['question'],'___')!==false;if($qzHasBlanks):$qzFbParts=preg_split('/___/',(string)$q['question']);?><div class="question" style="line-height:2.4;"><?php foreach($qzFbParts as$qzPi=>$qzPart):echo qz_h($qzPart);if($qzPi<count($qzFbParts)-1):?><input class="qz-fill-blank" data-blank="<?php echo$qzPi;?>" type="text" autocomplete="off" placeholder="..." style="border:none;border-bottom:2.5px solid #7F77DD;background:transparent;outline:none;text-align:center;font:700 15px/1 inherit;color:#5A51C0;padding:2px 4px;min-width:44px;max-width:120px;width:4ch;vertical-align:baseline;"><?php endif;endforeach;?></div><input type="hidden" name="answer" id="qz-fill-combined"><?php else:?><div class="question"><?php echo qz_h($q['question']);?></div><?php if(($q['input_mode']??'text')==='textarea'):?><textarea class="input" name="answer" required autocomplete="off" placeholder="Write your answer"></textarea><?php else:?><input class="input" name="answer" required autocomplete="off" placeholder="Type your answer"><?php endif;?><?php endif;?><div class="actions"><button class="btn btn-purple" type="submit">Next</button><button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div></form><?php if(!empty($q['audio'])):?><script>(function(){var b=document.getElementById('qz-fill-listen');if(!b)return;var audioUrl=<?php echo json_encode((string)($q['audio']??''));?>;var fallbackText=<?php echo json_encode((string)$q['question']);?>;var player=null;function stop(){if(player){player.pause();player.currentTime=0;player=null;}try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(e){}}function listen(){stop();if(audioUrl){player=new Audio(audioUrl);player.play().catch(function(){});return;}if(!fallbackText||!window.speechSynthesis)return;var utter=new SpeechSynthesisUtterance(fallbackText);utter.lang='en-US';utter.rate=.85;window.speechSynthesis.speak(utter);}b.addEventListener('click',listen);window.addEventListener('beforeunload',stop);})();</script><?php endif;?><?php if($qzHasBlanks):?><script>(function(){var form=document.getElementById('fill-form');var combined=document.getElementById('qz-fill-combined');if(!form||!combined)return;var blanks=Array.from(form.querySelectorAll('.qz-fill-blank'));function resize(inp){var n=Math.min(20,Math.max(4,(inp.value||'').length+1));inp.style.width=n+'ch';}blanks.forEach(function(b){b.addEventListener('input',function(){resize(b);});b.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();combined.value=blanks.map(function(x){return x.value.trim();}).join(' | ');form.submit();}});});form.addEventListener('submit',function(){combined.value=blanks.map(function(x){return x.value.trim();}).join(' | ');});if(blanks.length)setTimeout(function(){try{blanks[0].focus();}catch(e){}},80);})();</script><?php endif;?><?php else:?><form method="post"><div class="question"><?php echo qz_h($q['question']);?></div><input class="input" name="answer" required autocomplete="off" placeholder="Type your answer"><div class="actions"><button class="btn btn-purple" type="submit">Next</button><button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div></form><?php endif;?></div>
-<?php elseif($mode==='result'):?><div class="screen-title">Resultado</div><div class="card"><div class="result-hero"><div class="pct"><?php echo$percent;?>%</div><div class="lead">Quiz completado &middot; Intento <?php echo$att;?></div><span class="pill" style="background:#eafff3;color:#07823f"><?php echo$correct;?> correct</span><span class="pill" style="background:#fff0f0;color:#c82020"><?php echo$wrong;?> wrong</span><span class="pill" style="background:#f0ecff;color:#8070dd"><?php echo$skip;?> skipped</span></div><div class="actions"><a class="btn btn-purple" href="<?php echo qz_h($reviewHref);?>">Review</a><?php if($qzCanRetry):?><a class="btn btn-light" href="?reset=1&unit=<?php echo$unitId;?>&assignment=<?php echo$assignment;?>&return_to=<?php echo urlencode($returnHref);?>">Intentar de nuevo</a><?php endif;?></div></div><?php elseif($mode==='review'):?><div class="screen-title">Review</div><div class="card"><?php foreach($quiz as$i=>$q):$a=$answers[$i]??null;?><div class="review"><b><?php echo$i+1;?>. <?php echo qz_h($q['question']);?></b><br><small><?php echo!empty($a['correct'])?'Correct':'0 points';?></small></div><?php endforeach;?></div><?php endif;?> <script src="fill_fix.js"></script> </div></body></html>
+<?php elseif($mode==='result'):
+$quiz_score=isset($quiz_score)?max(0,min(100,(float)$quiz_score)):(float)$percent;
+$unit_score=isset($unit_score)?max(0,min(100,(float)$unit_score)):(float)$percent;
+$phase_avg=isset($phase_avg)?max(0,min(100,(float)$phase_avg)):(float)$unit_score;
+$phase_name=isset($phase_name)&&$phase_name!==''?(string)$phase_name:'Phase';
+$teacher_name=isset($teacher_name)&&$teacher_name!==''?(string)$teacher_name:'Teacher';
+$unit_title=isset($unit_title)&&$unit_title!==''?(string)$unit_title:('Unit '.$unitId);
+$level_name=isset($level_name)&&$level_name!==''?(string)$level_name:'Level';
+$correct_count=isset($correct_count)?(int)$correct_count:(int)$correct;
+$total_count=isset($total_count)?(int)$total_count:(int)$total;
+$elapsed_time=isset($elapsed_time)&&$elapsed_time!==''?(string)$elapsed_time:'--';
+$skill_speaking=$skill_speaking??null;
+$skill_listening=$skill_listening??null;
+$skill_writing=$skill_writing??null;
+$skill_reading=$skill_reading??null;
+$skill_speaking_acts=is_array($skill_speaking_acts??null)?$skill_speaking_acts:[];
+$skill_listening_acts=is_array($skill_listening_acts??null)?$skill_listening_acts:[];
+$skill_writing_acts=is_array($skill_writing_acts??null)?$skill_writing_acts:[];
+$skill_reading_acts=is_array($skill_reading_acts??null)?$skill_reading_acts:[];
+$phase_units=is_array($phase_units??null)?$phase_units:[['label'=>'Unit '.$unitId,'score'=>round($unit_score),'is_current'=>true]];
+$returnParam=isset($returnParam)&&$returnParam!==''?(string)$returnParam:('unit='.$unitId.'&assignment='.$assignment.'&return_to='.urlencode($returnHref));
+$unit_final=round(($unit_score*0.6)+($quiz_score*0.4),1);
+$pass=$unit_final>=60;
+if(!function_exists('result_ring')){function result_ring($pct,$color,$label_top,$label_bottom=''){ $pct=max(0,min(100,(float)$pct));$dash=226;$offset=$dash-($dash*$pct/100);$val=round($pct).'%';ob_start(); ?>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+    <div style="position:relative;width:88px;height:88px;">
+      <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+        <circle cx="44" cy="44" r="36" fill="none" stroke="#F0EEF8" stroke-width="9"/>
+        <circle cx="44" cy="44" r="36" fill="none" stroke="<?= $color ?>" stroke-width="9"
+          stroke-linecap="round" stroke-dasharray="<?= $dash ?>" stroke-dashoffset="<?= $offset ?>"/>
+      </svg>
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:22px;font-weight:700;color:<?= $color ?>;">
+        <?= $val ?>
+      </div>
+    </div>
+    <div style="font-family:'Nunito',sans-serif;font-weight:800;font-size:12px;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;text-align:center;max-width:90px;line-height:1.3;">
+      <?= qz_h($label_top) ?><?= $label_bottom ? '<br>'.qz_h($label_bottom) : '' ?>
+    </div>
+  </div>
+  <?php return ob_get_clean(); }}
+if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_color,$subtitle,$score,$acts){if($score===null)return ''; $score=max(0,min(100,(float)$score));$chip_threshold=80;ob_start(); ?>
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div>
+        <div style="font-weight:800;font-size:14px;color:#271B5D;"><span style="color:<?= $icon_color ?>">●</span> <?= qz_h($label) ?></div>
+        <div style="font-size:11px;color:#9B8FCC;font-weight:700;margin-top:1px;"><?= qz_h($subtitle) ?></div>
+      </div>
+      <span style="font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;color:<?= $icon_color ?>"><?= round($score) ?>%</span>
+    </div>
+    <div style="background:#F0EEF8;border-radius:999px;height:8px;overflow:hidden;"><div style="height:100%;border-radius:999px;background:<?= $bar_color ?>;width:<?= round($score) ?>%;"></div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+      <?php foreach($acts as $a): $name=(string)($a['name']??'');$raw=$a['score']??0;$sc=max(0,min(100,(float)$raw));$done=$sc>=$chip_threshold;$chip_bg=$done?'#F0FDF4':'#FAECE7';$chip_cl=$done?'#166534':'#D85A30';$chip_bd=$done?'#9FE1CB':'#F5C4B3';$icon=$done?'✓':'✗'; ?>
+      <span style="background:<?= $chip_bg ?>;border:1px solid <?= $chip_bd ?>;color:<?= $chip_cl ?>;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;"><?= $icon ?> <?= qz_h($name) ?> · <?= round($sc) ?>%</span>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php return ob_get_clean(); }}
+?>
+<div style="background:#F8F7FF;padding:24px 16px 40px;font-family:'Nunito',sans-serif;">
+  <div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
+    <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);text-align:center;">
+      <span style="display:inline-block;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-weight:900;font-size:11px;letter-spacing:1px;text-transform:uppercase;border-radius:999px;padding:4px 14px;margin-bottom:10px;">Quiz result</span>
+      <div style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:28px;font-weight:700;margin:0 0 4px;"><?= qz_h($unit_title) ?></div>
+      <div style="color:#9B8FCC;font-size:14px;font-weight:700;margin:0 0 20px;"><?= qz_h($phase_name) ?> — <?= qz_h($teacher_name) ?> · <?= qz_h($level_name) ?></div>
+      <div style="display:flex;justify-content:center;gap:32px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+        <?= result_ring($quiz_score,'#F97316','Quiz score') ?>
+        <?= result_ring($unit_score,'#7F77DD','Unit score') ?>
+        <?= result_ring($phase_avg,'#1D9E75',$phase_name,$teacher_name) ?>
+      </div>
+      <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+        <?php if($pass): ?><span style="background:#DCFCE7;color:#166534;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✓ Passed</span><?php else: ?><span style="background:#FEE2E2;color:#991B1B;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✗ Not passed</span><?php endif; ?>
+        <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;"><?= $correct_count ?> / <?= $total_count ?> correct</span>
+        <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">⏱ <?= qz_h($elapsed_time) ?></span>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+      <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:18px;font-weight:600;margin:0 0 14px;">◈ Skill breakdown</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <?= skill_bar('Speaking','#F97316','#F97316','Pronunciation · Roleplay',$skill_speaking,$skill_speaking_acts) ?>
+        <?php if($skill_speaking!==null&&$skill_listening!==null): ?><hr style="border:none;border-top:1px solid #F0EEF8;margin:4px 0"><?php endif; ?>
+        <?= skill_bar('Listening','#7F77DD','#7F77DD','Order the sentences · Listen & order · Dictation',$skill_listening,$skill_listening_acts) ?>
+        <?php if($skill_listening!==null&&$skill_writing!==null): ?><hr style="border:none;border-top:1px solid #F0EEF8;margin:4px 0"><?php endif; ?>
+        <?= skill_bar('Writing','#1D9E75','#1D9E75','Fill in blank · Writing practice',$skill_writing,$skill_writing_acts) ?>
+        <?php if($skill_writing!==null&&$skill_reading!==null): ?><hr style="border:none;border-top:1px solid #F0EEF8;margin:4px 0"><?php endif; ?>
+        <?= skill_bar('Reading','#378ADD','#378ADD','Match · Matching lines · Multiple choice',$skill_reading,$skill_reading_acts) ?>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+      <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:18px;font-weight:600;margin:0 0 14px;">🏆 Unit final score</div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px;">
+        <div style="background:#F9F8FF;border-radius:16px;border:1px solid #EDE9FA;padding:14px;text-align:center;"><div style="font-family:'Fredoka',sans-serif;font-size:28px;font-weight:700;color:#F97316;line-height:1;"><?= round($unit_final,1) ?>%</div><div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Final score</div></div>
+        <div style="background:#F9F8FF;border-radius:16px;border:1px solid #EDE9FA;padding:14px;text-align:center;"><div style="font-family:'Fredoka',sans-serif;font-size:28px;font-weight:700;color:#7F77DD;line-height:1;"><?= round($unit_score) ?>%</div><div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Activities avg</div></div>
+        <div style="background:#F9F8FF;border-radius:16px;border:1px solid #EDE9FA;padding:14px;text-align:center;"><div style="font-family:'Fredoka',sans-serif;font-size:28px;font-weight:700;color:#1D9E75;line-height:1;"><?= round($quiz_score) ?>%</div><div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;">Quiz score</div></div>
+      </div>
+      <div style="background:#F9F8FF;border:1px solid #EDE9FA;border-radius:14px;padding:14px;">
+        <div style="font-weight:800;font-size:13px;color:#271B5D;margin-bottom:8px;">Score formula</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Activities avg <span style="background:#EDE9FA;color:#7F77DD;border-radius:999px;padding:1px 8px;font-size:11px;">60%</span></span><span><?= round($unit_score) ?>% × 0.6 = <b style="color:#271B5D"><?= round($unit_score*0.6,1) ?></b></span></div>
+          <div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#9B8FCC;gap:10px;"><span>Quiz score <span style="background:#FFF0E6;color:#C2580A;border-radius:999px;padding:1px 8px;font-size:11px;">40%</span></span><span><?= round($quiz_score) ?>% × 0.4 = <b style="color:#271B5D"><?= round($quiz_score*0.4,1) ?></b></span></div>
+          <hr style="border:none;border-top:1px solid #F0EEF8;margin:4px 0">
+          <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:900;"><span style="color:#271B5D;">Unit final</span><span style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:22px;"><?= round($unit_final,1) ?>%</span></div>
+        </div>
+      </div>
+    </div>
+    <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+      <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:18px;font-weight:600;margin:0 0 14px;">◧ Phase progress — <?= qz_h($level_name) ?></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:10px;"><span style="font-weight:800;font-size:13px;color:#271B5D;"><?= qz_h($phase_name) ?> — <?= qz_h($teacher_name) ?> · <?= count($phase_units) ?> units</span><span style="font-family:'Fredoka',sans-serif;font-size:16px;color:#7F77DD;font-weight:600;"><?= round($phase_avg) ?>% avg</span></div>
+      <div style="background:#F0EEF8;border-radius:999px;height:12px;overflow:hidden;"><div style="height:100%;border-radius:999px;background:linear-gradient(90deg,#F97316,#7F77DD);width:<?= round($phase_avg) ?>%;"></div></div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;"><?php foreach($phase_units as$u):$isCurrent=!empty($u['is_current']);$scoreVal=array_key_exists('score',$u)?$u['score']:null;if($isCurrent){$dc='background:#FFF0E6;border-color:#FCDDBF;color:#C2580A;';$val=($scoreVal!==null?round((float)$scoreVal).'%' :'—').' ★';}elseif($scoreVal!==null){$dc='background:#DCFCE7;border-color:#9FE1CB;color:#166534;';$val=round((float)$scoreVal).'%';}else{$dc='background:#F0EEF8;border-color:#EDE9FA;color:#9B8FCC;';$val='—';}?><div style="display:flex;flex-direction:column;align-items:center;gap:3px;"><div style="width:36px;height:36px;border-radius:50%;border:2px solid;<?= $dc ?>display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;"><?= qz_h($val) ?></div><div style="font-size:10px;color:#9B8FCC;font-weight:700;"><?= qz_h((string)($u['label']??'')) ?></div></div><?php endforeach; ?></div>
+      <?php $completed=count(array_filter($phase_units,fn($u)=>array_key_exists('score',$u)&&$u['score']!==null));$total_u=count($phase_units); ?>
+      <div style="margin-top:14px;background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#166534;">✓ <?= $completed ?> / <?= $total_u ?> units completed</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="window.location.href='<?= qz_h($reviewHref) ?>'" style="flex:1;background:transparent;color:#7F77DD;border:1.5px solid #EDE9FA;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Review answers</button>
+      <button onclick="window.location.href='student_course.php?<?= qz_h($returnParam) ?>'" style="flex:1;background:#F97316;color:#fff;border:none;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Back to unit →</button>
+    </div>
+  </div>
+</div>
+<?php elseif($mode==='review'):?><div class="screen-title">Review</div><div class="card"><?php foreach($quiz as$i=>$q):$a=$answers[$i]??null;?><div class="review"><b><?php echo$i+1;?>. <?php echo qz_h($q['question']);?></b><br><small><?php echo!empty($a['correct'])?'Correct':'0 points';?></small></div><?php endforeach;?></div><?php endif;?> <script src="fill_fix.js"></script> </div></body></html>
