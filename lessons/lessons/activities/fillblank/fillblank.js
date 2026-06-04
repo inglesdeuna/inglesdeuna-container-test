@@ -340,40 +340,50 @@ document.addEventListener('DOMContentLoaded', function () {
     input.style.width = targetChars + 'ch';
   }
 
-  function isAllCorrect(q, values) {
+  function computeQuestionScore(q, values) {
     var answers = Array.isArray(q.answers) ? q.answers : [];
     var count = Math.max(getBlankCount(q), answers.length);
+    var earned = 0;
 
     for (var i = 0; i < count; i++) {
-      if (normalize(values[i] || '') !== normalize(answers[i] || '')) {
-        return false;
+      if (normalize(values[i] || '') === normalize(answers[i] || '')) {
+        earned += 1;
       }
     }
-    return true;
+    return {
+      earned: earned,
+      possible: count,
+      allCorrect: count > 0 && earned === count
+    };
   }
 
   function computeScoreLikeMultipleChoice() {
-    var total = questions.length;
+    var total = 0;
+    var scorable = 0;
     var correct = 0;
-    var wrong = 0;
     var revealedCount = 0;
 
-    scores.forEach(function (value) {
-      if (value === 1) {
-        correct += 1;
-      } else if (value === -1) {
-        revealedCount += 1;
+    scores.forEach(function (value, idx) {
+      var q = questions[idx] || {};
+      var possible = value && typeof value.possible === 'number' ? value.possible : getBlankCount(q);
+      total += possible;
+
+      if (value && value.revealed) {
+        revealedCount += possible;
       } else {
-        wrong += 1;
+        scorable += possible;
+        if (value && typeof value.earned === 'number') {
+          correct += value.earned;
+        }
       }
     });
 
-    var scorable = correct + wrong;
+    var wrong = Math.max(0, scorable - correct);
     var percent = scorable > 0 ? Math.round((correct / scorable) * 100) : 0;
 
     return {
       correct: correct,
-      total: total,
+      total: scorable,
       wrong: wrong,
       errors: wrong,
       revealed: revealedCount,
@@ -449,11 +459,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var q = questions[index] || {};
     var user = selectedAnswers[index].slice();
-    var correct = Array.isArray(q.answers) ? q.answers : [];
-    var allCorrect = isAllCorrect(q, user);
+    var score = computeQuestionScore(q, user);
+    var allCorrect = score.allCorrect;
 
     answered = true;
-    scores[index] = allCorrect ? 1 : 0;
+    scores[index] = { earned: score.earned, possible: score.possible, revealed: false };
 
     renderSentence(q, user, true);
     updateScoreCards(true);
@@ -462,6 +472,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (allCorrect) {
         feedbackEl.textContent = 'Correct! Great job.';
         feedbackEl.className = 'fb-feedback good';
+      } else if (score.earned > 0) {
+        feedbackEl.textContent = 'Partially correct: ' + score.earned + ' / ' + score.possible + ' words.';
+        feedbackEl.className = 'fb-feedback';
       } else {
         feedbackEl.textContent = 'Incorrect. Correct option highlighted.';
         feedbackEl.className = 'fb-feedback bad';
@@ -485,17 +498,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var q = questions[index] || {};
     var correct = Array.isArray(q.answers) ? q.answers.slice() : [];
+    var possible = Math.max(getBlankCount(q), correct.length);
 
     answered = true;
     revealed = true;
-    scores[index] = -1;
+    scores[index] = { earned: 0, possible: possible, revealed: true };
     selectedAnswers[index] = correct.slice();
 
     renderSentence(q, correct, true);
     updateScoreCards(true);
 
     if (feedbackEl) {
-      feedbackEl.textContent = 'Answer revealed — this question does not affect score.';
+      feedbackEl.textContent = 'Answer revealed — these words do not affect score.';
       feedbackEl.className = 'fb-feedback';
     }
     if (checkBtn) {
