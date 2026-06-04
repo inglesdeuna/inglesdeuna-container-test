@@ -345,4 +345,282 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
     </div>
   </div>
 </div>
-<?php elseif($mode==='review'):?><div class="screen-title">Review</div><div class="card"><?php foreach($quiz as$i=>$q):$a=$answers[$i]??null;?><div class="review"><b><?php echo$i+1;?>. <?php echo qz_h($q['question']);?></b><br><small><?php echo!empty($a['correct'])?'Correct':'0 points';?></small></div><?php endforeach;?></div><?php endif;?></div></body></html>
+<?php elseif($mode==='review'):
+// TODO: confirm variable name in this file
+$attempt1_score = $attempt1_score ?? null;
+$attempt2_score = $attempt2_score ?? null;
+$attempt_number = isset($attempt_number) ? (int)$attempt_number : (int)($att ?? 1);
+$max_attempts   = $max_attempts ?? 2;
+$correct_count  = isset($correct_count) ? (int)$correct_count : (int)$correct;
+$total_count    = isset($total_count) ? (int)$total_count : (int)($score_total ?? $total);
+// Build display-only $questions array from existing $quiz and $answers — NOT score logic
+$_qz_skill_map = [
+  'pronunciation'    => 'speaking',
+  'dictation'        => 'listening',
+  'listen_order'     => 'listening',
+  'fill'             => 'writing',
+  'writing_practice' => 'writing',
+  'question_answer'  => 'writing',
+  'multiple_choice'  => 'reading',
+  'match'            => 'reading',
+  'matching_lines'   => 'reading',
+  'drag_drop'        => 'reading',
+  'unscramble'       => 'reading',
+];
+$questions = [];
+foreach ($quiz as $_qi => $_qq) {
+  $_qtype = (string)($_qq['type'] ?? '');
+  $questions[] = [
+    'id'      => $_qq['id'] ?? $_qi,
+    'text'    => (string)($_qq['question'] ?? ''),
+    'skill'   => $_qz_skill_map[$_qtype] ?? 'reading',
+    'correct' => !empty($answers[$_qi]['correct']),
+  ];
+}
+unset($_qi, $_qq, $_qtype, $_qz_skill_map);
+if (!function_exists('rw_skill_meta')) {
+  function rw_skill_meta($skill) {
+    $map = [
+      'speaking'  => ['label'=>'Speaking',  'bg'=>'#FFF0E6', 'color'=>'#C2580A'],
+      'listening' => ['label'=>'Listening', 'bg'=>'#EDE9FA', 'color'=>'#534AB7'],
+      'writing'   => ['label'=>'Writing',   'bg'=>'#EAFAF3', 'color'=>'#0F6E56'],
+      'reading'   => ['label'=>'Reading',   'bg'=>'#E6F1FB', 'color'=>'#185FA5'],
+    ];
+    return $map[$skill] ?? ['label'=>ucfirst($skill), 'bg'=>'#F0EEF8', 'color'=>'#7F77DD'];
+  }
+}
+if (!function_exists('rw_skill_tip')) {
+  function rw_skill_tip($skill, $error_count) {
+    $tips = [
+      'speaking'  => 'Practice the <b>Pronunciation</b> and <b>Roleplay</b> activities again. Record yourself and compare with the model voice.',
+      'listening' => 'Review the <b>Listen &amp; Order</b> and <b>Order the Sentences</b> activities. Listen carefully before answering.',
+      'writing'   => 'Revisit the <b>Fill in Blank</b> and <b>Dictation</b> activities. Focus on spelling and word order.',
+      'reading'   => 'Go back to the <b>Match</b>, <b>Matching Lines</b>, and <b>Multiple Choice</b> activities in this unit.',
+    ];
+    $icons = [
+      'speaking'  => '🎤',
+      'listening' => '🎧',
+      'writing'   => '✏️',
+      'reading'   => '📖',
+    ];
+    $label_map = [
+      'speaking' => 'Speaking', 'listening' => 'Listening',
+      'writing'  => 'Writing',  'reading'   => 'Reading',
+    ];
+    $tip_colors = [
+      'speaking'  => ['bg'=>'#FFF7F0', 'border'=>'#FCDDBF', 'icon_bg'=>'#FFF0E6', 'label'=>'#C2580A', 'text'=>'#6B6B8D'],
+      'listening' => ['bg'=>'#F5F3FF', 'border'=>'#EDE9FA', 'icon_bg'=>'#EDE9FA', 'label'=>'#534AB7', 'text'=>'#6B6B8D'],
+      'writing'   => ['bg'=>'#F0FDF4', 'border'=>'#9FE1CB', 'icon_bg'=>'#DCFCE7', 'label'=>'#0F6E56', 'text'=>'#6B6B8D'],
+      'reading'   => ['bg'=>'#E6F1FB', 'border'=>'#B5D4F4', 'icon_bg'=>'#DBEAFE', 'label'=>'#185FA5', 'text'=>'#6B6B8D'],
+    ];
+    $c = $tip_colors[$skill] ?? $tip_colors['reading'];
+    $icon = $icons[$skill] ?? '💡';
+    $label = ($label_map[$skill] ?? ucfirst($skill)) . ' — ' . $error_count . ' error' . ($error_count !== 1 ? 's' : '');
+    $text = $tips[$skill] ?? 'Review the activities for this skill.';
+    ob_start(); ?>
+  <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:14px;
+    background:<?= $c['bg'] ?>;border:1px solid <?= $c['border'] ?>;">
+    <div style="width:34px;height:34px;border-radius:10px;background:<?= $c['icon_bg'] ?>;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:18px;">
+      <?= $icon ?>
+    </div>
+    <div>
+      <div style="font-weight:900;font-size:13px;color:<?= $c['label'] ?>;margin:0 0 3px;"><?= $label ?></div>
+      <div style="font-size:12px;font-weight:700;color:<?= $c['text'] ?>;margin:0;line-height:1.5;"><?= $text ?></div>
+    </div>
+  </div>
+    <?php return ob_get_clean();
+  }
+}
+// Count errors per skill — READ $questions array only, no score logic
+$errors_by_skill = [];
+$error_total     = 0;
+foreach ($questions as $q) {
+  if (!$q['correct']) {
+    $error_total++;
+    $sk = $q['skill'] ?? 'reading';
+    $errors_by_skill[$sk] = ($errors_by_skill[$sk] ?? 0) + 1;
+  }
+}
+arsort($errors_by_skill);
+?>
+<div style="background:#F8F7FF;padding:24px 16px 40px;font-family:'Nunito',sans-serif;">
+<div style="max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:16px;">
+
+  <!-- CARD 1: Header + attempt tabs + score summary -->
+  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+    <span style="display:inline-block;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;
+      font-family:'Nunito',sans-serif;font-weight:900;font-size:11px;letter-spacing:1px;
+      text-transform:uppercase;border-radius:999px;padding:4px 14px;margin-bottom:10px;">
+      Review
+    </span>
+    <div style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:24px;font-weight:700;margin:0 0 4px;">
+      <?= htmlspecialchars($unit_title) ?>
+    </div>
+    <div style="color:#9B8FCC;font-size:13px;font-weight:700;margin:0 0 16px;">
+      <?= htmlspecialchars($phase_name) ?> — <?= htmlspecialchars($teacher_name) ?> · <?= htmlspecialchars($level_name) ?>
+    </div>
+    <!-- Attempt tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;">
+      <?php for ($i = 1; $i <= $max_attempts; $i++):
+        $a_score = ($i === 1) ? $attempt1_score : $attempt2_score;
+        if ($i === $attempt_number) {
+          $tab_bg = '#FFF0E6'; $tab_bd = '#FCDDBF'; $tab_cl = '#C2580A';
+          $tab_label = 'Attempt ' . $i . ' &nbsp;·&nbsp; In progress';
+        } elseif ($a_score !== null) {
+          $tab_bg = '#F0FDF4'; $tab_bd = '#9FE1CB'; $tab_cl = '#166534';
+          $tab_label = 'Attempt ' . $i . ' &nbsp;·&nbsp; ' . round($a_score) . '%';
+        } else {
+          $tab_bg = '#F9F8FF'; $tab_bd = '#EDE9FA'; $tab_cl = '#9B8FCC';
+          $tab_label = 'Attempt ' . $i . ' &nbsp;·&nbsp; Pending';
+        }
+      ?>
+      <div style="flex:1;padding:9px;border-radius:10px;border:1.5px solid <?= $tab_bd ?>;
+        font-family:'Nunito',sans-serif;font-weight:800;font-size:13px;text-align:center;
+        color:<?= $tab_cl ?>;background:<?= $tab_bg ?>;">
+        <?= $tab_label ?>
+      </div>
+      <?php endfor; ?>
+    </div>
+    <!-- Score summary chips -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;">
+      <div style="background:#F9F8FF;border-radius:14px;border:1px solid #EDE9FA;padding:12px;text-align:center;">
+        <div style="font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;color:#F97316;line-height:1;">
+          <?= round($quiz_score) ?>%
+        </div>
+        <div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">Score</div>
+      </div>
+      <div style="background:#F9F8FF;border-radius:14px;border:1px solid #EDE9FA;padding:12px;text-align:center;">
+        <div style="font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;color:#1D9E75;line-height:1;">
+          <?= $correct_count ?>
+        </div>
+        <div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">Correct</div>
+      </div>
+      <div style="background:#F9F8FF;border-radius:14px;border:1px solid #EDE9FA;padding:12px;text-align:center;">
+        <div style="font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;color:#D85A30;line-height:1;">
+          <?= $error_total ?>
+        </div>
+        <div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">Errors</div>
+      </div>
+      <div style="background:#F9F8FF;border-radius:14px;border:1px solid #EDE9FA;padding:12px;text-align:center;">
+        <div style="font-family:'Fredoka',sans-serif;font-size:24px;font-weight:700;color:#9B8FCC;line-height:1;">
+          <?= $total_count ?>
+        </div>
+        <div style="font-size:11px;font-weight:800;color:#9B8FCC;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Retry banner — only when attempt 1 done and attempt 2 not yet taken -->
+  <?php if ($attempt_number === 1 && $attempt2_score === null): ?>
+  <div style="background:linear-gradient(135deg,#FFF0E6,#EDE9FA);border-radius:16px;border:1px solid #FCDDBF;
+    padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <div style="width:44px;height:44px;background:#F97316;border-radius:12px;
+      display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:22px;">🔁</div>
+    <div style="flex:1;min-width:160px;">
+      <div style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:17px;font-weight:700;margin:0 0 2px;">
+        You have 1 more attempt
+      </div>
+      <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0;">
+        Review your errors below, then retake to improve your score.
+      </div>
+    </div>
+    <button onclick="window.location.href='<?= qz_h($quizHref) ?>'"
+      style="background:#F97316;color:#fff;border:none;font-family:'Nunito',sans-serif;
+      font-weight:900;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;white-space:nowrap;">
+      ✎ Retake quiz
+    </button>
+  </div>
+  <?php endif; ?>
+
+  <!-- CARD 2: Question list — correct/wrong only, NO answers shown -->
+  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+    <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:8px;">
+      ✔ Question by question
+    </div>
+    <?php if ($error_total > 0): ?>
+    <div style="background:#FAECE7;border:1px solid #F5C4B3;border-radius:12px;padding:10px 14px;
+      margin-bottom:14px;font-size:13px;font-weight:800;color:#D85A30;display:flex;align-items:center;gap:8px;">
+      ✗ <?= $error_total ?> error<?= $error_total !== 1 ? 's' : '' ?> out of <?= $total_count ?> questions
+    </div>
+    <?php else: ?>
+    <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:10px 14px;
+      margin-bottom:14px;font-size:13px;font-weight:800;color:#166534;display:flex;align-items:center;gap:8px;">
+      ✓ Perfect score — all <?= $total_count ?> questions correct!
+    </div>
+    <?php endif; ?>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+    <?php foreach ($questions as $idx => $q):
+      $sk   = rw_skill_meta($q['skill'] ?? 'reading');
+      $ok   = $q['correct'];
+      $row_bg  = $ok ? '#F0FDF4'  : '#FAECE7';
+      $row_bd  = $ok ? '#9FE1CB'  : '#F5C4B3';
+      $num_bg  = $ok ? '#DCFCE7'  : '#FEE2E2';
+      $num_cl  = $ok ? '#166534'  : '#991B1B';
+      $icon    = $ok ? '✓'        : '✗';
+      $icon_cl = $ok ? '#1D9E75'  : '#D85A30';
+    ?>
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
+      border:1px solid <?= $row_bd ?>;background:<?= $row_bg ?>;">
+      <div style="width:28px;height:28px;border-radius:50%;background:<?= $num_bg ?>;color:<?= $num_cl ?>;
+        display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;
+        font-size:13px;font-weight:700;flex-shrink:0;">
+        <?= $idx + 1 ?>
+      </div>
+      <div style="flex:1;font-size:13px;font-weight:700;color:#271B5D;">
+        <?= htmlspecialchars($q['text']) ?>
+      </div>
+      <span style="background:<?= $sk['bg'] ?>;color:<?= $sk['color'] ?>;font-size:11px;font-weight:800;
+        border-radius:999px;padding:2px 9px;white-space:nowrap;">
+        <?= $sk['label'] ?>
+      </span>
+      <span style="font-size:16px;color:<?= $icon_cl ?>;font-weight:900;"><?= $icon ?></span>
+    </div>
+    <?php endforeach; ?>
+    </div>
+  </div>
+
+  <!-- CARD 3: Study tips by skill (only skills with errors) -->
+  <?php if (!empty($errors_by_skill)): ?>
+  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+    <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;margin:0 0 4px;display:flex;align-items:center;gap:8px;">
+      💡 Study tips — focus on these skills
+    </div>
+    <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0 0 14px;">
+      Based on your errors in this attempt
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <?php foreach ($errors_by_skill as $skill => $ecount): ?>
+        <?= rw_skill_tip($skill, $ecount) ?>
+      <?php endforeach; ?>
+    </div>
+  </div>
+  <?php endif; ?>
+
+  <!-- Final attempt notice -->
+  <?php if ($attempt_number >= $max_attempts): ?>
+  <div style="background:#F5F3FF;border:1px solid #EDE9FA;border-radius:12px;padding:11px 14px;
+    font-size:12px;font-weight:800;color:#7F77DD;display:flex;align-items:center;gap:8px;">
+    ℹ This was your 2nd and final attempt. Correct answers are not shown to encourage independent practice.
+  </div>
+  <?php endif; ?>
+
+  <!-- CTA row -->
+  <div style="display:flex;gap:10px;">
+    <button onclick="window.location.href='<?= qz_h($resultHref) ?>'"
+      style="flex:1;background:transparent;color:#7F77DD;border:1.5px solid #EDE9FA;
+      font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">
+      ← Back to results
+    </button>
+    <?php if ($attempt_number < $max_attempts && $attempt2_score === null): ?>
+    <button onclick="window.location.href='<?= qz_h($quizHref) ?>'"
+      style="flex:1;background:#F97316;color:#fff;border:none;
+      font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">
+      🔁 Retake quiz
+    </button>
+    <?php endif; ?>
+  </div>
+
+</div>
+</div>
+<?php endif;?></div></body></html>
