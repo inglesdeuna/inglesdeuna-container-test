@@ -657,13 +657,14 @@ function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignm
         $quizActId = (string) ($stmt->fetchColumn() ?: '');
 
         $returnTo = 'student_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $unitId, 'step' => '9999']);
+        $quizViewerReturnTo = '../../academic/student_dashboard.php';
 
         if ($quizActId !== '') {
             return '../activities/quiz/viewer.php?' . http_build_query([
                 'id'         => $quizActId,
                 'unit'       => $unitId,
                 'assignment' => $assignmentId,
-                'return_to'  => '../../academic/' . $returnTo,
+                'return_to'  => $quizViewerReturnTo,
             ]);
         }
         return $returnTo;
@@ -887,13 +888,14 @@ if ($firstAssignmentId !== '') {
                         'unit'       => $qualUnitId,
                         'step'       => '9999',
                     ]);
+                    $quizViewerReturnTo = '../../academic/student_dashboard.php';
 
                     if ($quizActId !== '') {
                         $quizGoHref = '../activities/quiz/viewer.php?' . http_build_query([
                             'id'         => $quizActId,
                             'unit'       => $qualUnitId,
                             'assignment' => $firstAssignmentId,
-                            'return_to'  => '../../academic/' . $returnTo,
+                            'return_to'  => $quizViewerReturnTo,
                         ]);
                     } else {
                         // No explicit quiz activity — open the unit at the last step
