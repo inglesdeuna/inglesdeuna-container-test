@@ -112,14 +112,14 @@ function resolve_phase_label(array $assignment): string
         }
         if ($program === 'technical') {
             if ($periodNumber !== null) {
-                return 'Semestre ' . $periodNumber;
+                return 'Semester ' . $periodNumber;
             }
-            return 'Semestre ' . $period;
+            return 'Semester ' . $period;
         }
         return $period;
     }
 
-    return $program === 'english' ? 'Basic' : ($program === 'technical' ? 'Semestre' : 'Curso');
+    return $program === 'english' ? 'Basic' : ($program === 'technical' ? 'Semester' : 'Course');
 }
 
 function resolve_unit_label(array $assignment): string
@@ -910,7 +910,7 @@ if ($firstAssignmentId !== '') {
 }
 ?>
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -1389,16 +1389,16 @@ body {
     <div class="sd-header-right">
         <div class="sd-header-student">
             <div class="sd-header-student-name"><?php echo h($studentName); ?></div>
-            <div class="sd-header-student-role">Estudiante · ID: <?php echo h($studentId !== '' ? $studentId : 'N/A'); ?></div>
+            <div class="sd-header-student-role">Student · ID: <?php echo h($studentId !== '' ? $studentId : 'N/A'); ?></div>
         </div>
         <div class="sd-header-avatar">
             <?php if ($studentPhotoSrc !== '') { ?>
-                <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil">
+                <img src="<?php echo $studentPhotoSrc; ?>" alt="Profile photo">
             <?php } else { ?>
                 <?php echo h($studentInitials); ?>
             <?php } ?>
         </div>
-        <a class="sd-logout-btn" href="logout.php">↪ Salir</a>
+        <a class="sd-logout-btn" href="logout.php">↪ Log Out</a>
     </div>
 </header>
 
@@ -1419,30 +1419,30 @@ body {
         <div class="sd-card">
             <div class="sd-profile-avatar">
                 <?php if ($studentPhotoSrc !== '') { ?>
-                    <img src="<?php echo $studentPhotoSrc; ?>" alt="Foto de perfil">
+                    <img src="<?php echo $studentPhotoSrc; ?>" alt="Profile photo">
                 <?php } else { ?>
                     <?php echo h($studentInitials); ?>
                 <?php } ?>
             </div>
             <div class="sd-profile-name"><?php echo h($studentName); ?></div>
-            <div class="sd-profile-role">Estudiante</div>
+            <div class="sd-profile-role">Student</div>
 
             <div class="sd-stats-row">
                 <div class="sd-stat-box">
                     <span class="sd-stat-value"><?php echo $totalCourses; ?></span>
-                    <span class="sd-stat-label">Cursos</span>
+                    <span class="sd-stat-label">Courses</span>
                 </div>
                 <div class="sd-stat-box">
                     <span class="sd-stat-value"><?php echo $overallAvg; ?>%</span>
-                    <span class="sd-stat-label">Prom.</span>
+                    <span class="sd-stat-label">Avg.</span>
                 </div>
             </div>
 
             <form method="post" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="upload_student_photo">
-                <span class="sd-photo-label">Foto de perfil</span>
+                <span class="sd-photo-label">Profile Photo</span>
                 <input type="file" name="student_photo" class="sd-photo-input" accept="image/jpeg,image/png,image/webp,image/gif" required>
-                <button class="sd-photo-btn" type="submit">Actualizar foto</button>
+                <button class="sd-photo-btn" type="submit">Update Photo</button>
             </form>
         </div>
 
@@ -1451,16 +1451,16 @@ body {
             <div class="sd-sidebar-groups">
                 <div class="sd-sidebar-group visible" data-program="technical">
                     <button class="sd-sidebar-toggle" type="button" aria-expanded="false">
-                        <span>Módulos</span>
+                        <span>Modules</span>
                         <span class="sd-sidebar-chevron">⌄</span>
                     </button>
                     <div class="sd-sidebar-list">
                         <?php if (empty($sidebarNavigationGroups['technical'])) { ?>
-                            <div class="sd-sidebar-empty">No tienes módulos asignados.</div>
+                            <div class="sd-sidebar-empty">You do not have any assigned modules.</div>
                         <?php } else { ?>
                             <?php foreach ((array) $sidebarNavigationGroups['technical'] as $moduleItem) { ?>
                                 <?php
-                                $moduleName = (string) ($moduleItem['name'] ?? 'Módulo');
+                                $moduleName = (string) ($moduleItem['name'] ?? 'Module');
                                 $moduleUnits = (array) ($moduleItem['units'] ?? []);
                                 ?>
                                 <div class="sd-sidebar-item">
@@ -1489,7 +1489,7 @@ body {
                     </button>
                     <div class="sd-sidebar-list">
                         <?php if (empty($sidebarNavigationGroups['english'])) { ?>
-                            <div class="sd-sidebar-empty">No tienes fases asignadas.</div>
+                            <div class="sd-sidebar-empty">You do not have any assigned phases.</div>
                         <?php } else { ?>
                             <?php foreach ((array) $sidebarNavigationGroups['english'] as $phaseItem) { ?>
                                 <?php
@@ -1516,16 +1516,16 @@ body {
                 </div>
             </div>
 
-            <span class="sd-actions-label">Acciones</span>
+            <span class="sd-actions-label">Actions</span>
 
             <?php if ($quizUnlocked && $quizGoHref !== '') { ?>
-                <a class="sd-action-btn" href="<?php echo h($quizGoHref); ?>">Ir al Quiz</a>
+                <a class="sd-action-btn" href="<?php echo h($quizGoHref); ?>">Go to Quiz</a>
             <?php } else { ?>
-                <span class="sd-action-btn locked" title="Pide a tu profesor que desbloquee el quiz">Ir al Quiz</span>
+                <span class="sd-action-btn locked" title="Ask your teacher to unlock the quiz">Go to Quiz</span>
             <?php } ?>
 
-            <a class="sd-action-btn" href="change_password_student.php">Cambiar clave</a>
-            <a class="sd-action-btn" href="logout.php">Cerrar sesión</a>
+            <a class="sd-action-btn" href="change_password_student.php">Change Password</a>
+            <a class="sd-action-btn" href="logout.php">Log Out</a>
         </div>
 
     </aside>
@@ -1543,21 +1543,21 @@ body {
         <div class="sd-main-header">
             <h2 class="sd-main-title" id="sd-main-title">English Courses</h2>
             <span class="sd-main-meta">
-                <?php echo $totalCourses; ?> cursos
-                <?php if ($firstPeriodLabel !== '') { ?> · Período <?php echo h($firstPeriodLabel); ?><?php } ?>
+                <?php echo $totalCourses; ?> courses
+                <?php if ($firstPeriodLabel !== '') { ?> · Period <?php echo h($firstPeriodLabel); ?><?php } ?>
                 <?php if ($firstTeacherName !== '') { ?> · Teacher: <?php echo h($firstTeacherName); ?><?php } ?>
             </span>
         </div>
 
         <div class="sd-phase-sections">
             <?php if (empty($assignmentSections)) { ?>
-                <div class="sd-empty">No tienes cursos asignados aún.</div>
+                <div class="sd-empty">You do not have any assigned courses yet.</div>
             <?php } else { ?>
                 <?php $cardPdo = get_pdo_connection(); ?>
                 <?php foreach ($assignmentSections as $section) { ?>
                     <?php
                     $sectionProgram = (string) ($section['program'] ?? 'technical');
-                    $sectionProgramLabel = upper_label($sectionProgram === 'english' ? 'basic program' : ($sectionProgram === 'technical' ? 'technical program' : 'programa'));
+                    $sectionProgramLabel = upper_label($sectionProgram === 'english' ? 'basic program' : ($sectionProgram === 'technical' ? 'technical program' : 'program'));
                     $sectionPhaseLabel = upper_label((string) ($section['phase_label'] ?? ''));
                     ?>
                     <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>">
@@ -1571,7 +1571,7 @@ body {
                                 $assignmentId   = (string) ($assignment['id'] ?? '');
                                 $assignmentUnitId = (string) ($assignment['unit_id'] ?? '');
                                 $program        = (string) ($assignment['program'] ?? 'technical');
-                                $programLabel   = upper_label($program === 'english' ? 'inglés' : 'técnico');
+                                $programLabel   = upper_label($program === 'english' ? 'english' : 'technical');
                                 $unitName       = upper_label((string) ($assignment['_resolved_unit_label'] ?? 'Unit'));
                                 $courseHrefParams = ['assignment' => $assignmentId];
                                 if ($assignmentUnitId !== '') {
@@ -1609,16 +1609,16 @@ body {
 
                                     <?php if ($totalQuestions > 0) { ?>
                                         <div class="sd-errors-badge <?php echo $errorsClass; ?>">
-                                            <?php echo $totalErrors; ?> / <?php echo $totalQuestions; ?> errores
+                                            <?php echo $totalErrors; ?> / <?php echo $totalQuestions; ?> errors
                                         </div>
                                     <?php } ?>
 
                                     <div class="sd-card-actions">
-                                        <a class="sd-btn" href="<?php echo h($courseHref); ?>">Entrar</a>
+                                        <a class="sd-btn" href="<?php echo h($courseHref); ?>">Open</a>
                                         <?php if ($cardQuizHref !== '') { ?>
                                             <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
                                         <?php } ?>
-                                        <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Puntajes</a>
+                                        <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Scores</a>
                                     </div>
 
                                 </div>
