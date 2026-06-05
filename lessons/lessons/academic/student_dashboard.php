@@ -139,9 +139,11 @@ function resolve_phase_key(array $assignment, ?string $phaseLabel = null): strin
 {
     $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
     if ($program === 'english') {
-        $phaseOrder = resolve_english_phase_order($assignment);
-        if ($phaseOrder !== null) {
-            return 'phase ' . $phaseOrder;
+        // Use level_id as the section key so every English course gets its own
+        // bucket regardless of whether its name contains a digit.
+        $levelId = trim((string) ($assignment['level_id'] ?? ''));
+        if ($levelId !== '') {
+            return 'english_level_' . $levelId;
         }
     }
 
@@ -319,18 +321,19 @@ function build_sidebar_navigation_groups(array $assignments): array
             continue;
         }
 
-        $phaseOrder = resolve_english_phase_order($assignment);
-        if ($phaseOrder === null) {
+        $phaseLabel = resolve_phase_label($assignment);
+        $levelId = trim((string) ($assignment['level_id'] ?? ''));
+        if ($phaseLabel === '' && $levelId === '') {
             continue;
         }
 
-        $phaseLabel = 'Phase ' . $phaseOrder;
         $phaseKey = resolve_phase_key($assignment, $phaseLabel);
         if (!isset($englishPhasesByKey[$phaseKey])) {
+            $phaseSort = phase_sort_order($assignment, $phaseLabel);
             $englishPhasesByKey[$phaseKey] = [
-                'name' => $phaseLabel,
+                'name' => $phaseLabel !== '' ? $phaseLabel : 'Course',
                 'phase_key' => $phaseKey,
-                'sort' => $phaseOrder,
+                'sort' => $phaseSort,
                 'units' => [],
             ];
         }
