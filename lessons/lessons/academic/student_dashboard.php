@@ -890,6 +890,13 @@ $firstPeriodLabel = upper_label((string) (($myAssignments[0] ?? [])['period'] ??
 $firstAssignmentId = (string) (($myAssignments[0] ?? [])['id'] ?? '');
 $quizUnlocked = false;
 $quizGoHref   = '';   // URL that takes the student directly to the quiz
+$progressHref = '';
+if ($firstAssignmentId !== '') {
+    $progressHref = 'teacher_student_progress.php?' . http_build_query([
+        'student' => $studentId,
+        'assignment' => $firstAssignmentId,
+    ]);
+}
 if ($firstAssignmentId !== '') {
     $pdoQuiz = get_pdo_connection();
     if ($pdoQuiz) {
@@ -1055,6 +1062,7 @@ body {
   border-radius: 12px; background: var(--white);
   color: #444; font-size: 15px; font-weight: 700;
   font-family: 'Inter', sans-serif; cursor: pointer;
+  text-decoration: none;
   box-shadow: 0 2px 8px rgba(123,110,230,0.07);
   transition: background 0.15s, border-color 0.15s, color 0.15s;
   line-height: 1;
@@ -1478,7 +1486,11 @@ body {
 <div class="sd-phase-bar">
     <button class="sd-phase-btn active" data-tab="english">English</button>
     <button class="sd-phase-btn" data-tab="technical">Technical</button>
-    <button class="sd-phase-btn" data-tab="lifeskills">Progress</button>
+    <?php if ($progressHref !== '') { ?>
+        <a class="sd-phase-btn" href="<?php echo h($progressHref); ?>">Progress</a>
+    <?php } else { ?>
+        <button class="sd-phase-btn" data-tab="lifeskills">Progress</button>
+    <?php } ?>
 </div>
 
 <!-- ═══ BODY ═══ -->
