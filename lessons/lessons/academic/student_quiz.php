@@ -62,6 +62,7 @@ function get_pdo_connection(): ?PDO
       $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_unit_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              quiz_errors INTEGER NOT NULL DEFAULT 0,\n              quiz_total INTEGER NOT NULL DEFAULT 0,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id)\n            )\n        ");
       $pdo->exec("\n            CREATE TABLE IF NOT EXISTS student_activity_results (\n              student_id TEXT NOT NULL,\n              assignment_id TEXT NOT NULL,\n              unit_id TEXT NOT NULL,\n              activity_id TEXT NOT NULL,\n              activity_type TEXT NOT NULL DEFAULT '',\n              completion_percent INTEGER NOT NULL DEFAULT 0,\n              errors_count INTEGER NOT NULL DEFAULT 0,\n              total_count INTEGER NOT NULL DEFAULT 0,\n              attempts_count INTEGER NOT NULL DEFAULT 1,\n              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),\n              PRIMARY KEY (student_id, assignment_id, unit_id, activity_id)\n            )\n        ");
       $pdo->exec("ALTER TABLE student_activity_results ADD COLUMN IF NOT EXISTS attempts_count INTEGER NOT NULL DEFAULT 1");
+      $pdo->exec("ALTER TABLE student_unit_results ADD COLUMN IF NOT EXISTS quiz_score_percent INTEGER");
     } catch (Throwable $e) {
     }
   }
@@ -92,86 +93,63 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
     }
 }
 
-function load_unit_scores(PDO $pdo, array $assignment): array
+function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): array
 {
-    $studentId = trim((string) ($assignment['student_id'] ?? ''));
-    $assignmentId = trim((string) ($assignment['id'] ?? ''));
-    $program = strtolower(trim((string) ($assignment['program'] ?? '')));
-    $levelId = trim((string) ($assignment['level_id'] ?? ''));
-    if ($levelId === '') {
-        $levelId = trim((string) ($assignment['phase_id'] ?? ''));
-    }
-    $moduleId = trim((string) ($assignment['module_id'] ?? ''));
-    $courseId = trim((string) ($assignment['course_id'] ?? ''));
-
     if ($studentId === '' || $assignmentId === '') {
         return [];
     }
 
     try {
-        $where = [
-            'sa.student_id = :student_id',
-            'COALESCE(sa.program, \'\') = :program',
-        ];
-        $params = [
+        $stmt = $pdo->prepare("
+            SELECT sur.assignment_id,
+                   sur.unit_id,
+                   sur.completion_percent,
+                   sur.quiz_errors,
+                   sur.quiz_total,
+                   COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent,
+                   COALESCE(NULLIF(TRIM(u.name), ''), 'Unit ' || sur.unit_id) AS unit_name
+            FROM student_unit_results sur
+            LEFT JOIN units u ON u.id::text = sur.unit_id
+            WHERE sur.student_id = :student_id
+              AND sur.assignment_id = :assignment_id
+            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC
+        ");
+        $stmt->execute([
             'student_id' => $studentId,
-            'program' => $program,
-        ];
-
-        if ($courseId !== '') {
-            $where[] = 'COALESCE(sa.course_id, \'\') = :course_id';
-            $params['course_id'] = $courseId;
-        }
-
-        if ($program === 'english' && $levelId !== '') {
-            $where[] = 'COALESCE(sa.level_id, \'\') = :level_id';
-            $params['level_id'] = $levelId;
-        } elseif ($program === 'technical' && $moduleId !== '') {
-            $where[] = 'COALESCE(u.module_id::text, \'\') = :module_id';
-            $params['module_id'] = $moduleId;
-        } else {
-            $where[] = 'sa.id = :assignment_id';
-            $params['assignment_id'] = $assignmentId;
-        }
-
-        $sql = "
-            WITH related_assignments AS (
-              SELECT sa.id AS assignment_id,
-                     sa.unit_id,
-                     sa.updated_at,
-                     u.name AS unit_name,
-                     ROW_NUMBER() OVER (
-                       PARTITION BY COALESCE(sa.unit_id, '')
-                       ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC
-                     ) AS row_num
-              FROM student_assignments sa
-              LEFT JOIN units u ON u.id::text = sa.unit_id
-              WHERE " . implode("\n                AND ", $where) . "
-            )
-            SELECT ra.assignment_id,
-                   ra.unit_id,
-                   COALESCE(ra.unit_name, '') AS unit_name,
-                   COALESCE(sur.completion_percent, 0) AS completion_percent,
-                   COALESCE(sur.quiz_errors, 0) AS quiz_errors,
-                   COALESCE(sur.quiz_total, 0) AS quiz_total,
-                   COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent
-            FROM related_assignments ra
-            LEFT JOIN student_unit_results sur
-              ON sur.student_id = :student_id
-             AND sur.assignment_id = ra.assignment_id
-             AND sur.unit_id = ra.unit_id
-            WHERE ra.row_num = 1
-              AND COALESCE(ra.unit_id, '') <> ''
-            ORDER BY ra.unit_name ASC NULLS LAST, ra.unit_id ASC
-        ";
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
+            'assignment_id' => $assignmentId,
+        ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
         return [];
     }
+}
+
+function ensure_quiz_state_table(PDO $pdo): void
+{
+  try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS student_quiz_state(student_id TEXT NOT NULL,assignment_id TEXT NOT NULL,unit_id TEXT NOT NULL,attempt_number INTEGER NOT NULL DEFAULT 1,quiz_set_json TEXT NOT NULL DEFAULT '[]',answers_json TEXT NOT NULL DEFAULT '{}',is_completed BOOLEAN NOT NULL DEFAULT FALSE,score_percent INTEGER NOT NULL DEFAULT 0,correct_count INTEGER NOT NULL DEFAULT 0,wrong_count INTEGER NOT NULL DEFAULT 0,skip_count INTEGER NOT NULL DEFAULT 0,total_count INTEGER NOT NULL DEFAULT 0,started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),completed_at TIMESTAMPTZ,PRIMARY KEY(student_id,assignment_id,unit_id,attempt_number))");
+  } catch (Throwable $e) {
+  }
+}
+
+function load_student_quiz_attempts(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
+{
+  if ($studentId === '' || $assignmentId === '' || $unitId === '') {
+    return [];
+  }
+
+  try {
+    $stmt = $pdo->prepare("SELECT attempt_number,is_completed,score_percent FROM student_quiz_state WHERE student_id=:s AND assignment_id=:a AND unit_id=:u ORDER BY attempt_number ASC");
+    $stmt->execute([
+      's' => $studentId,
+      'a' => $assignmentId,
+      'u' => $unitId,
+    ]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+  } catch (Throwable $e) {
+    return [];
+  }
 }
 
 function load_activity_scores(PDO $pdo, string $studentId, string $assignmentId, string $unitId): array
@@ -226,13 +204,14 @@ if (!$pdo) {
 }
 
 ensure_student_performance_tables($pdo);
+ensure_quiz_state_table($pdo);
 
 $assignment = load_assignment($pdo, $assignmentId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
   die('You do not have access to this record.');
 }
 
-$rows = load_unit_scores($pdo, $assignment);
+$rows = load_unit_scores($pdo, $studentId, $assignmentId);
 $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
   $courseName = 'Course';
@@ -272,6 +251,7 @@ foreach ($rows as $row) {
     $unitName = 'Unit ' . $unitId;
   }
   $activities = ($unitId !== '' && $rowAssignmentId !== '') ? load_activity_scores($pdo, $studentId, $rowAssignmentId, $unitId) : [];
+  $quizAttempts = ($unitId !== '' && $rowAssignmentId !== '') ? load_student_quiz_attempts($pdo, $studentId, $rowAssignmentId, $unitId) : [];
   $actScore = (int) ($row['completion_percent'] ?? 0);
   $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
   $finalGrade = (int) round(0.6 * $actScore + 0.4 * $quizScore);
@@ -281,11 +261,16 @@ foreach ($rows as $row) {
   }
   $totalFinal += $finalGrade;
 
-  $attemptsDone = 1;
+  $completedQuizAttempts = [];
+  foreach ($quizAttempts as $attempt) {
+    $isCompleted = $attempt['is_completed'] ?? false;
+    if ($isCompleted === true || $isCompleted === 't' || $isCompleted === '1' || (int) $isCompleted === 1) {
+      $completedQuizAttempts[] = $attempt;
+    }
+  }
   $errorBadges = [];
   $activityBadges = [];
   foreach ($activities as $activity) {
-    $attemptsDone = max($attemptsDone, max(1, min(2, (int) ($activity['attempts_count'] ?? 1))));
     $activityType = trim((string) ($activity['activity_type'] ?? ''));
     if ($activityType !== '') {
       $activityBadges[] = ucwords(str_replace('_', ' ', $activityType));
@@ -302,8 +287,8 @@ foreach ($rows as $row) {
     $activityBadges[] = 'Quiz';
   }
 
-  $attemptOne = $quizScore > 0 ? $quizScore : $actScore;
-  $attemptTwo = $attemptsDone >= 2 ? $finalGrade : null;
+  $attemptOne = isset($completedQuizAttempts[0]) ? (int) ($completedQuizAttempts[0]['score_percent'] ?? 0) : 0;
+  $attemptTwo = isset($completedQuizAttempts[1]) ? (int) ($completedQuizAttempts[1]['score_percent'] ?? 0) : null;
 
   $unitCards[] = [
     'assignment_id' => $rowAssignmentId,
