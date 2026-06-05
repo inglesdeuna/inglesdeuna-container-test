@@ -65,7 +65,8 @@ if(!empty($qzAllAttempts)){$qzCompletedCount=count($qzAllAttempts);$qzHasComplet
 $attempt1_score=null;$attempt2_score=null;$attempt_number=max(1,min(2,$att));$max_attempts=2;
 foreach($qzAllAttempts as$qzAttemptRow){$qzAttemptNo=(int)($qzAttemptRow['attempt_number']??0);$qzAttemptPct=(int)($qzAttemptRow['score_percent']??0);if($qzAttemptNo===1)$attempt1_score=$qzAttemptPct;if($qzAttemptNo===2)$attempt2_score=$qzAttemptPct;}
 if($qzLatestCompletedAttempt>0)$attempt_number=max(1,min(2,$qzLatestCompletedAttempt));
-$qzHasFirstAttemptCompleted=$qzHasFirstAttemptCompleted||($att===1&&count($answers)>=$total&&$total>0);
+$qzCurrentAttemptCompleted=count($answers)>=$total&&$total>0;
+$qzHasFirstAttemptCompleted=$qzHasFirstAttemptCompleted||$qzHasCompletedAttempt||$qzCurrentAttemptCompleted;
 $lastAnswered=count($answers)>0?max(array_keys($answers)):-1;$currentQuizIndex=max(0,min($total-1,$lastAnswered+1));$rtParam='&return_to='.urlencode($returnHref);$resultHref='?mode=result&unit='.$unitId.'&assignment='.$assignment.$rtParam;$reviewHref='?mode=review&unit='.$unitId.'&assignment='.$assignment.$rtParam;$quizHref='?mode=quiz&q='.$currentQuizIndex.'&unit='.$unitId.'&assignment='.$assignment.$rtParam;
 $quizStartHref='?mode=quiz&q=0&unit='.$unitId.'&assignment='.$assignment.$rtParam;$qzShowTakeQuizState=in_array($mode,['result','review'],true)&&!$qzHasFirstAttemptCompleted;$qzTabsLocked=!$qzHasFirstAttemptCompleted;$resultTabHref=$qzTabsLocked?$quizStartHref:$resultHref;$reviewTabHref=$qzTabsLocked?$quizStartHref:$reviewHref;
 if($mode==='quiz'&&$qzLocked)$mode='intro';
