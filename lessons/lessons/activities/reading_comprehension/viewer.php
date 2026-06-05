@@ -558,7 +558,7 @@ function EditorView({ title, setTitle, texts, setTexts }) {
   const addQuestion = (textId) => {
     patchText(textId, (t) => ({
       ...t,
-      questions: [...(t.questions || []), normalizeQuestion({ options: ['A) ', 'B) ', 'C) ', 'D) ' })],
+      questions: [...(t.questions || []), normalizeQuestion({ options: ['A) ', 'B) ', 'C) ', 'D) '] })],
     }));
   };
 
