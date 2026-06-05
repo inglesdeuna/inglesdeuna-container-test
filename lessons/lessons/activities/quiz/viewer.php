@@ -29,6 +29,9 @@ function qz_question_possible($q){$type=(string)($q['type']??'');if(in_array($ty
 function qz_answer_score($q,$a){$possible=qz_question_possible($q);if($a===null||$a==='')return['earned'=>0.0,'possible'=>$possible,'correct'=>false];$type=(string)($q['type']??'');if(in_array($type,['fill','writing_practice'],true)){if(strpos((string)($q['correct']??''),'|')!==false){$actual=qz_fill_parts_actual($a);$expected=qz_fill_parts_expected($q['correct']??'');$count=max(count($actual),count($expected),1);$earned=0.0;$totalPossible=0;$allCorrect=true;for($i=0;$i<$count;$i++){$ws=qz_words_score((string)($actual[$i]??''),(string)($expected[$i]??''));$earned+=$ws['earned'];$totalPossible+=$ws['possible'];if(!$ws['correct'])$allCorrect=false;}return['earned'=>$earned,'possible'=>max(1,$totalPossible),'correct'=>$allCorrect&&$earned>0];}$ws=qz_words_score((string)$a,(string)($q['correct']??''));return['earned'=>$ws['earned'],'possible'=>$ws['possible'],'correct'=>$ws['correct']&&$ws['earned']>0];}$correct=qz_correct($q,$a);return['earned'=>$correct?1.0:0.0,'possible'=>1,'correct'=>$correct];}
 function qz_answers_totals(array $quiz,array $answers):array{$earned=0.0;$possible=0;$correctQuestions=0;$skipped=0;foreach($answers as$i=>$a){if(!is_array($a))continue;$q=is_array($quiz[$i]??null)?$quiz[$i]:null;$fallbackPossible=$q!==null?qz_question_possible($q):1;$entryPossible=max(1,(int)($a['possible']??$fallbackPossible));$entryEarned=(float)($a['earned']??(!empty($a['correct'])?1:0));$entryEarned=max(0.0,min((float)$entryPossible,$entryEarned));$possible+=$entryPossible;$earned+=$entryEarned;if(!empty($a['correct']))$correctQuestions++;if(!empty($a['skipped']))$skipped++;}return['earned'=>$earned,'possible'=>$possible,'correct_questions'=>$correctQuestions,'skipped_questions'=>$skipped];}
 function qz_correct($q,$a){if($a===null||$a==='')return false;if($q['type']==='pronunciation')return !empty($a);if($q['type']==='dictation')return qz_norm($a)===qz_norm($q['correct']);if($q['type']==='unscramble')return qz_norm($a)===qz_norm($q['correct']);if($q['type']==='drag_drop'){if(!is_array($a))return false;$expected=array_values($q['correct_words']??[]);if(count($a)!==count($expected))return false;foreach($expected as$i=>$word)if(!isset($a[$i])||qz_norm((string)$a[$i])!==qz_norm($word))return false;return true;}if($q['type']==='match'){if(!is_array($a))return false;foreach($q['pairs']as$i=>$p)if(!isset($a[$i])||(string)$a[$i]!== (string)$p['right'])return false;return true;}if($q['type']==='multiple_choice'){if(is_numeric($q['correct']))return(string)$a===(string)$q['correct'];$opts=$q['options'];return isset($opts[(int)$a])&&qz_norm($opts[(int)$a])===qz_norm($q['correct']);}if($q['type']==='fill'&&strpos((string)$q['correct'],'|')!==false){$actual=array_values(array_filter(array_map('trim',preg_split('/\s*[|,]\s*/',(string)$a)),fn($v)=>$v!==''));$expected=array_values(array_filter(array_map('trim',preg_split('/\s*[|,]\s*/',(string)$q['correct'])),fn($v)=>$v!==''));if(count($actual)!==count($expected))return false;foreach($expected as$i=>$word)if(!isset($actual[$i])||qz_norm((string)$actual[$i])!==qz_norm((string)$word))return false;return true;}return qz_norm($a)===qz_norm($q['correct']);}
+function qz_review_format_value($value):string{if($value===null)return'—';if(is_array($value)){$flat=[];array_walk_recursive($value,function($v)use(&$flat){$txt=trim((string)$v);if($txt!=='')$flat[]=$txt;});return empty($flat)?'—':implode(' · ',$flat);}if(is_bool($value))return$value?'Yes':'No';$txt=trim((string)$value);return$txt!==''?$txt:'—';}
+function qz_review_answer_text(array $q,$answer):string{if($answer===null||$answer==='')return'—';$type=(string)($q['type']??'');if($type==='multiple_choice'&&is_numeric($answer)){$_opts=$q['options']??[];$idx=(int)$answer;if(isset($_opts[$idx]))return qz_review_format_value($_opts[$idx]);}return qz_review_format_value($answer);}
+function qz_review_correct_text(array $q):string{$type=(string)($q['type']??'');if($type==='match'){$_pairs=$q['pairs']??[];$_vals=[];foreach((array)$_pairs as$_pair){$_left=trim((string)($_pair['left']??''));$_right=trim((string)($_pair['right']??''));if($_left!==''||$_right!=='')$_vals[]=$_left!==''&&$_right!==''?($_left.' → '.$_right):($_left.$_right);}return empty($_vals)?'—':implode(' · ',$_vals);}if($type==='drag_drop'){$_words=$q['correct_words']??[];if(is_array($_words)&&!empty($_words))return qz_review_format_value($_words);}return qz_review_format_value($q['correct']??'—');}
 function qz_bool($v):bool{if(is_bool($v))return$v;if(is_int($v)||is_float($v))return((int)$v)===1;$s=strtolower(trim((string)$v));if($s==='')return false;return in_array($s,['1','t','true','y','yes','on'],true);}
 function qz_ensure_quiz_state_table(PDO $pdo):void{try{$pdo->exec("CREATE TABLE IF NOT EXISTS student_quiz_state(student_id TEXT NOT NULL,assignment_id TEXT NOT NULL,unit_id TEXT NOT NULL,attempt_number INTEGER NOT NULL DEFAULT 1,quiz_set_json TEXT NOT NULL DEFAULT '[]',answers_json TEXT NOT NULL DEFAULT '{}',is_completed BOOLEAN NOT NULL DEFAULT FALSE,score_percent INTEGER NOT NULL DEFAULT 0,correct_count INTEGER NOT NULL DEFAULT 0,wrong_count INTEGER NOT NULL DEFAULT 0,skip_count INTEGER NOT NULL DEFAULT 0,total_count INTEGER NOT NULL DEFAULT 0,started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),completed_at TIMESTAMPTZ,PRIMARY KEY(student_id,assignment_id,unit_id,attempt_number))");$pdo->exec("ALTER TABLE student_unit_results ADD COLUMN IF NOT EXISTS quiz_score_percent INTEGER");}catch(Throwable $e){}}
 function qz_count_completed(PDO $pdo,string $sid,int $unit,string $asgn):int{if($sid==='')return 0;try{$st=$pdo->prepare("SELECT COUNT(*) FROM student_quiz_state WHERE student_id=:s AND unit_id=:u AND assignment_id=:a AND is_completed=TRUE");$st->execute(['s'=>$sid,'u'=>(string)$unit,'a'=>(string)$asgn]);return(int)$st->fetchColumn();}catch(Throwable $e){return 0;}}
@@ -46,7 +49,7 @@ function qz_log_result_score_flow(array $payload):void{error_log('[quiz_result_s
 $unitId=isset($_GET['unit'])?intval($_GET['unit']):0;$returnTo=isset($_GET['return_to'])?trim((string)$_GET['return_to']):'';$assignment=qz_resolve_assignment_id($_GET['assignment']??0,$returnTo);$mode=$_GET['mode']??'intro';$qIndex=isset($_GET['q'])?intval($_GET['q']):0;if(!$unitId)die('Missing unit id.');$pdo=get_pdo();$st=$pdo->prepare('SELECT * FROM activities WHERE unit_id=:u ORDER BY id ASC');$st->execute(['u'=>$unitId]);$activities=$st->fetchAll(PDO::FETCH_ASSOC);$all=[];foreach($activities as$act)foreach(qz_normalize_activity($act)as$q)$all[]=$q;if(!$all)die('<div style="font-family:Arial;padding:30px;color:#7c3aed"><h2>No scoreable quiz activities found for this unit.</h2></div>');
 $qzStudentId=trim((string)($_SESSION['student_id']??''));$qzHasDb=$qzStudentId!=='';if($qzHasDb)qz_ensure_quiz_state_table($pdo);$qzDbState=$qzHasDb?qz_load_db_state($pdo,$qzStudentId,$unitId,$assignment):null;error_log("UNIT: ".$unitId);error_log("ASSIGNMENT: ".$assignment);error_log("STUDENT: ".$qzStudentId);error_log("ATTEMPT FOUND: ".json_encode($qzDbState,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 $attKey='qz_attempt_'.$unitId.'_'.$assignment;if(!isset($_SESSION[$attKey])){if($qzDbState!==null)$_SESSION[$attKey]=qz_bool($qzDbState['is_completed'])?(int)$qzDbState['attempt_number']+1:max(1,(int)$qzDbState['attempt_number']);else $_SESSION[$attKey]=1;}$att=(int)$_SESSION[$attKey];$setKey='qz_set_'.$unitId.'_'.$assignment.'_'.$att;$ansKey='qz_answers_'.$unitId.'_'.$assignment.'_'.$att;
-if(isset($_GET['reset'])){$_SESSION[$attKey]=$att+1;unset($_SESSION[$setKey],$_SESSION[$ansKey]);if($qzHasDb)qz_clear_teacher_unlock($pdo,$qzStudentId,$unitId,$assignment);qz_redirect('intro',$unitId,$assignment,null,['return_to'=>$returnTo]);}
+if(isset($_GET['reset'])){$qzCanReset=true;if($qzHasDb){$qzResetAttempts=qz_load_all_completed_attempts($pdo,$qzStudentId,$unitId,$assignment);$qzHasAttempt2=false;foreach($qzResetAttempts as$qzResetAttempt){if((int)($qzResetAttempt['attempt_number']??0)>=2){$qzHasAttempt2=true;break;}}$qzResetMetrics=qz_load_unit_metrics($pdo,$qzStudentId,$unitId,$assignment);$qzResetQuiz=max(0,min(100,(float)($qzResetMetrics['quiz_score_percent']??0)));$qzResetUnit=max(0,min(100,(float)($qzResetMetrics['completion_percent']??0)));$qzResetCombined=($qzResetUnit*0.6)+($qzResetQuiz*0.4);$qzCanReset=($qzResetQuiz<=64||$qzResetCombined<=64)&&!$qzHasAttempt2;}if($qzCanReset){$_SESSION[$attKey]=$att+1;unset($_SESSION[$setKey],$_SESSION[$ansKey]);if($qzHasDb)qz_clear_teacher_unlock($pdo,$qzStudentId,$unitId,$assignment);qz_redirect('intro',$unitId,$assignment,null,['return_to'=>$returnTo]);}qz_redirect('result',$unitId,$assignment,null,['return_to'=>$returnTo]);}
 $qzLocked=false;$qzCompletedCount=0;$qzHasTeacherUnlock=false;$qzCanRetry=true;$qzHasCompletedAttempt=false;$qzHasFirstAttemptCompleted=false;$qzLatestCompletedAttempt=0;
 $qzDbStateForAtt=($qzDbState!==null&&(int)$qzDbState['attempt_number']===$att&&!qz_bool($qzDbState['is_completed']))?$qzDbState:null;
 if(!isset($_SESSION[$setKey])){if($qzDbStateForAtt!==null){$rs=json_decode((string)($qzDbStateForAtt['quiz_set_json']??'[]'),true);if(is_array($rs)&&!empty($rs))$_SESSION[$setKey]=$rs;}if(!isset($_SESSION[$setKey]))$_SESSION[$setKey]=qz_build($all,$unitId,$assignment,$att);}
@@ -67,9 +70,13 @@ foreach($qzAllAttempts as$qzAttemptRow){$qzAttemptNo=(int)($qzAttemptRow['attemp
 if($qzLatestCompletedAttempt>0)$attempt_number=max(1,min(2,$qzLatestCompletedAttempt));
 $qzCurrentAttemptCompleted=count($answers)>=$total&&$total>0;
 $qzHasFirstAttemptCompleted=$qzHasFirstAttemptCompleted||$qzHasCompletedAttempt||$qzCurrentAttemptCompleted;
+$qzCombinedScore=round(($unit_score*0.6)+($quiz_score*0.4),1);
+$qzCanRetryByScore=$quiz_score<=64||$qzCombinedScore<=64;
+$qzCanRetry=($attempt_number<$max_attempts)&&$attempt2_score===null&&$qzCanRetryByScore;
 $lastAnswered=count($answers)>0?max(array_keys($answers)):-1;$currentQuizIndex=max(0,min($total-1,$lastAnswered+1));$rtParam='&return_to='.urlencode($returnHref);$resultHref='?mode=result&unit='.$unitId.'&assignment='.$assignment.$rtParam;$reviewHref='?mode=review&unit='.$unitId.'&assignment='.$assignment.$rtParam;$quizHref='?mode=quiz&q='.$currentQuizIndex.'&unit='.$unitId.'&assignment='.$assignment.$rtParam;
-$quizStartHref='?mode=quiz&q=0&unit='.$unitId.'&assignment='.$assignment.$rtParam;$qzShowTakeQuizState=in_array($mode,['result','review'],true)&&!$qzHasFirstAttemptCompleted;$qzTabsLocked=!$qzHasFirstAttemptCompleted;$resultTabHref=$qzTabsLocked?$quizStartHref:$resultHref;$reviewTabHref=$qzTabsLocked?$quizStartHref:$reviewHref;
+$quizStartHref='?mode=quiz&q=0&unit='.$unitId.'&assignment='.$assignment.$rtParam;$retakeHref='?mode=intro&reset=1&unit='.$unitId.'&assignment='.$assignment.$rtParam;$qzShowTakeQuizState=in_array($mode,['result','review'],true)&&!$qzHasFirstAttemptCompleted;$qzTabsLocked=!$qzHasFirstAttemptCompleted;$resultTabHref=$qzTabsLocked?$quizStartHref:$resultHref;$reviewTabHref=$qzTabsLocked?$quizStartHref:$reviewHref;
 if($mode==='quiz'&&$qzLocked)$mode='intro';
+if($mode==='quiz'&&$qzHasFirstAttemptCompleted&&!$qzCanRetry)qz_redirect('result',$unitId,$assignment,null,['return_to'=>$returnTo]);
 if($mode==='quiz'&&count($answers)>=$total)qz_redirect('result',$unitId,$assignment,null,['return_to'=>$returnTo]);
 if($mode==='quiz'&&isset($answers[$qIndex])&&count($answers)<$total)qz_redirect('quiz',$unitId,$assignment,$currentQuizIndex,['return_to'=>$returnTo]);
 if($mode==='result'&&count($answers)>=$total&&$total>0&&$qzHasDb){$rStats=qz_answers_totals($quiz,$answers);$rTotal=(int)$rStats['possible'];$rC=(int)round($rStats['earned']);$rS=(int)$rStats['skipped_questions'];$rW=max(0,$rTotal-$rC);$rP=$rTotal?round($rStats['earned']/$rTotal*100):0;qz_save_db_state($pdo,$qzStudentId,$unitId,$assignment,$att,$quiz,$answers,true,(int)$rP,$rC,$rW,$rS,$rTotal);qz_save_quiz_unit_score($pdo,$qzStudentId,$unitId,$assignment,(int)$rP);}
@@ -409,14 +416,18 @@ $_qz_skill_map = [
 $questions = [];
 foreach ($quiz as $_qi => $_qq) {
   $_qtype = (string)($_qq['type'] ?? '');
+  $_answerRaw = $answers[$_qi]['answer'] ?? null;
   $questions[] = [
     'id'      => $_qq['id'] ?? $_qi,
+    'number'  => $_qi + 1,
     'text'    => (string)($_qq['question'] ?? ''),
     'skill'   => $_qz_skill_map[$_qtype] ?? 'reading',
     'correct' => !empty($answers[$_qi]['correct']),
+    'answer_text' => qz_review_answer_text($_qq,$_answerRaw),
+    'correct_text' => qz_review_correct_text($_qq),
   ];
 }
-unset($_qi, $_qq, $_qtype, $_qz_skill_map);
+unset($_qi, $_qq, $_qtype, $_qz_skill_map, $_answerRaw);
 if (!function_exists('rw_skill_meta')) {
   function rw_skill_meta($skill) {
     $map = [
@@ -505,7 +516,10 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
     <div style="display:flex;gap:8px;margin-bottom:16px;">
       <?php for ($i = 1; $i <= $max_attempts; $i++):
         $a_score = ($i === 1) ? $attempt1_score : $attempt2_score;
-        if ($i === $attempt_number && $a_score === null) {
+        if ($i === 2 && !$qzCanRetry && $attempt2_score === null) {
+          $tab_bg = '#F5F3FF'; $tab_bd = '#EDE9FA'; $tab_cl = '#9B8FCC';
+          $tab_label = 'Attempt 2 &nbsp;·&nbsp; Locked';
+        } elseif ($i === $attempt_number && $a_score === null) {
           $tab_bg = '#FFF0E6'; $tab_bd = '#FCDDBF'; $tab_cl = '#C2580A';
           $tab_label = 'Attempt ' . $i . ' &nbsp;·&nbsp; In progress';
         } elseif ($i === $attempt_number && $a_score !== null) {
@@ -556,7 +570,7 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
   </div>
 
   <!-- Retry banner — only when attempt 1 done and attempt 2 not yet taken -->
-  <?php if ($attempt_number === 1 && $attempt2_score === null): ?>
+  <?php if ($attempt_number === 1 && $attempt2_score === null && $qzCanRetry): ?>
   <div style="background:linear-gradient(135deg,#FFF0E6,#EDE9FA);border-radius:16px;border:1px solid #FCDDBF;
     padding:16px 18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
     <div style="width:44px;height:44px;background:#F97316;border-radius:12px;
@@ -569,11 +583,31 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
         Review your errors below, then retake to improve your score.
       </div>
     </div>
-    <button onclick="window.location.href='<?= qz_h($quizHref) ?>'"
+    <button onclick="window.location.href='<?= qz_h($retakeHref) ?>'"
       style="background:#F97316;color:#fff;border:none;font-family:'Nunito',sans-serif;
       font-weight:900;font-size:13px;padding:10px 20px;border-radius:8px;cursor:pointer;white-space:nowrap;">
       ✎ Retake quiz
     </button>
+  </div>
+  <?php endif; ?>
+  <?php if ($attempt_number === 1 && $attempt2_score === null && !$qzCanRetry): ?>
+  <?php $qzCorrectionRows=array_values(array_filter($questions,fn($q)=>empty($q['correct']))); ?>
+  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+    <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;margin:0 0 4px;">✅ Results unlocked</div>
+    <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0 0 14px;">Your score reached 65%+; review your errors and correct answers below.</div>
+    <?php if(empty($qzCorrectionRows)): ?>
+      <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:10px 14px;font-size:13px;font-weight:800;color:#166534;">✓ Perfect score — no errors to review.</div>
+    <?php else: ?>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <?php foreach($qzCorrectionRows as $qzRow): ?>
+          <div style="border:1px solid #EDE9FA;border-radius:12px;padding:12px;background:#F9F8FF;">
+            <div style="font-size:13px;font-weight:900;color:#271B5D;margin-bottom:6px;">Q<?= (int)($qzRow['number']??0) ?>. <?= htmlspecialchars((string)($qzRow['text']??'')) ?></div>
+            <div style="font-size:12px;font-weight:700;color:#9B8FCC;">Your answer: <span style="color:#D85A30;"><?= htmlspecialchars((string)($qzRow['answer_text']??'—')) ?></span></div>
+            <div style="font-size:12px;font-weight:700;color:#9B8FCC;">Correct answer: <span style="color:#166534;"><?= htmlspecialchars((string)($qzRow['correct_text']??'—')) ?></span></div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
   </div>
   <?php endif; ?>
 
@@ -655,7 +689,7 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
     <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;
       margin:0 0 4px;">✗ Errors by skill</div>
 
-    <?php if ($attempt_number < $max_attempts): ?>
+    <?php if ($qzCanRetry): ?>
       <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0 0 14px;">
         Click a skill to see which questions to review
       </div>
@@ -678,7 +712,7 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
     </div>
     <?php endif; ?>
 
-    <?php if ($attempt_number >= 2): ?>
+    <?php if ($attempt_number >= 2 || !$qzCanRetry): ?>
     <!-- ATTEMPT 2: Accordion unlocked -->
     <div style="display:flex;flex-direction:column;gap:8px;" id="rw-acc-list">
       <?php foreach ($skill_order as $skill):
@@ -774,12 +808,21 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
       <div style="background:#F5F3FF;border:1px solid #EDE9FA;border-radius:14px;padding:20px;
         text-align:center;margin-top:4px;">
         <div style="font-size:26px;margin-bottom:6px;">🔒</div>
-        <div style="font-family:'Fredoka',sans-serif;font-size:14px;color:#7F77DD;font-weight:600;">
-          Skill breakdown unlocks on Attempt 2
-        </div>
-        <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin-top:4px;">
-          Retake the quiz to see your errors by skill
-        </div>
+        <?php if($qzCanRetry): ?>
+          <div style="font-family:'Fredoka',sans-serif;font-size:14px;color:#7F77DD;font-weight:600;">
+            Skill breakdown unlocks on Attempt 2
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin-top:4px;">
+            Retake the quiz to see your errors by skill
+          </div>
+        <?php else: ?>
+          <div style="font-family:'Fredoka',sans-serif;font-size:14px;color:#166534;font-weight:600;">
+            Results unlocked
+          </div>
+          <div style="font-size:12px;font-weight:700;color:#166534;margin-top:4px;">
+            Retake disabled because your score reached 65% or higher
+          </div>
+        <?php endif; ?>
       </div>
     </div>
     <?php endif; ?>
@@ -833,6 +876,11 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
     font-size:12px;font-weight:800;color:#7F77DD;display:flex;align-items:center;gap:8px;">
     ℹ This was your 2nd and final attempt. Correct answers are not shown to encourage independent practice.
   </div>
+  <?php elseif(!$qzCanRetry): ?>
+  <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:11px 14px;
+    font-size:12px;font-weight:800;color:#166534;display:flex;align-items:center;gap:8px;">
+    ✓ Second attempt locked because your score is 65% or higher.
+  </div>
   <?php endif; ?>
 
   <!-- CTA row -->
@@ -842,8 +890,8 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
       font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">
       ← Back to results
     </button>
-    <?php if ($attempt_number < $max_attempts && $attempt2_score === null): ?>
-    <button onclick="window.location.href='<?= qz_h($quizHref) ?>'"
+    <?php if ($qzCanRetry): ?>
+    <button onclick="window.location.href='<?= qz_h($retakeHref) ?>'"
       style="flex:1;background:#F97316;color:#fff;border:none;
       font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">
       🔁 Retake quiz
