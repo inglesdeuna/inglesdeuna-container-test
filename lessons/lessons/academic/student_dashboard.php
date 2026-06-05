@@ -622,7 +622,7 @@ function load_student_permission(string $studentId): string
  * Returns the direct quiz-viewer URL for the best qualifying unit in an assignment,
  * or '' if the student has not yet unlocked the quiz for this assignment.
  */
-function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignmentId, array $assignmentRow): string
+function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignmentId, array $assignmentRow, string $mode = ''): string
 {
     if ($studentId === '' || $assignmentId === '') return '';
 
@@ -659,12 +659,16 @@ function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignm
         $returnTo = 'student_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $unitId, 'step' => '9999']);
 
         if ($quizActId !== '') {
-            return '../activities/quiz/viewer.php?' . http_build_query([
+            $params = [
                 'id'         => $quizActId,
                 'unit'       => $unitId,
                 'assignment' => $assignmentId,
                 'return_to'  => '../../academic/' . $returnTo,
-            ]);
+            ];
+            if ($mode !== '') {
+                $params['mode'] = $mode;
+            }
+            return '../activities/quiz/viewer.php?' . http_build_query($params);
         }
         return $returnTo;
     } catch (Throwable $e) {
@@ -1580,6 +1584,7 @@ body {
                                 $courseHref = 'student_course.php?' . http_build_query($courseHrefParams);
                                 $scoreSummary   = $scoreSummaryByAssignment[$assignmentId] ?? null;
                                 $cardQuizHref   = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment) : '';
+                                $cardScoreHref  = $cardPdo ? build_assignment_quiz_href($cardPdo, $studentId, $assignmentId, $assignment, 'result') : '';
                                 $avgPct         = is_array($scoreSummary) ? (int) ($scoreSummary['avg_percent'] ?? 0) : 0;
                                 $totalErrors    = is_array($scoreSummary) ? (int) ($scoreSummary['total_errors'] ?? 0) : 0;
                                 $totalQuestions = is_array($scoreSummary) ? (int) ($scoreSummary['total_questions'] ?? 0) : 0;
@@ -1618,7 +1623,11 @@ body {
                                         <?php if ($cardQuizHref !== '') { ?>
                                             <a class="sd-btn" href="<?php echo h($cardQuizHref); ?>">Quiz</a>
                                         <?php } ?>
-                                        <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Scores</a>
+                                        <?php if ($cardScoreHref !== '') { ?>
+                                            <a class="sd-btn" href="<?php echo h($cardScoreHref); ?>">Scores</a>
+                                        <?php } else { ?>
+                                            <a class="sd-btn" href="student_quiz.php?assignment=<?php echo urlencode($assignmentId); ?>">Scores</a>
+                                        <?php } ?>
                                     </div>
 
                                 </div>
