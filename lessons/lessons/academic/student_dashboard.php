@@ -122,6 +122,36 @@ function resolve_phase_label(array $assignment): string
     return $program === 'english' ? 'Basic' : ($program === 'technical' ? 'Semester' : 'Course');
 }
 
+function resolve_english_phase_order(array $assignment): ?int
+{
+    $phaseOrder = extract_first_number((string) ($assignment['phase_name'] ?? ''));
+    if ($phaseOrder === null) {
+        $phaseOrder = extract_first_number((string) ($assignment['period'] ?? ''));
+    }
+    if ($phaseOrder === null || $phaseOrder < 1 || $phaseOrder > 3) {
+        return null;
+    }
+
+    return $phaseOrder;
+}
+
+function resolve_phase_key(array $assignment, ?string $phaseLabel = null): string
+{
+    $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
+    if ($program === 'english') {
+        $phaseOrder = resolve_english_phase_order($assignment);
+        if ($phaseOrder !== null) {
+            return 'phase ' . $phaseOrder;
+        }
+    }
+
+    if ($phaseLabel === null || $phaseLabel === '') {
+        $phaseLabel = resolve_phase_label($assignment);
+    }
+
+    return lower_label($phaseLabel);
+}
+
 function resolve_unit_label(array $assignment): string
 {
     $unitName = normalize_label_spaces((string) ($assignment['unit_name'] ?? ''));
@@ -167,16 +197,18 @@ function build_assignment_sections(array $assignments): array
     foreach ($assignments as $assignment) {
         $program = strtolower(trim((string) ($assignment['program'] ?? 'technical')));
         $phaseLabel = resolve_phase_label($assignment);
+        $phaseKey = resolve_phase_key($assignment, $phaseLabel);
         $unitLabel = resolve_unit_label($assignment);
         $phaseSort = phase_sort_order($assignment, $phaseLabel);
         $unitSort = unit_sort_order($unitLabel);
         $phaseCreatedAt = normalize_label_spaces((string) ($assignment['phase_created_at'] ?? ''));
 
-        $sectionKey = $program . '|' . lower_label($phaseLabel);
+        $sectionKey = $program . '|' . $phaseKey;
         if (!isset($sectionsByKey[$sectionKey])) {
             $sectionsByKey[$sectionKey] = [
                 'program' => $program,
                 'phase_label' => $phaseLabel,
+                'phase_key' => $phaseKey,
                 'phase_sort' => $phaseSort,
                 'phase_created_at' => $phaseCreatedAt,
                 'assignments' => [],
@@ -287,19 +319,17 @@ function build_sidebar_navigation_groups(array $assignments): array
             continue;
         }
 
-        $phaseOrder = extract_first_number((string) ($assignment['phase_name'] ?? ''));
+        $phaseOrder = resolve_english_phase_order($assignment);
         if ($phaseOrder === null) {
-            $phaseOrder = extract_first_number((string) ($assignment['period'] ?? ''));
-        }
-        if ($phaseOrder === null || $phaseOrder < 1 || $phaseOrder > 3) {
             continue;
         }
 
         $phaseLabel = 'Phase ' . $phaseOrder;
-        $phaseKey = (string) $phaseOrder;
+        $phaseKey = resolve_phase_key($assignment, $phaseLabel);
         if (!isset($englishPhasesByKey[$phaseKey])) {
             $englishPhasesByKey[$phaseKey] = [
                 'name' => $phaseLabel,
+                'phase_key' => $phaseKey,
                 'sort' => $phaseOrder,
                 'units' => [],
             ];
@@ -1533,9 +1563,10 @@ body {
                             <?php foreach ((array) $sidebarNavigationGroups['english'] as $phaseItem) { ?>
                                 <?php
                                 $phaseName = (string) ($phaseItem['name'] ?? 'Phase');
+                                $phaseKey = (string) ($phaseItem['phase_key'] ?? lower_label($phaseName));
                                 $phaseUnits = (array) ($phaseItem['units'] ?? []);
                                 ?>
-                                <div class="sd-sidebar-item" data-phase-key="<?php echo h(lower_label($phaseName)); ?>">
+                                <div class="sd-sidebar-item" data-phase-key="<?php echo h($phaseKey); ?>">
                                     <button class="sd-sidebar-item-toggle" type="button" aria-expanded="false">
                                         <span><?php echo h($phaseName); ?></span>
                                         <span class="sd-sidebar-chevron">⌄</span>
@@ -1598,8 +1629,9 @@ body {
                     $sectionProgram = (string) ($section['program'] ?? 'technical');
                     $sectionProgramLabel = upper_label($sectionProgram === 'english' ? 'basic program' : ($sectionProgram === 'technical' ? 'technical program' : 'program'));
                     $sectionPhaseLabel = upper_label((string) ($section['phase_label'] ?? ''));
+                    $sectionPhaseKey = (string) ($section['phase_key'] ?? lower_label($sectionPhaseLabel));
                     ?>
-                    <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>" data-phase-key="<?php echo h(lower_label($sectionPhaseLabel)); ?>">
+                    <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>" data-phase-key="<?php echo h($sectionPhaseKey); ?>">
                         <div class="sd-section-head">
                             <span class="sd-section-program"><?php echo h($sectionProgramLabel); ?></span>
                             <h3 class="sd-section-phase"><?php echo h($sectionPhaseLabel); ?></h3>
