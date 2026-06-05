@@ -181,11 +181,74 @@ $toUpper = function (string $value): string {
 
   return function_exists('mb_strtoupper') ? mb_strtoupper($normalized, 'UTF-8') : strtoupper($normalized);
 };
-$courseName = $toUpper($courseName);
-$periodLabel = $toUpper((string) ($assignment['period'] ?? ''));
+$periodLabel = trim((string) ($assignment['period'] ?? ''));
 $programLabel = ((string) ($assignment['program'] ?? '') === 'english') ? 'INGLÉS' : 'TÉCNICO';
 $teacherName = trim((string) ($assignment['teacher_name'] ?? ''));
 $phaseName   = trim((string) ($assignment['phase_name'] ?? ''));
+
+$unitCards = [];
+$totalFinal = 0;
+$passedCount = 0;
+$unitIndex = 0;
+
+foreach ($rows as $row) {
+  $unitIndex++;
+  $unitId = (string) ($row['unit_id'] ?? '');
+  $unitName = trim((string) ($row['unit_name'] ?? ''));
+  if ($unitName === '') {
+    $unitName = 'Unit ' . $unitId;
+  }
+  $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+  $actScore = (int) ($row['completion_percent'] ?? 0);
+  $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
+  $finalGrade = (int) round(0.6 * $actScore + 0.4 * $quizScore);
+  $status = ($actScore <= 0 && $quizScore <= 0) ? 'pending' : ($finalGrade >= 60 ? 'passed' : 'failed');
+  if ($status === 'passed') {
+    $passedCount++;
+  }
+  $totalFinal += $finalGrade;
+
+  $attemptsDone = 1;
+  $errorBadges = [];
+  $activityBadges = [];
+  foreach ($activities as $activity) {
+    $attemptsDone = max($attemptsDone, max(1, min(2, (int) ($activity['attempts_count'] ?? 1))));
+    $activityType = trim((string) ($activity['activity_type'] ?? ''));
+    if ($activityType !== '') {
+      $activityBadges[] = ucwords(str_replace('_', ' ', $activityType));
+    }
+    $errorsCount = (int) ($activity['errors_count'] ?? 0);
+    if ($errorsCount > 0) {
+      $errorBadges[] = [
+        'count' => $errorsCount,
+        'label' => ($activityType !== '' ? ucwords(str_replace('_', ' ', $activityType)) : 'Activity'),
+      ];
+    }
+  }
+  if (empty($activityBadges) && $status !== 'pending') {
+    $activityBadges[] = 'Quiz';
+  }
+
+  $attemptOne = $quizScore > 0 ? $quizScore : $actScore;
+  $attemptTwo = $attemptsDone >= 2 ? $finalGrade : null;
+
+  $unitCards[] = [
+    'unit_id' => $unitId,
+    'unit_number' => $unitIndex,
+    'unit_name' => $unitName,
+    'act_score' => $actScore,
+    'quiz_score' => $quizScore,
+    'final_grade' => $finalGrade,
+    'status' => $status,
+    'attempt_one' => $attemptOne,
+    'attempt_two' => $attemptTwo,
+    'activities' => $activityBadges,
+    'errors' => $errorBadges,
+  ];
+}
+
+$unitsCount = count($unitCards);
+$avgScore = $unitsCount > 0 ? (int) round($totalFinal / $unitsCount) : 0;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -193,119 +256,420 @@ $phaseName   = trim((string) ($assignment['phase_name'] ?? ''));
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Student Scores</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;family=Nunito:wght@600;700;800;900&amp;display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#fff8f5;
-  --card:#fff;
-  --line:#ffd9d2;
-  --title:#b04632;
-  --text:#5e352e;
-  --muted:#8a625a;
-  --salmon:#fa8072;
-  --salmon-dark:#e8654e;
+  --orange:#F97316;
+  --purple:#7F77DD;
+  --green:#1D9E75;
+  --red:#E24B4A;
+  --muted:#9B8FCC;
+  --bg:#F8F7FF;
+  --card:#ffffff;
+  --line:#EDE9FA;
+  --topline:#F0EEF8;
+  --kicker-bg:#FFF0E6;
+  --kicker-line:#FCDDBF;
+  --kicker-text:#C2580A;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text);padding:22px}
-.page{max-width:980px;margin:0 auto}
-.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
-h1{margin:0;color:var(--title)}
-.back{display:inline-block;padding:10px 16px;border-radius:8px;text-decoration:none;color:#fff;background:linear-gradient(180deg,#a855f7,#7c3aed);font-weight:700;box-shadow:0 4px 12px rgba(124,58,237,.25);transition:filter .18s ease,transform .18s ease}
-.back:hover{filter:brightness(1.08);transform:translateY(-1px)}
-.meta{margin:0 0 14px;color:var(--muted)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
-table{width:100%;border-collapse:collapse}
-th,td{padding:10px;border-bottom:1px solid #ffe3de;text-align:left}
-th{color:var(--title)}
-.empty{color:var(--muted)}
-.btn{display:inline-block;margin-top:12px;padding:10px 14px;border-radius:8px;text-decoration:none;color:#fff;background:var(--salmon);font-weight:700}
-.btn:hover{background:var(--salmon-dark)}
-.unit-row{cursor:pointer;background:var(--card);transition:background .2s ease}
-.unit-row:hover{background:#fff5f0}
-.unit-row.expanded{background:#fff0e6}
-.toggle-icon{display:inline-block;margin-right:8px;transition:transform .2s ease;font-size:14px}
-.unit-row.expanded .toggle-icon{transform:rotate(180deg)}
-.activity-row{display:none;background:#f9f4f1}
-.activity-row.show{display:table-row}
-.activity-cell{padding-left:40px;font-size:14px}
-.activity-type{color:var(--title);font-weight:600}
-.attempt-badge{display:inline-block;margin-left:8px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#efe7ff;color:#5b21b6}
-.activity-percent{color:var(--text)}
-.activity-errors{color:var(--muted)}
+body{
+  margin:0;
+  background:var(--bg);
+  color:#2F2A5E;
+  font-family:'Nunito','Segoe UI',sans-serif;
+}
+.topbar{
+  background:#fff;
+  border-bottom:1px solid var(--topline);
+  padding:18px 24px;
+}
+.topbar-inner{
+  max-width:1120px;
+  margin:0 auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:14px;
+}
+.page-title{
+  margin:0;
+  color:var(--orange);
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:28px;
+  font-weight:700;
+}
+.back-btn{
+  background:#fff;
+  border:2px solid #D8D8D8;
+  color:#111;
+  text-decoration:none;
+  border-radius:18px;
+  padding:10px 18px;
+  font-weight:900;
+  font-size:16px;
+  line-height:1;
+}
+.page{
+  max-width:1120px;
+  margin:0 auto;
+  padding:28px 24px 44px;
+}
+.panel{
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:18px 20px;
+}
+.summary{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:20px;
+  margin-bottom:18px;
+}
+.kicker{
+  display:inline-flex;
+  align-items:center;
+  border:1px solid var(--kicker-line);
+  background:var(--kicker-bg);
+  color:var(--kicker-text);
+  border-radius:999px;
+  padding:6px 20px;
+  font-weight:900;
+  font-size:16px;
+  margin-bottom:10px;
+}
+.course-title{
+  margin:0;
+  color:#383086;
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:36px;
+  line-height:1;
+}
+.meta{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:18px;
+  font-weight:700;
+}
+.stats{
+  display:flex;
+  gap:14px;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+.stat-box{
+  min-width:170px;
+  background:#F1EFFD;
+  border:1px solid #E2DCF6;
+  border-radius:20px;
+  text-align:center;
+  padding:16px 18px 12px;
+}
+.stat-value{
+  display:block;
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:42px;
+  line-height:.95;
+}
+.stat-label{
+  color:var(--muted);
+  font-size:20px;
+  font-weight:800;
+  line-height:1;
+}
+.stat-units{color:var(--orange)}
+.stat-avg{color:var(--purple)}
+.stat-pass{color:var(--green)}
+.filter-wrap{
+  border:1px solid #DDD7F3;
+  border-radius:18px;
+  padding:4px;
+  display:flex;
+  gap:4px;
+  margin-bottom:22px;
+}
+.filter-btn{
+  flex:1;
+  border:1px solid #AFA8C7;
+  background:#fff;
+  color:#111;
+  border-radius:14px;
+  padding:14px 18px;
+  font-size:20px;
+  font-weight:900;
+  cursor:pointer;
+}
+.filter-btn.active{
+  background:#EFECFC;
+  color:#383086;
+  border-color:#CFC8EA;
+}
+.section-title{
+  margin:0 0 14px;
+  color:var(--purple);
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:34px;
+}
+.cards{
+  display:grid;
+  gap:16px;
+}
+.unit-card{
+  background:var(--card);
+  border:1px solid #DED8F3;
+  border-radius:28px;
+  padding:18px 20px;
+}
+.unit-card.pending{
+  border-style:dashed;
+  opacity:.7;
+}
+.unit-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+}
+.unit-number{
+  color:var(--muted);
+  font-size:18px;
+  font-weight:800;
+  margin-bottom:4px;
+}
+.unit-name{
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  color:#383086;
+  font-size:34px;
+  line-height:1.08;
+}
+.result{
+  text-align:right;
+}
+.result-score{
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:50px;
+  line-height:.9;
+}
+.status-pill{
+  display:inline-flex;
+  margin-top:4px;
+  border-radius:999px;
+  padding:6px 14px;
+  font-size:20px;
+  font-weight:900;
+}
+.status-pass{background:#DDF2EA;color:var(--green)}
+.status-fail{background:#FCE9E9;color:var(--red)}
+.status-pending{background:#EFEAFE;color:var(--muted)}
+.progress{
+  margin-top:14px;
+}
+.bar{
+  height:14px;
+  border-radius:999px;
+  background:#EBE7F7;
+  overflow:hidden;
+}
+.bar > span{
+  display:block;
+  height:100%;
+  border-radius:999px;
+}
+.bar-passed{background:linear-gradient(90deg,var(--orange),var(--purple))}
+.bar-failed{background:var(--red)}
+.bar-pending{background:#D9D3EE}
+.percent{
+  text-align:right;
+  color:var(--muted);
+  font-size:18px;
+  font-weight:900;
+}
+.attempts{
+  margin-top:14px;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.attempt{
+  min-width:150px;
+  border-radius:16px;
+  background:#F1EFFD;
+  border:1px solid #E2DCF6;
+  padding:10px 14px;
+}
+.attempt-label{
+  display:block;
+  color:var(--muted);
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+}
+.attempt-value{
+  font-family:'Fredoka','Trebuchet MS',sans-serif;
+  font-size:34px;
+  line-height:1;
+}
+.chips{
+  margin-top:12px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.chip{
+  border-radius:999px;
+  padding:6px 16px;
+  font-size:18px;
+  font-weight:900;
+  line-height:1;
+}
+.chip-activity{background:#EEF2FF;color:#5A57B7}
+.chip-error{background:#FDEDEE;color:var(--red)}
+.empty{
+  color:var(--muted);
+  font-size:18px;
+  font-weight:700;
+}
+.cta{
+  display:inline-block;
+  margin-top:14px;
+  background:var(--orange);
+  color:#fff;
+  text-decoration:none;
+  border-radius:14px;
+  padding:11px 20px;
+  font-size:16px;
+  font-weight:900;
+}
+@media (max-width:920px){
+  .topbar{padding:16px}
+  .page{padding:20px 16px 28px}
+  .page-title{font-size:24px}
+  .course-title{font-size:28px}
+  .meta{font-size:16px}
+  .stat-box{min-width:120px}
+  .stat-value{font-size:30px}
+  .stat-label{font-size:14px}
+  .filter-btn{font-size:16px}
+  .section-title{font-size:26px}
+  .unit-number{font-size:16px}
+  .unit-name{font-size:24px}
+  .result-score{font-size:38px}
+  .status-pill{font-size:16px}
+  .percent{font-size:16px}
+  .attempt-label{font-size:15px}
+  .attempt-value{font-size:24px}
+  .chip{font-size:15px}
+  .empty{font-size:16px}
+  .cta{font-size:18px}
+}
 </style>
 </head>
 <body>
+<div class="topbar">
+  <div class="topbar-inner">
+    <h1 class="page-title">Scores by unit and quiz</h1>
+    <a class="back-btn" href="student_dashboard.php">↩ Back</a>
+  </div>
+</div>
 <div class="page">
-  <div class="top">
-    <h1>Scores by unit and quiz</h1>
-    <a class="back" href="student_dashboard.php">← Back</a>
+  <div class="summary panel">
+    <div>
+      <div class="kicker"><?php echo h($programLabel); ?></div>
+      <h2 class="course-title"><?php echo h($courseName); ?></h2>
+      <div class="meta"><?php if ($teacherName !== '') { ?>Teacher: <?php echo h($teacherName); ?><?php } ?><?php if ($teacherName !== '' && $periodLabel !== '') { ?> · <?php } ?><?php if ($periodLabel !== '') { ?>Period <?php echo h($periodLabel); ?><?php } ?><?php if (($teacherName !== '' || $periodLabel !== '') && $phaseName !== '') { ?> · <?php } ?><?php if ($phaseName !== '') { ?><?php echo h($phaseName); ?><?php } ?></div>
+    </div>
+    <div class="stats">
+      <div class="stat-box">
+        <span class="stat-value stat-units"><?php echo $unitsCount; ?></span>
+        <span class="stat-label">Units</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value stat-avg"><?php echo $avgScore; ?></span>
+        <span class="stat-label">Avg score</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-value stat-pass"><?php echo $passedCount; ?></span>
+        <span class="stat-label">Passed</span>
+      </div>
+    </div>
   </div>
 
-  <p class="meta">Program: <strong><?php echo h($programLabel); ?></strong><?php if ($phaseName !== '') { ?> · Phase: <strong><?php echo h($phaseName); ?></strong><?php } ?><?php if ($teacherName !== '') { ?> · Teacher: <strong><?php echo h($teacherName); ?></strong><?php } ?><?php if ($periodLabel !== '') { ?> · Period: <strong><?php echo h($periodLabel); ?></strong><?php } ?></p>
+  <div class="filter-wrap">
+    <button type="button" class="filter-btn active" data-filter="all">All units</button>
+    <button type="button" class="filter-btn" data-filter="passed">Passed</button>
+    <button type="button" class="filter-btn" data-filter="failed">Failed</button>
+  </div>
 
-  <div class="card">
-    <?php if (empty($rows)) { ?>
+  <h3 class="section-title">Units completed</h3>
+  <div class="cards">
+    <?php if (empty($unitCards)) { ?>
       <div class="empty">There are no scores yet. Complete the unit quizzes and check again.</div>
-      <a class="btn" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to course</a>
+      <a class="cta" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to course</a>
     <?php } else { ?>
-      <table>
-        <thead>
-          <tr>
-            <th>Unit</th>
-            <th>Actividades (60%)</th>
-            <th>Quiz (40%)</th>
-            <th>Nota Final</th>
-          </tr>
-        </thead>
-        <tbody>
-          <?php foreach ($rows as $row) { ?>
-            <?php 
-              $unitLabel = $toUpper((string) ($row['unit_name'] ?: ('Unit ' . (string) ($row['unit_id'] ?? ''))));
-              $unitId = (string) ($row['unit_id'] ?? '');
-              $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
-              $actScore = (int) ($row['completion_percent'] ?? 0);
-              $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
-              $finalGrade = (int) round(0.6 * $actScore + 0.4 * $quizScore);
-            ?>
-            <tr class="unit-row" data-unit-id="<?php echo h($unitId); ?>">
-              <td>
-                <span class="toggle-icon">▼</span>
-                <?php echo h($unitLabel); ?>
-              </td>
-              <td><?php echo $actScore; ?>%</td>
-              <td><?php echo $quizScore; ?>%</td>
-              <td style="font-weight:900;color:<?php echo $finalGrade>=60?'#166534':'#991b1b';?>"><?php echo $finalGrade; ?>%</td>
-            </tr>
-            <?php foreach ($activities as $activity) { ?>
-              <?php $attemptsCount = max(1, min(2, (int) ($activity['attempts_count'] ?? 1))); ?>
-              <tr class="activity-row" data-unit-id="<?php echo h($unitId); ?>">
-                <td class="activity-cell">
-                  <span class="activity-type"><?php echo h((string) ($activity['activity_type'] ?? 'Activity')); ?></span>
-                  <span class="attempt-badge">INTENTO <?php echo $attemptsCount; ?>/2</span>
-                </td>
-                <td class="activity-percent" colspan="2"><?php echo (int) ($activity['completion_percent'] ?? 0); ?>%</td>
-                <td class="activity-errors"><?php echo (int) ($activity['errors_count'] ?? 0); ?>/<?php echo (int) ($activity['total_count'] ?? 0); ?></td>
-              </tr>
+      <?php foreach ($unitCards as $card) { ?>
+        <?php
+          $status = (string) $card['status'];
+          $scoreColor = $status === 'passed' ? 'var(--green)' : ($status === 'failed' ? 'var(--red)' : 'var(--muted)');
+          $statusText = $status === 'passed' ? 'PASSED' : ($status === 'failed' ? 'FAILED' : 'PENDING');
+          $barClass = $status === 'passed' ? 'bar-passed' : ($status === 'failed' ? 'bar-failed' : 'bar-pending');
+          $statusClass = $status === 'passed' ? 'status-pass' : ($status === 'failed' ? 'status-fail' : 'status-pending');
+        ?>
+        <article class="unit-card <?php echo h($status); ?>" data-status="<?php echo h($status); ?>">
+          <div class="unit-head">
+            <div>
+              <div class="unit-number">Unit <?php echo (int) $card['unit_number']; ?></div>
+              <div class="unit-name"><?php echo h((string) $card['unit_name']); ?></div>
+            </div>
+            <div class="result">
+              <div class="result-score" style="color:<?php echo h($scoreColor); ?>"><?php echo (int) $card['final_grade']; ?></div>
+              <span class="status-pill <?php echo h($statusClass); ?>"><?php echo $statusText; ?></span>
+            </div>
+          </div>
+          <div class="progress">
+            <div class="bar"><span class="<?php echo h($barClass); ?>" style="width:<?php echo max(0, min(100, (int) $card['final_grade'])); ?>%"></span></div>
+            <div class="percent"><?php echo max(0, min(100, (int) $card['final_grade'])); ?>%</div>
+          </div>
+          <div class="attempts">
+            <div class="attempt">
+              <span class="attempt-label">Attempt 1</span>
+              <span class="attempt-value" style="color:<?php echo ((int) $card['attempt_one'] >= 60) ? 'var(--green)' : 'var(--red)'; ?>"><?php echo (int) $card['attempt_one']; ?></span>
+            </div>
+            <div class="attempt">
+              <span class="attempt-label">Attempt 2</span>
+              <span class="attempt-value" style="color:<?php echo ((int) ($card['attempt_two'] ?? 0) >= 60) ? 'var(--green)' : 'var(--muted)'; ?>"><?php echo ($card['attempt_two'] === null) ? '–' : (int) $card['attempt_two']; ?></span>
+            </div>
+          </div>
+          <div class="chips">
+            <?php foreach ((array) $card['activities'] as $activityLabel) { ?>
+              <span class="chip chip-activity"><?php echo h((string) $activityLabel); ?></span>
             <?php } ?>
-          <?php } ?>
-        </tbody>
-      </table>
+            <?php foreach ((array) $card['errors'] as $errorInfo) { ?>
+              <span class="chip chip-error">● <?php echo (int) ($errorInfo['count'] ?? 0); ?> errors · <?php echo h((string) ($errorInfo['label'] ?? 'Activity')); ?></span>
+            <?php } ?>
+            <?php if ($status === 'pending') { ?>
+              <a class="cta" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to unit</a>
+            <?php } ?>
+          </div>
+        </article>
+      <?php } ?>
     <?php } ?>
   </div>
 </div>
 <script>
-document.querySelectorAll('.unit-row').forEach(function(row) {
-  row.addEventListener('click', function() {
-    var unitId = this.getAttribute('data-unit-id');
-    var isExpanded = this.classList.contains('expanded');
-    
-    this.classList.toggle('expanded');
-    
-    var allActivityRows = document.querySelectorAll('.activity-row[data-unit-id="' + unitId + '"]');
-    allActivityRows.forEach(function(actRow) {
-      if (isExpanded) {
-        actRow.classList.remove('show');
+document.querySelectorAll('.filter-btn').forEach(function(button) {
+  button.addEventListener('click', function() {
+    var filter = this.getAttribute('data-filter');
+    document.querySelectorAll('.filter-btn').forEach(function(btn) {
+      btn.classList.remove('active');
+    });
+    this.classList.add('active');
+    document.querySelectorAll('.unit-card').forEach(function(card) {
+      var status = card.getAttribute('data-status');
+      if (filter === 'all' || status === filter) {
+        card.style.display = '';
       } else {
-        actRow.classList.add('show');
+        card.style.display = 'none';
       }
     });
   });
