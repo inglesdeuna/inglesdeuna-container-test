@@ -576,12 +576,95 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
   </div>
   <?php endif; ?>
 
-  <!-- CARD 2: Question list — correct/wrong only, NO answers shown -->
-  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
-    <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;margin:0 0 14px;display:flex;align-items:center;gap:8px;">
-      ✔ Question by question
-    </div>
-    <?php if ($show_only_errors): ?><div style="margin:-6px 0 12px;font-size:12px;font-weight:800;color:#9B8FCC;">Second attempt: showing only errors.</div><?php endif; ?>
+  <?php if (!function_exists('rw_skill_config')) {
+    function rw_skill_config($skill) {
+      $cfg = [
+        'speaking'  => [
+          'label'    => 'Speaking',
+          'icon'     => '🎤',
+          'acts'     => 'Pronunciation · Roleplay',
+          'hdr_bg'   => '#FFF7F0',
+          'border'   => '#FCDDBF',
+          'badge_bg' => '#FFF0E6',
+          'badge_cl' => '#C2580A',
+          'name_cl'  => '#C2580A',
+          'icon_bg'  => '#FFF0E6',
+        ],
+        'listening' => [
+          'label'    => 'Listening',
+          'icon'     => '🎧',
+          'acts'     => 'Listen &amp; Order · Order the Sentences · Dictation',
+          'hdr_bg'   => '#F5F3FF',
+          'border'   => '#C4BDFF',
+          'badge_bg' => '#EDE9FA',
+          'badge_cl' => '#534AB7',
+          'name_cl'  => '#534AB7',
+          'icon_bg'  => '#EDE9FA',
+        ],
+        'writing'   => [
+          'label'    => 'Writing',
+          'icon'     => '✏️',
+          'acts'     => 'Fill in Blank · Writing Practice',
+          'hdr_bg'   => '#F0FDF4',
+          'border'   => '#9FE1CB',
+          'badge_bg' => '#EAFAF3',
+          'badge_cl' => '#0F6E56',
+          'name_cl'  => '#0F6E56',
+          'icon_bg'  => '#DCFCE7',
+        ],
+        'reading'   => [
+          'label'    => 'Reading',
+          'icon'     => '📖',
+          'acts'     => 'Match · Matching Lines · Multiple Choice',
+          'hdr_bg'   => '#F9F8FF',
+          'border'   => '#EDE9FA',
+          'badge_bg' => '#F0EEF8',
+          'badge_cl' => '#9B8FCC',
+          'name_cl'  => '#9B8FCC',
+          'icon_bg'  => '#F0EEF8',
+        ],
+      ];
+      return $cfg[$skill] ?? $cfg['reading'];
+    }
+  } ?>
+
+  <?php
+  // Display-only counters — NOT score logic
+  $rw_prev_errors_by_skill = $errors_by_skill;
+  $rw_prev_error_total = $error_total;
+  $errors_by_skill = ['speaking'=>[], 'listening'=>[], 'writing'=>[], 'reading'=>[]];
+  $error_total = 0;
+  foreach ($questions as $idx => $q) {
+    if (!$q['correct']) {
+      $error_total++;
+      $sk = $q['skill'] ?? 'reading';
+      if (!isset($errors_by_skill[$sk])) $errors_by_skill[$sk] = [];
+      $errors_by_skill[$sk][] = [
+        'number' => $q['number'] ?? ($idx + 1),
+        'text'   => $q['text'],
+      ];
+    }
+  }
+  $skill_order = ['listening', 'speaking', 'writing', 'reading'];
+  ?>
+
+  <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;
+    box-shadow:0 4px 32px rgba(127,119,221,.10);">
+
+    <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:17px;font-weight:600;
+      margin:0 0 4px;">✗ Errors by skill</div>
+
+    <?php if ($attempt_number < $max_attempts): ?>
+      <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0 0 14px;">
+        Click a skill to see which questions to review
+      </div>
+    <?php else: ?>
+      <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin:0 0 14px;">
+        Review your errors before your final attempt
+      </div>
+    <?php endif; ?>
+
+    <!-- Error summary -->
     <?php if ($error_total > 0): ?>
     <div style="background:#FAECE7;border:1px solid #F5C4B3;border-radius:12px;padding:10px 14px;
       margin-bottom:14px;font-size:13px;font-weight:800;color:#D85A30;display:flex;align-items:center;gap:8px;">
@@ -590,39 +673,141 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
     <?php else: ?>
     <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:10px 14px;
       margin-bottom:14px;font-size:13px;font-weight:800;color:#166534;display:flex;align-items:center;gap:8px;">
-      ✓ Perfect score — all <?= $total_count ?> questions correct!
+      ✓ Perfect score — no errors!
     </div>
     <?php endif; ?>
+
+    <?php if ($attempt_number >= 2): ?>
+    <!-- ATTEMPT 2: Accordion unlocked -->
+    <div style="display:flex;flex-direction:column;gap:8px;" id="rw-acc-list">
+      <?php foreach ($skill_order as $skill):
+        $cfg    = rw_skill_config($skill);
+        $errs   = $errors_by_skill[$skill] ?? [];
+        $ecount = count($errs);
+        $disabled = $ecount === 0;
+        $acc_id = 'rw-acc-' . $skill;
+      ?>
+      <div style="border-radius:16px;border:2px solid <?= $cfg['border'] ?>;overflow:hidden;
+        <?= $disabled ? 'opacity:.45;pointer-events:none;' : '' ?>"
+        id="<?= $acc_id ?>">
+
+        <!-- Header -->
+        <div onclick="rwToggle('<?= $skill ?>')"
+          style="display:flex;align-items:center;gap:12px;padding:13px 16px;
+          background:<?= $cfg['hdr_bg'] ?>;cursor:<?= $disabled ? 'default' : 'pointer' ?>;">
+          <div style="width:36px;height:36px;border-radius:10px;background:<?= $cfg['icon_bg'] ?>;
+            display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+            <?= $cfg['icon'] ?>
+          </div>
+          <div style="flex:1;">
+            <div style="font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;color:<?= $cfg['name_cl'] ?>;">
+              <?= $cfg['label'] ?>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#9B8FCC;margin-top:1px;"><?= $cfg['acts'] ?></div>
+          </div>
+          <span style="font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;border-radius:999px;
+            padding:3px 11px;background:<?= $cfg['badge_bg'] ?>;color:<?= $cfg['badge_cl'] ?>;
+            border:1px solid <?= $cfg['border'] ?>;">
+            <?= $ecount ?> error<?= $ecount !== 1 ? 's' : '' ?>
+          </span>
+          <?php if (!$disabled): ?>
+          <span id="rw-chev-<?= $skill ?>"
+            style="font-size:16px;color:#9B8FCC;transition:transform .25s;flex-shrink:0;">▾</span>
+          <?php endif; ?>
+        </div>
+
+        <!-- Body -->
+        <?php if (!$disabled): ?>
+        <div id="rw-body-<?= $skill ?>"
+          style="max-height:0;overflow:hidden;transition:max-height .3s ease;">
+          <div style="display:flex;flex-direction:column;gap:7px;padding:0 14px 14px;">
+            <?php foreach ($errs as $e): ?>
+            <div style="display:flex;align-items:center;gap:11px;padding:10px 13px;border-radius:12px;
+              background:#FAECE7;border:1px solid #F5C4B3;">
+              <div style="width:26px;height:26px;border-radius:50%;background:#FEE2E2;color:#991B1B;
+                display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;
+                font-size:13px;font-weight:700;flex-shrink:0;">
+                <?= $e['number'] ?>
+              </div>
+              <div style="flex:1;font-size:13px;font-weight:700;color:#271B5D;">
+                <?= htmlspecialchars($e['text']) ?>
+              </div>
+              <span style="font-size:15px;color:#D85A30;font-weight:900;">✗</span>
+            </div>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+    <?php else: ?>
+    <!-- ATTEMPT 1: Locked state -->
     <div style="display:flex;flex-direction:column;gap:8px;">
-    <?php foreach ($review_questions as $idx => $q):
-      $sk   = rw_skill_meta($q['skill'] ?? 'reading');
-      $ok   = $q['correct'];
-      $row_bg  = $ok ? '#F0FDF4'  : '#FAECE7';
-      $row_bd  = $ok ? '#9FE1CB'  : '#F5C4B3';
-      $num_bg  = $ok ? '#DCFCE7'  : '#FEE2E2';
-      $num_cl  = $ok ? '#166534'  : '#991B1B';
-      $icon    = $ok ? '✓'        : '✗';
-      $icon_cl = $ok ? '#1D9E75'  : '#D85A30';
-    ?>
-    <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;
-      border:1px solid <?= $row_bd ?>;background:<?= $row_bg ?>;">
-      <div style="width:28px;height:28px;border-radius:50%;background:<?= $num_bg ?>;color:<?= $num_cl ?>;
-        display:flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;
-        font-size:13px;font-weight:700;flex-shrink:0;">
-        <?= $idx + 1 ?>
+      <?php foreach ($skill_order as $skill):
+        $cfg = rw_skill_config($skill);
+      ?>
+      <div style="border-radius:16px;border:2px solid <?= $cfg['border'] ?>;overflow:hidden;opacity:.45;">
+        <div style="display:flex;align-items:center;gap:12px;padding:13px 16px;background:<?= $cfg['hdr_bg'] ?>;">
+          <div style="width:36px;height:36px;border-radius:10px;background:<?= $cfg['icon_bg'] ?>;
+            display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">
+            <?= $cfg['icon'] ?>
+          </div>
+          <div style="flex:1;">
+            <div style="font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;color:<?= $cfg['name_cl'] ?>;">
+              <?= $cfg['label'] ?>
+            </div>
+            <div style="font-size:11px;font-weight:700;color:#9B8FCC;margin-top:1px;">—</div>
+          </div>
+          <span style="font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;border-radius:999px;
+            padding:3px 11px;background:<?= $cfg['badge_bg'] ?>;color:<?= $cfg['badge_cl'] ?>;
+            border:1px solid <?= $cfg['border'] ?>;">
+            ? errors
+          </span>
+        </div>
       </div>
-      <div style="flex:1;font-size:13px;font-weight:700;color:#271B5D;">
-        <?= htmlspecialchars($q['text']) ?>
+      <?php endforeach; ?>
+
+      <div style="background:#F5F3FF;border:1px solid #EDE9FA;border-radius:14px;padding:20px;
+        text-align:center;margin-top:4px;">
+        <div style="font-size:26px;margin-bottom:6px;">🔒</div>
+        <div style="font-family:'Fredoka',sans-serif;font-size:14px;color:#7F77DD;font-weight:600;">
+          Skill breakdown unlocks on Attempt 2
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin-top:4px;">
+          Retake the quiz to see your errors by skill
+        </div>
       </div>
-      <span style="background:<?= $sk['bg'] ?>;color:<?= $sk['color'] ?>;font-size:11px;font-weight:800;
-        border-radius:999px;padding:2px 9px;white-space:nowrap;">
-        <?= $sk['label'] ?>
-      </span>
-      <span style="font-size:16px;color:<?= $icon_cl ?>;font-weight:900;"><?= $icon ?></span>
     </div>
-    <?php endforeach; ?>
-    </div>
+    <?php endif; ?>
+
   </div>
+  <?php
+  $errors_by_skill = $rw_prev_errors_by_skill;
+  $error_total = $rw_prev_error_total;
+  unset($rw_prev_errors_by_skill, $rw_prev_error_total, $skill_order);
+  ?>
+
+  <script>
+  // Accordion toggle — add once, check if rwToggle already defined
+  if (typeof rwToggle === 'undefined') {
+    function rwToggle(skill) {
+      var body  = document.getElementById('rw-body-' + skill);
+      var chev  = document.getElementById('rw-chev-' + skill);
+      if (!body) return;
+      var isOpen = body.style.maxHeight && body.style.maxHeight !== '0px';
+      if (isOpen) {
+        body.style.maxHeight = '0px';
+        if (chev) chev.style.transform = 'rotate(0deg)';
+      } else {
+        body.style.maxHeight = body.scrollHeight + 'px';
+        if (chev) chev.style.transform = 'rotate(180deg)';
+      }
+    }
+  }
+  </script>
 
   <!-- CARD 3: Study tips by skill (only skills with errors) -->
   <?php if (!empty($errors_by_skill)): ?>
