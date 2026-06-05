@@ -659,6 +659,18 @@ function build_assignment_quiz_href(PDO $pdo, string $studentId, string $assignm
         $returnTo = 'student_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $unitId, 'step' => '9999']);
 
         if ($quizActId !== '') {
+            // For result/score mode, only return a URL when the student has at least one completed attempt.
+            // If no attempt has been completed yet, fall through so the fallback (student_quiz.php) is used.
+            if ($mode === 'result') {
+                try {
+                    $stmt = $pdo->prepare("SELECT 1 FROM student_quiz_state WHERE student_id = :sid AND assignment_id = :aid AND unit_id = :uid AND is_completed = TRUE LIMIT 1");
+                    $stmt->execute(['sid' => $studentId, 'aid' => $assignmentId, 'uid' => $unitId]);
+                    if (!$stmt->fetchColumn()) return '';
+                } catch (Throwable $e) {
+                    return '';
+                }
+            }
+
             $params = [
                 'id'         => $quizActId,
                 'unit'       => $unitId,
