@@ -892,8 +892,7 @@ $quizUnlocked = false;
 $quizGoHref   = '';   // URL that takes the student directly to the quiz
 $progressHref = '';
 if ($firstAssignmentId !== '') {
-    $progressHref = 'teacher_student_progress.php?' . http_build_query([
-        'student' => $studentId,
+    $progressHref = 'student_quiz.php?' . http_build_query([
         'assignment' => $firstAssignmentId,
     ]);
 }
