@@ -64,6 +64,7 @@ $activityTypes = [
     "coloring" => "Coloring Page",
     "writing_practice" => "Writing Practice",
     "question_answer" => "Question Answer",
+    "reading_comprehension" => "Reading Comprehension",
     "fillblank" => "Fill in the Blank",
     "roleplay" => "Roleplay",
     "roleplay_kids" => "Roleplay (Kids)",
