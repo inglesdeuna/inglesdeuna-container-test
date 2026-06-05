@@ -70,10 +70,12 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
 {
     try {
         $stmt = $pdo->prepare("
-            SELECT sa.id, sa.student_id, sa.course_id, sa.program, sa.period,
+            SELECT sa.id, sa.student_id, sa.course_id, sa.level_id, sa.unit_id, sa.program, sa.period,
                    c.name AS course_name,
                    t.name AS teacher_name,
-                   ep.name AS phase_name
+                   ep.name AS phase_name,
+                   u.phase_id::text AS phase_id,
+                   u.module_id::text AS module_id
             FROM student_assignments sa
             LEFT JOIN courses c ON c.id::text = sa.course_id
             LEFT JOIN teachers t ON t.id = sa.teacher_id
@@ -90,14 +92,81 @@ function load_assignment(PDO $pdo, string $assignmentId): ?array
     }
 }
 
-function load_unit_scores(PDO $pdo, string $studentId, string $assignmentId): array
+function load_unit_scores(PDO $pdo, array $assignment): array
 {
+    $studentId = trim((string) ($assignment['student_id'] ?? ''));
+    $assignmentId = trim((string) ($assignment['id'] ?? ''));
+    $program = strtolower(trim((string) ($assignment['program'] ?? '')));
+    $levelId = trim((string) ($assignment['level_id'] ?? ''));
+    if ($levelId === '') {
+        $levelId = trim((string) ($assignment['phase_id'] ?? ''));
+    }
+    $moduleId = trim((string) ($assignment['module_id'] ?? ''));
+    $courseId = trim((string) ($assignment['course_id'] ?? ''));
+
+    if ($studentId === '' || $assignmentId === '') {
+        return [];
+    }
+
     try {
-    $stmt = $pdo->prepare("\n            SELECT sur.unit_id, sur.completion_percent, sur.quiz_errors, sur.quiz_total, COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent, u.name AS unit_name\n            FROM student_unit_results sur\n            LEFT JOIN units u ON u.id::text = sur.unit_id\n            WHERE sur.student_id = :student_id\n              AND sur.assignment_id = :assignment_id\n            ORDER BY u.name ASC NULLS LAST, sur.unit_id ASC\n        ");
-        $stmt->execute([
+        $where = [
+            'sa.student_id = :student_id',
+            'COALESCE(sa.program, \'\') = :program',
+        ];
+        $params = [
             'student_id' => $studentId,
-            'assignment_id' => $assignmentId,
-        ]);
+            'program' => $program,
+        ];
+
+        if ($courseId !== '') {
+            $where[] = 'COALESCE(sa.course_id, \'\') = :course_id';
+            $params['course_id'] = $courseId;
+        }
+
+        if ($program === 'english' && $levelId !== '') {
+            $where[] = 'COALESCE(sa.level_id, \'\') = :level_id';
+            $params['level_id'] = $levelId;
+        } elseif ($program === 'technical' && $moduleId !== '') {
+            $where[] = 'COALESCE(u.module_id::text, \'\') = :module_id';
+            $params['module_id'] = $moduleId;
+        } else {
+            $where[] = 'sa.id = :assignment_id';
+            $params['assignment_id'] = $assignmentId;
+        }
+
+        $sql = "
+            WITH related_assignments AS (
+              SELECT sa.id AS assignment_id,
+                     sa.unit_id,
+                     sa.updated_at,
+                     u.name AS unit_name,
+                     ROW_NUMBER() OVER (
+                       PARTITION BY COALESCE(sa.unit_id, '')
+                       ORDER BY sa.updated_at DESC NULLS LAST, sa.id DESC
+                     ) AS row_num
+              FROM student_assignments sa
+              LEFT JOIN units u ON u.id::text = sa.unit_id
+              WHERE " . implode("\n                AND ", $where) . "
+            )
+            SELECT ra.assignment_id,
+                   ra.unit_id,
+                   COALESCE(ra.unit_name, '') AS unit_name,
+                   COALESCE(sur.completion_percent, 0) AS completion_percent,
+                   COALESCE(sur.quiz_errors, 0) AS quiz_errors,
+                   COALESCE(sur.quiz_total, 0) AS quiz_total,
+                   COALESCE(sur.quiz_score_percent, 0) AS quiz_score_percent
+            FROM related_assignments ra
+            LEFT JOIN student_unit_results sur
+              ON sur.student_id = :student_id
+             AND sur.assignment_id = ra.assignment_id
+             AND sur.unit_id = ra.unit_id
+            WHERE ra.row_num = 1
+              AND COALESCE(ra.unit_id, '') <> ''
+            ORDER BY ra.unit_name ASC NULLS LAST, ra.unit_id ASC
+        ";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     } catch (Throwable $e) {
@@ -163,7 +232,7 @@ if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
   die('You do not have access to this record.');
 }
 
-$rows = load_unit_scores($pdo, $studentId, $assignmentId);
+$rows = load_unit_scores($pdo, $assignment);
 $courseName = trim((string) ($assignment['course_name'] ?? 'Course'));
 if ($courseName === '') {
   $courseName = 'Course';
@@ -193,12 +262,16 @@ $unitIndex = 0;
 
 foreach ($rows as $row) {
   $unitIndex++;
+  $rowAssignmentId = trim((string) ($row['assignment_id'] ?? ''));
+  if ($rowAssignmentId === '') {
+    $rowAssignmentId = $assignmentId;
+  }
   $unitId = (string) ($row['unit_id'] ?? '');
   $unitName = trim((string) ($row['unit_name'] ?? ''));
   if ($unitName === '') {
     $unitName = 'Unit ' . $unitId;
   }
-  $activities = $unitId !== '' ? load_activity_scores($pdo, $studentId, $assignmentId, $unitId) : [];
+  $activities = ($unitId !== '' && $rowAssignmentId !== '') ? load_activity_scores($pdo, $studentId, $rowAssignmentId, $unitId) : [];
   $actScore = (int) ($row['completion_percent'] ?? 0);
   $quizScore = (int) ($row['quiz_score_percent'] ?? 0);
   $finalGrade = (int) round(0.6 * $actScore + 0.4 * $quizScore);
@@ -233,6 +306,7 @@ foreach ($rows as $row) {
   $attemptTwo = $attemptsDone >= 2 ? $finalGrade : null;
 
   $unitCards[] = [
+    'assignment_id' => $rowAssignmentId,
     'unit_id' => $unitId,
     'unit_number' => $unitIndex,
     'unit_name' => $unitName,
@@ -601,10 +675,10 @@ body{
     <button type="button" class="filter-btn" data-filter="failed">Failed</button>
   </div>
 
-  <h3 class="section-title">Units completed</h3>
+  <h3 class="section-title">Assigned units</h3>
   <div class="cards">
     <?php if (empty($unitCards)) { ?>
-      <div class="empty">There are no scores yet. Complete the unit quizzes and check again.</div>
+      <div class="empty">There are no assigned units yet.</div>
       <a class="cta" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to course</a>
     <?php } else { ?>
       <?php foreach ($unitCards as $card) { ?>
@@ -648,7 +722,7 @@ body{
               <span class="chip chip-error">● <?php echo (int) ($errorInfo['count'] ?? 0); ?> errors · <?php echo h((string) ($errorInfo['label'] ?? 'Activity')); ?></span>
             <?php } ?>
             <?php if ($status === 'pending') { ?>
-              <a class="cta" href="student_course.php?assignment=<?php echo urlencode($assignmentId); ?>">Go to unit</a>
+              <a class="cta" href="student_course.php?assignment=<?php echo urlencode((string) ($card['assignment_id'] ?? $assignmentId)); ?>&unit=<?php echo urlencode((string) ($card['unit_id'] ?? '')); ?>">Go to unit</a>
             <?php } ?>
           </div>
         </article>
