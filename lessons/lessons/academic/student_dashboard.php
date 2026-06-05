@@ -1382,6 +1382,29 @@ body {
   .sd-main-header { flex-direction: column; gap: 6px; }
   .sd-main-meta { text-align: left; }
 }
+
+/* ─── No-units Popup ─── */
+.sd-popup-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 999;
+}
+.sd-popup-overlay[hidden] { display: none; }
+.sd-popup-box {
+  background: #fff; border-radius: 16px; padding: 32px 36px;
+  text-align: center; max-width: 320px; width: 90%;
+  box-shadow: 0 8px 32px rgba(48,36,143,0.18);
+}
+.sd-popup-msg {
+  font-size: 16px; font-weight: 700; color: #30248F; margin-bottom: 20px;
+}
+.sd-popup-close {
+  padding: 10px 32px; border: none; border-radius: 10px;
+  background: #7B6EE6; color: #fff; font-size: 14px;
+  font-weight: 700; font-family: 'Inter', sans-serif; cursor: pointer;
+  transition: opacity 0.15s;
+}
+.sd-popup-close:hover { opacity: 0.87; }
 </style>
 </head>
 <body>
@@ -1512,7 +1535,7 @@ body {
                                 $phaseName = (string) ($phaseItem['name'] ?? 'Phase');
                                 $phaseUnits = (array) ($phaseItem['units'] ?? []);
                                 ?>
-                                <div class="sd-sidebar-item">
+                                <div class="sd-sidebar-item" data-phase-key="<?php echo h(lower_label($phaseName)); ?>">
                                     <button class="sd-sidebar-item-toggle" type="button" aria-expanded="false">
                                         <span><?php echo h($phaseName); ?></span>
                                         <span class="sd-sidebar-chevron">⌄</span>
@@ -1576,7 +1599,7 @@ body {
                     $sectionProgramLabel = upper_label($sectionProgram === 'english' ? 'basic program' : ($sectionProgram === 'technical' ? 'technical program' : 'program'));
                     $sectionPhaseLabel = upper_label((string) ($section['phase_label'] ?? ''));
                     ?>
-                    <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>">
+                    <section class="sd-phase-section" data-program="<?php echo h($sectionProgram); ?>" data-phase-key="<?php echo h(lower_label($sectionPhaseLabel)); ?>">
                         <div class="sd-section-head">
                             <span class="sd-section-program"><?php echo h($sectionProgramLabel); ?></span>
                             <h3 class="sd-section-phase"><?php echo h($sectionPhaseLabel); ?></h3>
@@ -1653,6 +1676,13 @@ body {
     </main>
 </div>
 
+<div id="sd-no-units-popup" class="sd-popup-overlay" hidden>
+    <div class="sd-popup-box">
+        <p class="sd-popup-msg">No hay units</p>
+        <button class="sd-popup-close" type="button" id="sd-popup-close-btn">OK</button>
+    </div>
+</div>
+
 <script>
 (function () {
     var btns  = document.querySelectorAll('.sd-phase-btn');
@@ -1661,7 +1691,16 @@ body {
     var sidebarGroupToggles = document.querySelectorAll('.sd-sidebar-toggle');
     var sidebarItemToggles = document.querySelectorAll('.sd-sidebar-item-toggle');
     var title = document.getElementById('sd-main-title');
+    var popup = document.getElementById('sd-no-units-popup');
+    var popupCloseBtn = document.getElementById('sd-popup-close-btn');
     var labels = { english: 'English Courses', technical: 'Technical Courses', lifeskills: 'Life Skills' };
+    var activeEnglishPhaseKey = null;
+
+    if (popupCloseBtn) {
+        popupCloseBtn.addEventListener('click', function () {
+            if (popup) { popup.hidden = true; }
+        });
+    }
 
     function syncSidebar(tab) {
         sidebarGroups.forEach(function (group) {
@@ -1671,8 +1710,24 @@ body {
         });
     }
 
+    function resetEnglishPhaseFilter() {
+        sections.forEach(function (s) {
+            if ((s.dataset.program || '') === 'english') {
+                s.style.display = '';
+            }
+        });
+        document.querySelectorAll('.sd-sidebar-group[data-program="english"] .sd-sidebar-item').forEach(function (i) {
+            i.classList.remove('is-open');
+            var t = i.querySelector('.sd-sidebar-item-toggle');
+            if (t) { t.setAttribute('aria-expanded', 'false'); }
+        });
+        activeEnglishPhaseKey = null;
+    }
+
     function applyTab(tab) {
         btns.forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+        // Reset English phase filter when switching tabs so all sections restore their tab-driven visibility
+        resetEnglishPhaseFilter();
         sections.forEach(function (section) {
             var prog = section.dataset.program || '';
             var show = (tab === 'english'    && prog === 'english')
@@ -1698,9 +1753,52 @@ body {
         toggle.addEventListener('click', function () {
             var item = this.closest('.sd-sidebar-item');
             if (!item) { return; }
-            var nextOpen = !item.classList.contains('is-open');
-            item.classList.toggle('is-open', nextOpen);
-            this.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+
+            var group = item.closest('.sd-sidebar-group');
+            var isEnglishGroup = group && (group.dataset.program || '') === 'english';
+
+            if (isEnglishGroup) {
+                var phaseKey = item.dataset.phaseKey || '';
+                var isCurrentlyOpen = item.classList.contains('is-open');
+
+                // Close all other items in this group
+                group.querySelectorAll('.sd-sidebar-item').forEach(function (i) {
+                    if (i !== item) {
+                        i.classList.remove('is-open');
+                        var t = i.querySelector('.sd-sidebar-item-toggle');
+                        if (t) { t.setAttribute('aria-expanded', 'false'); }
+                    }
+                });
+
+                var nextOpen = !isCurrentlyOpen;
+                item.classList.toggle('is-open', nextOpen);
+                this.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+
+                if (nextOpen && phaseKey) {
+                    // Filter main English sections to this phase
+                    var found = false;
+                    sections.forEach(function (s) {
+                        if ((s.dataset.program || '') !== 'english') { return; }
+                        var matches = (s.dataset.phaseKey || '') === phaseKey;
+                        s.style.display = matches ? '' : 'none';
+                        if (matches) { found = true; }
+                    });
+                    activeEnglishPhaseKey = phaseKey;
+                    if (!found) {
+                        if (popup) { popup.hidden = false; }
+                    }
+                } else {
+                    // Collapsed: restore all English sections
+                    sections.forEach(function (s) {
+                        if ((s.dataset.program || '') === 'english') { s.style.display = ''; }
+                    });
+                    activeEnglishPhaseKey = null;
+                }
+            } else {
+                var nextOpen = !item.classList.contains('is-open');
+                item.classList.toggle('is-open', nextOpen);
+                this.setAttribute('aria-expanded', nextOpen ? 'true' : 'false');
+            }
         });
     });
 
