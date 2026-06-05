@@ -398,14 +398,14 @@ body{background:#F8F7FF;font-family:'Nunito',sans-serif;min-height:100vh;}
   <?php endforeach; ?>
   </div>
 
-  <div class="course-summary" id="cs_ <?php echo $cId; ?>" style="<php echo $isOpen?'':'hisplay:none;'; ?>">
+  <div class="course-summary" id="cs_<?php echo $cId; ?>" style="<?php echo $isOpen?'':'display:none;'; ?>">
     <?php if ($c_passed>0): ?><div class="cs-stat"><span class="cs-num" style="color:#1D9E75;"><?php echo $c_passed; ?></span>&nbsp;passed</div><?php endif; ?>
     <?php if ($c_failed>0): ?><div class="cs-stat"><span class="cs-num" style="color:#E24B4A;"><?php echo $c_failed; ?></span>&nbsp;failed</div><?php endif; ?>
     <?php if ($c_pending>0): ?><div class="cs-stat"><span class="cs-num" style="color:#9B8FCC;"><?php echo $c_pending; ?></span>&nbsp;pending</div><?php endif; ?>
     <?php if ($c_avg!==null): ?><div class="cs-stat">Avg&nbsp;<span class="cs-num" style="color:#7F77DD;"><?php echo $c_avg; ?></span></div><?php endif; ?>
   </div>
 </div>
-5�php endforeach; ?>
+<?php endforeach; ?>
 <?php endif; ?>
 
 </div>
