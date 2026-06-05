@@ -14,14 +14,57 @@ $savedData = [];
 $savedTexts = [];
 $savedTitle = 'Reading Comprehension';
 
+function reading_comprehension_columns(PDO $pdo): array
+{
+    static $cache = null;
+    if (is_array($cache)) {
+        return $cache;
+    }
+
+    $cache = [];
+    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activities'");
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (isset($row['column_name'])) {
+            $cache[] = (string) $row['column_name'];
+        }
+    }
+    return $cache;
+}
+
 if ($activityId !== '') {
-    $stmt = $pdo->prepare("SELECT data, title FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
-    $stmt->execute([$activityId]);
+    $columns = reading_comprehension_columns($pdo);
+    $selectFields = ['id'];
+    foreach (['data', 'content_json', 'title', 'name'] as $column) {
+        if (in_array($column, $columns, true)) {
+            $selectFields[] = $column;
+        }
+    }
+
+    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'reading_comprehension' LIMIT 1");
+    $stmt->execute(['id' => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $savedData = json_decode((string) ($row['data'] ?? ''), true) ?? [];
-        $savedTitle = (string) ($row['title'] ?? $savedTitle);
-        $savedTexts = is_array($savedData['texts'] ?? null) ? $savedData['texts'] : [];
+        $rawData = $row['data'] ?? ($row['content_json'] ?? '');
+        $savedData = json_decode((string) $rawData, true) ?? [];
+
+        $columnTitle = '';
+        if (isset($row['title']) && trim((string) $row['title']) !== '') {
+            $columnTitle = trim((string) $row['title']);
+        } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
+            $columnTitle = trim((string) $row['name']);
+        }
+
+        if ($columnTitle !== '') {
+            $savedTitle = $columnTitle;
+        } elseif (isset($savedData['title']) && trim((string) $savedData['title']) !== '') {
+            $savedTitle = trim((string) $savedData['title']);
+        }
+
+        if (is_array($savedData['texts'] ?? null)) {
+            $savedTexts = $savedData['texts'];
+        } elseif (isset($savedData[0]) && is_array($savedData[0])) {
+            $savedTexts = $savedData;
+        }
     }
 }
 
