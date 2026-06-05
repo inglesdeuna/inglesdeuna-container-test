@@ -118,8 +118,8 @@ $course = $courses[$courseIndex];
 <meta charset="UTF-8">
 <title>Roles</title>
 <style>
-body{font-family:Arial;background:#f4f8ff;padding:40px}
-.box{background:#fff;padding:25px;border-radius:14px;max-width:700px}
+body{font-family:Arial;background:#f4f8ff;padding:20px}
+.box{background:#fff;padding:25px;border-radius:14px;max-width:1400px;width:calc(100% - 40px);margin:0 auto}
 .remove{color:red;text-decoration:none;margin-left:10px}
 </style>
 </head>
