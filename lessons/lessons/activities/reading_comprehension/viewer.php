@@ -13,46 +13,223 @@ $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : 'view';
 $savedData = [];
 $savedTitle = 'Reading Comprehension';
 
-function activities_has_column(PDO $pdo, string $columnName): bool
+function activities_columns(PDO $pdo): array
 {
+    static $cache = null;
+    if (is_array($cache)) {
+        return $cache;
+    }
     try {
         $stmt = $pdo->prepare("
-            SELECT 1
+            SELECT column_name
             FROM information_schema.columns
             WHERE table_schema = 'public'
               AND table_name = 'activities'
-              AND column_name = :column_name
-            LIMIT 1
         ");
-        $stmt->execute(['column_name' => $columnName]);
-        return (bool) $stmt->fetchColumn();
+        $stmt->execute();
+        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        $cache = array_map(static fn($col) => strtolower((string) $col), $rows);
+        return $cache;
     } catch (Throwable $e) {
-        return false;
+        $cache = [];
+        return $cache;
     }
 }
 
-$activityTitleSelect = "'' AS title";
-if (activities_has_column($pdo, 'title')) {
-    $activityTitleSelect = 'title AS title';
-} elseif (activities_has_column($pdo, 'name')) {
-    $activityTitleSelect = 'name AS title';
+function activities_has_column(PDO $pdo, string $columnName): bool
+{
+    return in_array(strtolower($columnName), activities_columns($pdo), true);
+}
+
+function save_reading_activity(PDO $pdo, string $unit, string $activityId, string $contentJson): string
+{
+    $columns = activities_columns($pdo);
+    $hasUnitId = in_array('unit_id', $columns, true);
+    $hasUnit = in_array('unit', $columns, true);
+    $hasData = in_array('data', $columns, true);
+    $hasContentJson = in_array('content_json', $columns, true);
+    $hasTitle = in_array('title', $columns, true);
+    $hasName = in_array('name', $columns, true);
+    $hasId = in_array('id', $columns, true);
+
+    $decoded = json_decode($contentJson, true);
+    $payloadTitle = '';
+    if (is_array($decoded) && isset($decoded['title'])) {
+        $payloadTitle = trim((string) $decoded['title']);
+    }
+    if ($payloadTitle === '') {
+        $payloadTitle = 'Reading Comprehension';
+    }
+
+    $targetId = trim($activityId);
+    if ($targetId === '' && $unit !== '') {
+        if ($hasUnitId) {
+            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+        if ($targetId === '' && $hasUnit) {
+            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit = :unit AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $targetId = trim((string) $stmt->fetchColumn());
+        }
+    }
+
+    if ($targetId !== '') {
+        $setParts = [];
+        $params = ['id' => $targetId];
+        if ($hasData) {
+            $setParts[] = 'data = :data';
+            $params['data'] = $contentJson;
+        }
+        if ($hasContentJson) {
+            $setParts[] = 'content_json = :content_json';
+            $params['content_json'] = $contentJson;
+        }
+        if ($hasTitle) {
+            $setParts[] = 'title = :title';
+            $params['title'] = $payloadTitle;
+        }
+        if ($hasName) {
+            $setParts[] = 'name = :name';
+            $params['name'] = $payloadTitle;
+        }
+        if (!empty($setParts)) {
+            $stmt = $pdo->prepare("UPDATE activities SET " . implode(', ', $setParts) . " WHERE id = :id AND type = 'reading_comprehension'");
+            $stmt->execute($params);
+        }
+        return $targetId;
+    }
+
+    if ((!$hasUnitId && !$hasUnit) || ($unit === '')) {
+        throw new RuntimeException('Missing unit to create activity');
+    }
+    if (!$hasData && !$hasContentJson) {
+        throw new RuntimeException('Activities table does not support data storage columns');
+    }
+
+    $insertCols = [];
+    $insertVals = [];
+    $params = [];
+    $newId = '';
+
+    if ($hasId) {
+        $newId = md5(random_bytes(16));
+        $insertCols[] = 'id';
+        $insertVals[] = ':id';
+        $params['id'] = $newId;
+    }
+    if ($hasUnitId) {
+        $insertCols[] = 'unit_id';
+        $insertVals[] = ':unit';
+        $params['unit'] = $unit;
+    } elseif ($hasUnit) {
+        $insertCols[] = 'unit';
+        $insertVals[] = ':unit';
+        $params['unit'] = $unit;
+    }
+    $insertCols[] = 'type';
+    $insertVals[] = "'reading_comprehension'";
+    if ($hasData) {
+        $insertCols[] = 'data';
+        $insertVals[] = ':data';
+        $params['data'] = $contentJson;
+    }
+    if ($hasContentJson) {
+        $insertCols[] = 'content_json';
+        $insertVals[] = ':content_json';
+        $params['content_json'] = $contentJson;
+    }
+    if ($hasTitle) {
+        $insertCols[] = 'title';
+        $insertVals[] = ':title';
+        $params['title'] = $payloadTitle;
+    }
+    if ($hasName) {
+        $insertCols[] = 'name';
+        $insertVals[] = ':name';
+        $params['name'] = $payloadTitle;
+    }
+
+    $stmt = $pdo->prepare("INSERT INTO activities (" . implode(', ', $insertCols) . ") VALUES (" . implode(', ', $insertVals) . ")");
+    $stmt->execute($params);
+    return $newId;
+}
+
+$action = isset($_GET['action']) ? trim((string) $_GET['action']) : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save') {
+    header('Content-Type: application/json');
+    if (!isset($_SESSION['academic_id']) && !isset($_SESSION['admin_id'])) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Access denied']);
+        exit;
+    }
+    try {
+        $postedUnit = isset($_POST['unit']) ? trim((string) $_POST['unit']) : '';
+        $postedActivityId = isset($_POST['id']) ? trim((string) $_POST['id']) : '';
+        $postedContent = isset($_POST['content_json']) ? (string) $_POST['content_json'] : '{}';
+        if ($postedUnit === '' && $postedActivityId === '') {
+            throw new RuntimeException('Missing unit or activity id');
+        }
+        $savedId = save_reading_activity($pdo, $postedUnit, $postedActivityId, $postedContent);
+        echo json_encode(['status' => 'success', 'activity_id' => $savedId]);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+    exit;
+}
+
+$columns = activities_columns($pdo);
+$selectFields = [];
+if (in_array('data', $columns, true)) {
+    $selectFields[] = 'data';
+}
+if (in_array('content_json', $columns, true)) {
+    $selectFields[] = 'content_json';
+}
+if (in_array('title', $columns, true)) {
+    $selectFields[] = 'title';
+} elseif (in_array('name', $columns, true)) {
+    $selectFields[] = 'name AS title';
+} else {
+    $selectFields[] = "'' AS title";
+}
+
+if (empty($selectFields)) {
+    $selectFields[] = "'' AS title";
 }
 
 if ($activityId !== '') {
-    $stmt = $pdo->prepare("SELECT data, {$activityTitleSelect} FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
     $stmt->execute([$activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $savedData = json_decode((string) ($row['data'] ?? ''), true) ?? [];
+        $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
+        $savedData = json_decode((string) $rawData, true) ?? [];
         $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
     }
-} elseif ($unitId !== '') {
-    $stmt = $pdo->prepare("SELECT data, {$activityTitleSelect} FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
-    $stmt->execute([$unitId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    if ($row) {
-        $savedData = json_decode((string) ($row['data'] ?? ''), true) ?? [];
-        $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
+}
+if (empty($savedData) && $unitId !== '') {
+    if (in_array('unit_id', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+        $stmt->execute([$unitId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
+            $savedData = json_decode((string) $rawData, true) ?? [];
+            $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
+        }
+    }
+    if (empty($savedData) && in_array('unit', $columns, true)) {
+        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+        $stmt->execute([$unitId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
+            $savedData = json_decode((string) $rawData, true) ?? [];
+            $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
+        }
     }
 }
 
@@ -429,19 +606,24 @@ function PlayerView({ data }) {
 
 async function saveActivity(data) {
   const formPayload = new URLSearchParams();
+  formPayload.set('id', window.RC_ACTIVITY_ID || '');
   formPayload.set('unit', window.RC_UNIT_ID || '');
   formPayload.set('type', 'reading_comprehension');
   formPayload.set('content_json', JSON.stringify(data));
 
-  const res = await fetch('../../core/save_activity.php', {
+  const res = await fetch('viewer.php?action=save', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     credentials: 'same-origin',
     body: formPayload.toString(),
   });
 
-  if (!res.ok) {
-    throw new Error(`Save failed (${res.status})`);
+  const payload = await res.json().catch(() => ({}));
+  if (!res.ok || payload.status !== 'success') {
+    throw new Error(payload.message || `Save failed (${res.status})`);
+  }
+  if (payload.activity_id) {
+    window.RC_ACTIVITY_ID = String(payload.activity_id);
   }
 }
 
