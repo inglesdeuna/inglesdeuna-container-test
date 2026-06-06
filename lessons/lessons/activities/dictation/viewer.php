@@ -581,15 +581,15 @@ body {
 
 .dict-diff {
     display: grid;
-    gap: 8px;
+    gap: 14px;
     text-align: left;
 }
 
 .dict-diff-row {
-    background: #ffffff;
+    background: #FAFAFE;
     border: 1px solid #EDE9FA;
-    border-radius: 14px;
-    padding: 10px 12px;
+    border-radius: 16px;
+    padding: 14px 18px;
 }
 
 .dict-diff-label {
@@ -597,33 +597,48 @@ body {
     font-family: 'Nunito', sans-serif;
     font-size: 11px;
     font-weight: 900;
-    color: #9B94BE;
     letter-spacing: .08em;
     text-transform: uppercase;
-    margin-bottom: 6px;
+    margin-bottom: 10px;
+}
+
+.dict-diff-label.green { color: #1D9E75; }
+.dict-diff-label.purple { color: #534AB7; }
+
+.dict-tokens {
+    line-height: 2;
+    font-size: 15px;
+    font-weight: 700;
+    color: #271B5D;
 }
 
 .dict-word {
-    display: inline-block;
-    border-radius: 8px;
-    padding: 2px 5px;
-    margin: 1px;
-    font-weight: 900;
+    display: inline;
+    border-radius: 4px;
+    padding: 1px 3px;
+    font-size: inherit;
+    font-weight: 800;
 }
 
-.dict-word.ok {
-    color: #16a34a;
-    background: rgba(22,163,74,.10);
+.dict-word.match {
+    background: rgba(29,158,117,.18);
+    color: #0F6E56;
 }
 
-.dict-word.bad {
-    color: #dc2626;
-    background: rgba(220,38,38,.12);
+.dict-word.miss {
+    background: rgba(226,75,74,.15);
+    color: #A32D2D;
+    text-decoration: line-through;
 }
 
-.dict-word.missing {
-    color: #534AB7;
-    background: #EEEDFE;
+.dict-word.extra {
+    background: rgba(249,115,22,.18);
+    color: #C2580A;
+}
+
+.dict-word.neutral {
+    background: transparent;
+    color: #271B5D;
 }
 
 .dict-controls {
@@ -1049,29 +1064,28 @@ document.addEventListener('DOMContentLoaded', function () {
         var studentHtml = [];
         var correctHtml = [];
 
-        for (var i = 0; i < max; i++) {
-            var s = studentWords[i] || '';
-            var c = correctWords[i] || '';
+        var correctFreq = {};
+        correctWords.forEach(function(w){ correctFreq[w] = (correctFreq[w] || 0) + 1; });
+        var studentFreq = {};
+        studentWords.forEach(function(w){ studentFreq[w] = (studentFreq[w] || 0) + 1; });
 
-            if (s && c && s === c) {
-                studentHtml.push('<span class="dict-word ok">' + escapeHtml(s) + '</span>');
-                correctHtml.push('<span class="dict-word ok">' + escapeHtml(c) + '</span>');
-            } else {
-                if (s) {
-                    studentHtml.push('<span class="dict-word bad">' + escapeHtml(s) + '</span>');
-                } else {
-                    studentHtml.push('<span class="dict-word bad">___</span>');
-                }
+        var usedCorrect = {};
+        studentWords.forEach(function(w) {
+            usedCorrect[w] = (usedCorrect[w] || 0) + 1;
+            var isMatch = correctFreq[w] && usedCorrect[w] <= correctFreq[w];
+            studentHtml.push('<span class="dict-word ' + (isMatch ? 'match' : 'extra') + '">' + escapeHtml(w) + '</span>');
+        });
 
-                if (c) {
-                    correctHtml.push('<span class="dict-word missing">' + escapeHtml(c) + '</span>');
-                }
-            }
-        }
+        var usedStudent = {};
+        correctWords.forEach(function(w) {
+            usedStudent[w] = (usedStudent[w] || 0) + 1;
+            var found = studentFreq[w] && usedStudent[w] <= studentFreq[w];
+            correctHtml.push('<span class="dict-word ' + (found ? 'neutral' : 'miss') + '">' + escapeHtml(w) + '</span>');
+        });
 
         return '<div class="dict-diff">' +
-            '<div class="dict-diff-row"><span class="dict-diff-label">You wrote</span>' + studentHtml.join(' ') + '</div>' +
-            '<div class="dict-diff-row"><span class="dict-diff-label">Correct answer</span>' + correctHtml.join(' ') + '</div>' +
+            '<div class="dict-diff-row"><span class="dict-diff-label green">You wrote</span><div class="dict-tokens">' + studentHtml.join(' ') + '</div></div>' +
+            '<div class="dict-diff-row"><span class="dict-diff-label purple">Correct answer</span><div class="dict-tokens">' + correctHtml.join(' ') + '</div></div>' +
         '</div>';
     }
 
@@ -1385,8 +1399,8 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             revealEl.innerHTML =
                 '<div class="dict-diff">' +
-                    '<div class="dict-diff-row"><span class="dict-diff-label">Correct answer</span>' +
-                    '<span class="dict-word missing">' + escapeHtml(data[index].en || '') + '</span></div>' +
+                    '<div class="dict-diff-row"><span class="dict-diff-label purple">Correct answer</span>' +
+                    '<div class="dict-tokens"><span class="dict-word neutral">' + escapeHtml(data[index].en || '') + '</span></div></div>' +
                 '</div>';
         }
 
