@@ -13,8 +13,33 @@ $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : 'view';
 $savedData = [];
 $savedTitle = 'Reading Comprehension';
 
+function activities_has_column(PDO $pdo, string $columnName): bool
+{
+    try {
+        $stmt = $pdo->prepare("
+            SELECT 1
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'activities'
+              AND column_name = :column_name
+            LIMIT 1
+        ");
+        $stmt->execute(['column_name' => $columnName]);
+        return (bool) $stmt->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+$activityTitleSelect = "'' AS title";
+if (activities_has_column($pdo, 'title')) {
+    $activityTitleSelect = 'title AS title';
+} elseif (activities_has_column($pdo, 'name')) {
+    $activityTitleSelect = 'name AS title';
+}
+
 if ($activityId !== '') {
-    $stmt = $pdo->prepare("SELECT data, title FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
+    $stmt = $pdo->prepare("SELECT data, {$activityTitleSelect} FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
     $stmt->execute([$activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
@@ -22,7 +47,7 @@ if ($activityId !== '') {
         $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
     }
 } elseif ($unitId !== '') {
-    $stmt = $pdo->prepare("SELECT data, title FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+    $stmt = $pdo->prepare("SELECT data, {$activityTitleSelect} FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
     $stmt->execute([$unitId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
