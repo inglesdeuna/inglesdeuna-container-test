@@ -763,6 +763,7 @@ $isLastActivity = !$isCompleted && $total > 0 && $step === ($total - 1);
 $activityTypeLabels = [
     'flashcards' => 'Flashcards', 'memory_cards' => 'Memory Cards', 'quiz' => 'Quiz',
     'multiple_choice' => 'Multiple Choice', 'video_comprehension' => 'Video Comprehension',
+    'reading_comprehension' => 'Reading Comprehension',
     'flipbooks' => 'Video Lesson', 'hangman' => 'Hangman',
     'pronunciation' => 'Pronunciation', 'listen_order' => 'Listen & Order',
     'order_sentences' => 'Order the Sentences',
