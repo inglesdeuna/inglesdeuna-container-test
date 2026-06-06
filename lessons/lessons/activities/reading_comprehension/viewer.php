@@ -1158,6 +1158,21 @@ body{
     overflow:auto;
   }
 }
+/* Editor mode: override template's overflow:hidden so the page can scroll */
+body:has(.rc-editor-page){
+  height:auto!important;
+  overflow:auto!important;
+}
+.activity-wrapper:has(.rc-editor-page){
+  height:auto!important;
+  min-height:100vh!important;
+}
+.viewer-content:has(.rc-editor-page){
+  overflow:visible!important;
+  height:auto!important;
+  min-height:0!important;
+  flex:none!important;
+}
 </style>
 
 <?php
