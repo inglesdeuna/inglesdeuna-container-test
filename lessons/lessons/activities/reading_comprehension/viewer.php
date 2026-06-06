@@ -92,7 +92,7 @@ window.RC_SAVED_TEXTS   = <?= json_encode($savedTexts) ?>;
 </script>
 
 <script type="text/babel">
-const { useMemo, useState, useEffect } = React;
+const { useMemo, useState, useEffect, useRef } = React;
 
 const C = {
   orange: '#F97316',
@@ -193,6 +193,21 @@ function splitParagraphs(body) {
     .split(/\n\s*\n/)
     .map((p) => p.trim())
     .filter(Boolean);
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderInlineFormatting(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<u>$1</u>');
 }
 
 function getProgress(texts, answers) {
@@ -400,7 +415,7 @@ function PlayerView({ title, texts }) {
           <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
           <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 13.5, lineHeight: 1.75, fontWeight: 500 }}>
             {(splitParagraphs(current.body).length ? splitParagraphs(current.body) : ['No passage text yet.']).map((p, idx) => (
-              <p key={`p_${idx}`} style={{ margin: '0 0 14px' }}>{p}</p>
+              <p key={`p_${idx}`} style={{ margin: '0 0 14px' }} dangerouslySetInnerHTML={{ __html: renderInlineFormatting(p) }} />
             ))}
           </div>
           {!!current.vocab.length && (
@@ -506,6 +521,7 @@ function EditorView({ title, setTitle, texts, setTexts }) {
   const [collapsed, setCollapsed] = useState({});
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
+  const bodyRefs = useRef({});
 
   const patchText = (textId, mutator) => {
     setTexts((prev) => prev.map((t) => (t.id === textId ? mutator(t) : t)));
@@ -574,6 +590,28 @@ function EditorView({ title, setTitle, texts, setTexts }) {
     patchText(textId, (t) => ({ ...t, questions: (t.questions || []).filter((_, i) => i !== qIdx) }));
   };
 
+  const applyBodyMarkup = (textId, token) => {
+    const textarea = bodyRefs.current[textId];
+    if (!textarea) return;
+    const source = String(textarea.value || '');
+    const start = Number.isFinite(textarea.selectionStart) ? textarea.selectionStart : source.length;
+    const end = Number.isFinite(textarea.selectionEnd) ? textarea.selectionEnd : source.length;
+    const from = Math.max(0, Math.min(start, end));
+    const to = Math.max(0, Math.max(start, end));
+    const selected = source.slice(from, to) || 'important word';
+    const replacement = `${token}${selected}${token}`;
+    const nextBody = `${source.slice(0, from)}${replacement}${source.slice(to)}`;
+
+    patchText(textId, (prev) => ({ ...prev, body: nextBody }));
+
+    requestAnimationFrame(() => {
+      const refreshed = bodyRefs.current[textId];
+      if (!refreshed) return;
+      refreshed.focus();
+      refreshed.setSelectionRange(from + token.length, from + token.length + selected.length);
+    });
+  };
+
   const save = async () => {
     setSaving(true);
     setStatus('Saving...');
@@ -593,7 +631,7 @@ function EditorView({ title, setTitle, texts, setTexts }) {
   };
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 40px)', background: C.bg, padding: '16px 18px 30px', overflowY: 'auto' }}>
+    <div style={{ height: '100%', minHeight: 0, background: C.bg, padding: '16px 18px 30px', overflowY: 'auto' }}>
       <div style={{ maxWidth: 980, margin: '0 auto' }}>
         <h2 style={{ margin: '0 0 10px', fontFamily: 'Fredoka, sans-serif', color: C.orange }}>Reading Comprehension Editor</h2>
 
@@ -637,8 +675,15 @@ function EditorView({ title, setTitle, texts, setTexts }) {
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 800, color: C.ink }}>Body text</label>
-                    <textarea rows={10} value={t.body} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, body: e.target.value }))} placeholder="Paste or type the reading passage here. Separate paragraphs with a blank line." style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.purpleBorder}`, resize: 'vertical', fontFamily: 'Nunito, sans-serif' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
+                      <label style={{ display: 'block', fontWeight: 800, color: C.ink }}>Body text</label>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <button type="button" onClick={() => applyBodyMarkup(t.id, '**')} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontWeight: 900 }}>B</button>
+                        <button type="button" onClick={() => applyBodyMarkup(t.id, '__')} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', textDecoration: 'underline', fontWeight: 900 }}>U</button>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: 11, color: C.purpleMid, marginBottom: 6 }}>Use the buttons (or write **bold** and __underline__) for important words.</div>
+                    <textarea rows={10} ref={(node) => { bodyRefs.current[t.id] = node; }} value={t.body} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, body: e.target.value }))} placeholder="Paste or type the reading passage here. Separate paragraphs with a blank line." style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.purpleBorder}`, resize: 'vertical', fontFamily: 'Nunito, sans-serif' }} />
                   </div>
 
                   <div style={{ marginBottom: 12 }}>
