@@ -90,6 +90,13 @@ function normalize_multiple_choice_payload($rawData): array
         $questionsSource = $decoded['data'];
     }
 
+    $activityMode = (isset($decoded['activity_mode']) && in_array($decoded['activity_mode'], array('text', 'listening'), true))
+        ? $decoded['activity_mode'] : 'standard';
+    $passage = isset($decoded['passage']) ? trim((string) $decoded['passage']) : '';
+    $passageVoiceId = (isset($decoded['passage_voice_id']) && in_array($decoded['passage_voice_id'], array('josh', 'lily', 'candy'), true))
+        ? $decoded['passage_voice_id'] : 'josh';
+    $showPassageText = isset($decoded['show_passage_text']) ? (bool) $decoded['show_passage_text'] : true;
+
     $questions = array();
 
     foreach ($questionsSource as $item) {
@@ -123,8 +130,12 @@ function normalize_multiple_choice_payload($rawData): array
     }
 
     return array(
-        'title' => normalize_multiple_choice_title($title),
-        'questions' => $questions,
+        'title'             => normalize_multiple_choice_title($title),
+        'activity_mode'     => $activityMode,
+        'passage'           => $passage,
+        'passage_voice_id'  => $passageVoiceId,
+        'show_passage_text' => $showPassageText,
+        'questions'         => $questions,
     );
 }
 
@@ -132,8 +143,12 @@ function encode_multiple_choice_payload(array $payload): string
 {
     return json_encode(
         array(
-            'title' => normalize_multiple_choice_title(isset($payload['title']) ? (string) $payload['title'] : ''),
-            'questions' => isset($payload['questions']) && is_array($payload['questions']) ? array_values($payload['questions']) : array(),
+            'title'             => normalize_multiple_choice_title(isset($payload['title']) ? (string) $payload['title'] : ''),
+            'activity_mode'     => (isset($payload['activity_mode']) && in_array($payload['activity_mode'], array('text', 'listening'), true)) ? $payload['activity_mode'] : 'standard',
+            'passage'           => isset($payload['passage']) ? (string) $payload['passage'] : '',
+            'passage_voice_id'  => (isset($payload['passage_voice_id']) && in_array($payload['passage_voice_id'], array('josh', 'lily', 'candy'), true)) ? $payload['passage_voice_id'] : 'josh',
+            'show_passage_text' => isset($payload['show_passage_text']) ? (bool) $payload['show_passage_text'] : true,
+            'questions'         => isset($payload['questions']) && is_array($payload['questions']) ? array_values($payload['questions']) : array(),
         ),
         JSON_UNESCAPED_UNICODE
     );
@@ -142,9 +157,13 @@ function encode_multiple_choice_payload(array $payload): string
 function load_multiple_choice_activity(PDO $pdo, string $unit, string $activityId): array
 {
     $fallback = array(
-        'id' => '',
-        'title' => default_multiple_choice_title(),
-        'questions' => array(),
+        'id'                => '',
+        'title'             => default_multiple_choice_title(),
+        'activity_mode'     => 'standard',
+        'passage'           => '',
+        'passage_voice_id'  => 'josh',
+        'show_passage_text' => true,
+        'questions'         => array(),
     );
 
     $row = null;
@@ -181,18 +200,26 @@ function load_multiple_choice_activity(PDO $pdo, string $unit, string $activityI
     $payload = normalize_multiple_choice_payload($row['data'] ?? null);
 
     return array(
-        'id' => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_multiple_choice_title((string) ($payload['title'] ?? '')),
-        'questions' => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : array(),
+        'id'                => isset($row['id']) ? (string) $row['id'] : '',
+        'title'             => normalize_multiple_choice_title((string) ($payload['title'] ?? '')),
+        'activity_mode'     => isset($payload['activity_mode']) ? (string) $payload['activity_mode'] : 'standard',
+        'passage'           => isset($payload['passage']) ? (string) $payload['passage'] : '',
+        'passage_voice_id'  => isset($payload['passage_voice_id']) ? (string) $payload['passage_voice_id'] : 'josh',
+        'show_passage_text' => isset($payload['show_passage_text']) ? (bool) $payload['show_passage_text'] : true,
+        'questions'         => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : array(),
     );
 }
 
-function save_multiple_choice_activity(PDO $pdo, string $unit, string $activityId, string $title, array $questions): string
+function save_multiple_choice_activity(PDO $pdo, string $unit, string $activityId, string $title, array $questions, array $meta = array()): string
 {
     $title = normalize_multiple_choice_title($title);
     $json = encode_multiple_choice_payload(array(
-        'title' => $title,
-        'questions' => $questions,
+        'title'             => $title,
+        'activity_mode'     => isset($meta['activity_mode']) ? $meta['activity_mode'] : 'standard',
+        'passage'           => isset($meta['passage']) ? $meta['passage'] : '',
+        'passage_voice_id'  => isset($meta['passage_voice_id']) ? $meta['passage_voice_id'] : 'josh',
+        'show_passage_text' => isset($meta['show_passage_text']) ? $meta['show_passage_text'] : true,
+        'questions'         => $questions,
     ));
 
     $targetId = $activityId;
@@ -261,6 +288,10 @@ if ($unit === '') {
 $activity = load_multiple_choice_activity($pdo, $unit, $activityId);
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_multiple_choice_title();
+$activityMode = isset($activity['activity_mode']) ? (string) $activity['activity_mode'] : 'standard';
+$passage = isset($activity['passage']) ? (string) $activity['passage'] : '';
+$passageVoiceId = isset($activity['passage_voice_id']) ? (string) $activity['passage_voice_id'] : 'josh';
+$showPassageText = isset($activity['show_passage_text']) ? (bool) $activity['show_passage_text'] : true;
 
 if ($activityId === '' && !empty($activity['id'])) {
     $activityId = (string) $activity['id'];
@@ -268,6 +299,14 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
+
+    $postedMode = (isset($_POST['activity_mode']) && in_array($_POST['activity_mode'], array('text', 'listening'), true))
+        ? $_POST['activity_mode'] : 'standard';
+    $postedPassage = isset($_POST['passage']) ? trim((string) $_POST['passage']) : '';
+    $postedPassageVoiceId = (isset($_POST['passage_voice_id']) && in_array($_POST['passage_voice_id'], array('josh', 'lily', 'candy'), true))
+        ? $_POST['passage_voice_id'] : 'josh';
+    $postedShowPassageText = isset($_POST['show_passage_text']) && $_POST['show_passage_text'] === '1';
+
     $questionIds = isset($_POST['question_id']) && is_array($_POST['question_id']) ? $_POST['question_id'] : array();
     $questionTexts = isset($_POST['question']) && is_array($_POST['question']) ? $_POST['question'] : array();
     $images = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
@@ -356,7 +395,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         );
     }
 
-    $savedActivityId = save_multiple_choice_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_multiple_choice_activity($pdo, $unit, $activityId, $postedTitle, $sanitized, array(
+        'activity_mode'     => $postedMode,
+        'passage'           => $postedPassage,
+        'passage_voice_id'  => $postedPassageVoiceId,
+        'show_passage_text' => $postedShowPassageText,
+    ));
 
     $params = array(
         'unit=' . urlencode($unit),
@@ -572,6 +616,117 @@ ob_start();
     color:#6d28d9;
     font-weight:700;
 }
+
+/* ---- Activity settings (mode / passage) ---- */
+.act-settings-box{
+    background:#f0fdf4;
+    border:1px solid #bbf7d0;
+    border-radius:12px;
+    padding:16px;
+    margin-bottom:16px;
+}
+.act-settings-box h3{
+    margin:0 0 12px;
+    font-size:14px;
+    font-weight:800;
+    color:#166534;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+}
+.act-mode-row{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    margin-bottom:14px;
+}
+.act-mode-row > div{
+    flex:1;
+    min-width:180px;
+}
+.act-mode-row label{
+    display:block;
+    font-weight:700;
+    margin-bottom:5px;
+    font-size:13px;
+}
+.act-mode-row select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+    box-sizing:border-box;
+}
+.act-passage-wrap{
+    margin-bottom:12px;
+}
+.act-passage-wrap label{
+    display:block;
+    font-weight:700;
+    margin-bottom:6px;
+    font-size:13px;
+}
+.act-passage-wrap textarea{
+    width:100%;
+    min-height:120px;
+    padding:10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+    box-sizing:border-box;
+    resize:vertical;
+    font-family:inherit;
+}
+.act-listening-opts{
+    display:flex;
+    gap:16px;
+    flex-wrap:wrap;
+    align-items:flex-end;
+    margin-top:10px;
+}
+.act-listening-opts > div{
+    flex:1;
+    min-width:160px;
+}
+.act-listening-opts label{
+    display:block;
+    font-weight:700;
+    margin-bottom:5px;
+    font-size:13px;
+}
+.act-listening-opts select{
+    width:100%;
+    padding:8px 10px;
+    border:1px solid #d1d5db;
+    border-radius:8px;
+    font-size:14px;
+    box-sizing:border-box;
+}
+.act-check-label{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:700;
+    font-size:13px;
+    cursor:pointer;
+    margin-top:20px;
+}
+.btn-tts-preview{
+    background:#7c3aed;
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:9px 16px;
+    font-size:13px;
+    font-weight:700;
+    cursor:pointer;
+    white-space:nowrap;
+    align-self:flex-end;
+}
+.btn-tts-preview:disabled{
+    opacity:.5;
+    cursor:not-allowed;
+}
 </style>
 
 <?php if (isset($_GET['saved'])) { ?>
@@ -589,6 +744,48 @@ ob_start();
             placeholder="Example: Classroom Quiz"
             required
         >
+    </div>
+
+    <!-- Activity mode & passage settings -->
+    <div class="act-settings-box">
+        <h3>Activity Mode</h3>
+        <div class="act-mode-row">
+            <div>
+                <label for="activity_mode_sel">Mode</label>
+                <select name="activity_mode" id="activity_mode_sel" onchange="onActivityModeChange(this)">
+                    <option value="standard" <?= $activityMode === 'standard' ? 'selected' : '' ?>>Standard (questions only)</option>
+                    <option value="text"     <?= $activityMode === 'text'     ? 'selected' : '' ?>>📖 Text Reading</option>
+                    <option value="listening"<?= $activityMode === 'listening'? 'selected' : '' ?>>🎧 Listening</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="act-passage-section" <?= !in_array($activityMode, array('text', 'listening')) ? 'style="display:none"' : '' ?>>
+            <div class="act-passage-wrap">
+                <label for="passage_input">Text Passage</label>
+                <textarea name="passage" id="passage_input" placeholder="Paste or type the reading/listening passage here…"><?= htmlspecialchars($passage, ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
+
+            <div id="act-listening-opts" class="act-listening-opts" <?= $activityMode !== 'listening' ? 'style="display:none"' : '' ?>>
+                <div>
+                    <label for="passage_voice_sel">Passage voice</label>
+                    <select name="passage_voice_id" id="passage_voice_sel">
+                        <option value="josh"  <?= $passageVoiceId === 'josh'  ? 'selected' : '' ?>>Josh</option>
+                        <option value="lily"  <?= $passageVoiceId === 'lily'  ? 'selected' : '' ?>>Lily</option>
+                        <option value="candy" <?= $passageVoiceId === 'candy' ? 'selected' : '' ?>>Candy</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="act-check-label">
+                        <input type="checkbox" name="show_passage_text" value="1" <?= $showPassageText ? 'checked' : '' ?>>
+                        Show text to student
+                    </label>
+                </div>
+                <div>
+                    <button type="button" id="btn-preview-tts" class="btn-tts-preview" onclick="previewPassageTTS()">🔊 Preview Audio</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <div id="questionsContainer">
@@ -827,6 +1024,51 @@ function addQuestion() {
     container.appendChild(div);
     bindChangeTracking(div);
     markChanged();
+}
+
+function onActivityModeChange(sel) {
+    markChanged();
+    const mode = sel.value;
+    const passageSection = document.getElementById('act-passage-section');
+    const listeningOpts = document.getElementById('act-listening-opts');
+    if (passageSection) passageSection.style.display = (mode === 'text' || mode === 'listening') ? '' : 'none';
+    if (listeningOpts) listeningOpts.style.display = mode === 'listening' ? '' : 'none';
+}
+
+function previewPassageTTS() {
+    const passageInput = document.getElementById('passage_input');
+    const voiceSel = document.getElementById('passage_voice_sel');
+    const text = passageInput ? passageInput.value.trim() : '';
+    const voiceId = voiceSel ? voiceSel.value : 'josh';
+    const btn = document.getElementById('btn-preview-tts');
+
+    if (!text) {
+        alert('Please enter a text passage first.');
+        return;
+    }
+
+    if (btn) btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('text', text.substring(0, 2500));
+    formData.append('voice_id', voiceId);
+
+    fetch('tts.php', { method: 'POST', body: formData })
+        .then(function (r) {
+            if (!r.ok) throw new Error('TTS request failed: ' + r.status);
+            return r.blob();
+        })
+        .then(function (audioBlob) {
+            const url = URL.createObjectURL(audioBlob);
+            const audio = new Audio(url);
+            audio.play().catch(function () {});
+            if (btn) btn.disabled = false;
+        })
+        .catch(function (err) {
+            console.error('TTS preview error:', err);
+            if (btn) btn.disabled = false;
+            alert('Audio preview failed. Please check that the ElevenLabs API key is configured.');
+        });
 }
 
 function bindChangeTracking(scope) {

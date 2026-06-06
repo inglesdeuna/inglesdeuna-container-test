@@ -75,6 +75,13 @@ function normalize_multiple_choice_payload($rawData): array
         $questionsSource = $decoded['data'];
     }
 
+    $activityMode = (isset($decoded['activity_mode']) && in_array($decoded['activity_mode'], array('text', 'listening'), true))
+        ? $decoded['activity_mode'] : 'standard';
+    $passage = isset($decoded['passage']) ? trim((string) $decoded['passage']) : '';
+    $passageVoiceId = (isset($decoded['passage_voice_id']) && in_array($decoded['passage_voice_id'], array('josh', 'lily', 'candy'), true))
+        ? $decoded['passage_voice_id'] : 'josh';
+    $showPassageText = isset($decoded['show_passage_text']) ? (bool) $decoded['show_passage_text'] : true;
+
     $normalized = array();
 
     foreach ($questionsSource as $item) {
@@ -107,17 +114,25 @@ function normalize_multiple_choice_payload($rawData): array
     }
 
     return array(
-        'title' => normalize_multiple_choice_title($title),
-        'questions' => $normalized,
+        'title'             => normalize_multiple_choice_title($title),
+        'activity_mode'     => $activityMode,
+        'passage'           => $passage,
+        'passage_voice_id'  => $passageVoiceId,
+        'show_passage_text' => $showPassageText,
+        'questions'         => $normalized,
     );
 }
 
 function load_multiple_choice_activity(PDO $pdo, string $activityId, string $unit): array
 {
     $fallback = array(
-        'id' => '',
-        'title' => default_multiple_choice_title(),
-        'questions' => array(),
+        'id'                => '',
+        'title'             => default_multiple_choice_title(),
+        'activity_mode'     => 'standard',
+        'passage'           => '',
+        'passage_voice_id'  => 'josh',
+        'show_passage_text' => true,
+        'questions'         => array(),
     );
 
     $row = null;
@@ -154,9 +169,13 @@ function load_multiple_choice_activity(PDO $pdo, string $activityId, string $uni
     $payload = normalize_multiple_choice_payload($row['data'] ?? null);
 
     return array(
-        'id' => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_multiple_choice_title((string) ($payload['title'] ?? '')),
-        'questions' => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : array(),
+        'id'                => isset($row['id']) ? (string) $row['id'] : '',
+        'title'             => normalize_multiple_choice_title((string) ($payload['title'] ?? '')),
+        'activity_mode'     => isset($payload['activity_mode']) ? (string) $payload['activity_mode'] : 'standard',
+        'passage'           => isset($payload['passage']) ? (string) $payload['passage'] : '',
+        'passage_voice_id'  => isset($payload['passage_voice_id']) ? (string) $payload['passage_voice_id'] : 'josh',
+        'show_passage_text' => isset($payload['show_passage_text']) ? (bool) $payload['show_passage_text'] : true,
+        'questions'         => isset($payload['questions']) && is_array($payload['questions']) ? $payload['questions'] : array(),
     );
 }
 
@@ -167,6 +186,10 @@ if ($unit === '' && $activityId !== '') {
 $activity = load_multiple_choice_activity($pdo, $activityId, $unit);
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_multiple_choice_title();
 $questions = isset($activity['questions']) && is_array($activity['questions']) ? $activity['questions'] : array();
+$activityMode = isset($activity['activity_mode']) ? (string) $activity['activity_mode'] : 'standard';
+$passage = isset($activity['passage']) ? (string) $activity['passage'] : '';
+$passageVoiceId = isset($activity['passage_voice_id']) ? (string) $activity['passage_voice_id'] : 'josh';
+$showPassageText = isset($activity['show_passage_text']) ? (bool) $activity['show_passage_text'] : true;
 
 $cssVersion = file_exists(__DIR__ . '/multiple_choice.css') ? (string) filemtime(__DIR__ . '/multiple_choice.css') : (string) time();
 $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(__DIR__ . '/multiple_choice.js') : (string) time();
@@ -174,7 +197,7 @@ $jsVersion = file_exists(__DIR__ . '/multiple_choice.js') ? (string) filemtime(_
 ob_start();
 ?>
 
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 
 <style>
 :root {
@@ -600,6 +623,77 @@ body {
     .mc-btn,
     .mc-completed-button { width:100%; }
 }
+
+/* ---- Passage section (text / listening modes) ---- */
+.mc-passage-section {
+    width:min(860px,100%);
+    margin:0 auto 20px;
+}
+
+.mc-passage-card {
+    background:#fff;
+    border:1px solid var(--mc-lila);
+    border-radius:24px;
+    box-shadow:0 8px 40px rgba(127,119,221,.13);
+    padding:24px 28px;
+}
+
+.mc-passage-label {
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    color:var(--mc-purple);
+    background:var(--mc-purple-soft);
+    padding:4px 12px;
+    border-radius:999px;
+    margin-bottom:14px;
+}
+
+.mc-passage-body {
+    font-family:'Lora', Georgia, 'Times New Roman', serif;
+    font-size:15.5px;
+    line-height:1.85;
+    color:#2d2d2d;
+    white-space:pre-wrap;
+    word-break:break-word;
+}
+
+.mc-passage-audio-bar {
+    display:flex;
+    justify-content:center;
+    padding-top:16px;
+    border-top:1px solid var(--mc-lila);
+    margin-top:16px;
+    gap:10px;
+    flex-wrap:wrap;
+}
+
+.mc-passage-play-btn {
+    border:none;
+    border-radius:999px;
+    background:var(--mc-purple);
+    color:#fff;
+    padding:10px 22px;
+    font-size:14px;
+    font-weight:700;
+    font-family:'Nunito',sans-serif;
+    cursor:pointer;
+    transition:opacity .15s;
+}
+
+.mc-passage-play-btn:disabled {
+    opacity:.45;
+    cursor:not-allowed;
+}
+
+@media(max-width:760px) {
+    .mc-passage-card { padding:16px 14px; }
+    .mc-passage-body { font-size:14.5px; }
+}
 </style>
 
 <div class="mc-page">
@@ -608,6 +702,19 @@ body {
             <div class="mc-kicker">Activity</div>
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <p>Choose the correct answer.</p>
+        </div>
+
+        <!-- Passage section: shown for text / listening activity modes -->
+        <div id="mc-passage-section" class="mc-passage-section" style="display:none">
+            <div class="mc-passage-card">
+                <div id="mc-passage-text-block">
+                    <div class="mc-passage-label">📖 Reading Passage</div>
+                    <div id="mc-passage-body" class="mc-passage-body"><?php echo nl2br(htmlspecialchars($passage, ENT_QUOTES, 'UTF-8')); ?></div>
+                </div>
+                <div id="mc-passage-audio-bar" class="mc-passage-audio-bar" style="display:none">
+                    <button type="button" id="mc-passage-play-btn" class="mc-passage-play-btn">🔊 Listen to Passage</button>
+                </div>
+            </div>
         </div>
 
         <div class="mc-stage-shell">
@@ -664,6 +771,10 @@ window.MULTIPLE_CHOICE_DATA = <?php echo json_encode($questions, JSON_UNESCAPED_
 window.MULTIPLE_CHOICE_TITLE = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE); ?>;
 window.MULTIPLE_CHOICE_ACTIVITY_ID = <?php echo json_encode((string) ($activity['id'] ?? ''), JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_MODE = <?php echo json_encode($activityMode, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_PASSAGE = <?php echo json_encode($passage, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_PASSAGE_VOICE_ID = <?php echo json_encode($passageVoiceId, JSON_UNESCAPED_UNICODE); ?>;
+window.MULTIPLE_CHOICE_SHOW_PASSAGE_TEXT = <?php echo json_encode($showPassageText); ?>;
 </script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
 

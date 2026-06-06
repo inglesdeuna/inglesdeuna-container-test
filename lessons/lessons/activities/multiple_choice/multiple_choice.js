@@ -1,6 +1,29 @@
 document.addEventListener('DOMContentLoaded', function () {
   const questions = Array.isArray(window.MULTIPLE_CHOICE_DATA) ? window.MULTIPLE_CHOICE_DATA : [];
 
+  const activityMode = typeof window.MULTIPLE_CHOICE_MODE === 'string' ? window.MULTIPLE_CHOICE_MODE : 'standard';
+  const passageText = typeof window.MULTIPLE_CHOICE_PASSAGE === 'string' ? window.MULTIPLE_CHOICE_PASSAGE : '';
+  const passageVoiceId = typeof window.MULTIPLE_CHOICE_PASSAGE_VOICE_ID === 'string' ? window.MULTIPLE_CHOICE_PASSAGE_VOICE_ID : 'josh';
+  const showPassageText = window.MULTIPLE_CHOICE_SHOW_PASSAGE_TEXT !== false;
+
+  const passageSectionEl = document.getElementById('mc-passage-section');
+  const passageTextBlockEl = document.getElementById('mc-passage-text-block');
+  const passageAudioBarEl = document.getElementById('mc-passage-audio-bar');
+  const passagePlayBtn = document.getElementById('mc-passage-play-btn');
+
+  // Show/configure passage section based on activity mode
+  if (passageSectionEl && passageText !== '' && (activityMode === 'text' || activityMode === 'listening')) {
+    passageSectionEl.style.display = '';
+
+    if (activityMode === 'text') {
+      if (passageTextBlockEl) passageTextBlockEl.style.display = '';
+      if (passageAudioBarEl) passageAudioBarEl.style.display = 'none';
+    } else if (activityMode === 'listening') {
+      if (passageAudioBarEl) passageAudioBarEl.style.display = '';
+      if (passageTextBlockEl) passageTextBlockEl.style.display = showPassageText ? '' : 'none';
+    }
+  }
+
   const progressLabelEl = document.getElementById('mc-progress-label');
   const progressFillEl = document.getElementById('mc-progress-fill');
   const progressBadgeEl = document.getElementById('mc-progress-badge');
@@ -554,6 +577,53 @@ document.addEventListener('DOMContentLoaded', function () {
     } else {
       pendingSpeech = { text: text, voiceId: voiceId };
     }
+  }
+
+  if (passagePlayBtn) {
+    passagePlayBtn.addEventListener('click', function () {
+      if (!passageText) {
+        return;
+      }
+      stopSpeech();
+      passagePlayBtn.disabled = true;
+
+      ttsAbortController = new AbortController();
+      const signal = ttsAbortController.signal;
+
+      const formData = new FormData();
+      formData.append('text', passageText);
+      formData.append('voice_id', passageVoiceId);
+
+      fetch('tts.php', {
+        method: 'POST',
+        body: formData,
+        signal: signal,
+      })
+        .then(function (response) {
+          if (!response.ok) {
+            throw new Error('TTS request failed: ' + response.status);
+          }
+          return response.blob();
+        })
+        .then(function (audioBlob) {
+          if (signal.aborted) {
+            return;
+          }
+          const audioUrl = URL.createObjectURL(audioBlob);
+          currentAudioElement = new Audio(audioUrl);
+          currentAudioElement.addEventListener('ended', function () {
+            passagePlayBtn.disabled = false;
+          });
+          currentAudioElement.play().catch(function () {});
+          passagePlayBtn.disabled = false;
+        })
+        .catch(function (error) {
+          if (!signal.aborted) {
+            console.error('Passage TTS error:', error);
+          }
+          passagePlayBtn.disabled = false;
+        });
+    });
   }
 
   document.addEventListener('click', function onFirstInteraction() {
