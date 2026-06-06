@@ -236,7 +236,7 @@ function TopBar({ done, total }) {
           else window.history.back();
         }}
         style={{ width: 32, height: 32, borderRadius: 999, border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, cursor: 'pointer' }}
-      >←</button>
+      >â</button>
 
       <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 18 }}>Reading Comprehension</div>
 
@@ -256,7 +256,7 @@ function PassagePane({ text }) {
     <div style={{ borderRight: `1px solid ${C.border}`, padding: 16, overflowY: 'auto' }}>
       <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em', padding: '3px 14px', width: 'fit-content' }}>Reading passage</div>
       <h2 style={{ margin: '12px 0 6px', fontFamily: 'Fredoka, sans-serif', fontSize: 20, color: C.orange }}>{text.title || 'Untitled passage'}</h2>
-      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, color: C.purpleMid, fontWeight: 700 }}>{text.genre || 'Informative text'} · {text.wordCount || countWords(text.body)} words · Read carefully</div>
+      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, color: C.purpleMid, fontWeight: 700 }}>{text.genre || 'Informative text'} Â· {text.wordCount || countWords(text.body)} words Â· Read carefully</div>
       <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
       <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 14, lineHeight: 1.7 }}>
         {(paragraphs.length ? paragraphs : ['No passage text available.']).map((p, idx) => (
@@ -310,7 +310,7 @@ function VocabQuestions({ text }) {
             </div>
 
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>← Previous</button>
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>â Previous</button>
               {!row.checked ? (
                 <button
                   onClick={() => {
@@ -322,7 +322,7 @@ function VocabQuestions({ text }) {
                   style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}
                 >Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= deck.length - 1 ? 0.45 : 1 }}>{index >= deck.length - 1 ? 'Completed' : 'Next →'}</button>
+                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= deck.length - 1 ? 0.45 : 1 }}>{index >= deck.length - 1 ? 'Completed' : 'Next â'}</button>
               )}
             </div>
 
@@ -381,14 +381,14 @@ function CompQuestions({ text }) {
             </div>
 
             <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>← Previous</button>
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>â Previous</button>
               {!row.checked ? (
                 <button onClick={() => {
                   if (row.selected < 0) return;
                   setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: row.selected === q.correct } : a));
                 }} disabled={row.selected < 0} style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}>Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= questions.length - 1 ? 0.45 : 1 }}>{index >= questions.length - 1 ? 'Completed' : 'Next →'}</button>
+                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= questions.length - 1 ? 0.45 : 1 }}>{index >= questions.length - 1 ? 'Completed' : 'Next â'}</button>
               )}
             </div>
 
@@ -484,7 +484,7 @@ function EditorView({ data, setData }) {
     return (
       <div style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column' }}>
         <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: 10 }}>
-          <button onClick={() => setPreviewing(false)} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900 }}>← Back to editor</button>
+          <button onClick={() => setPreviewing(false)} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900 }}>â Back to editor</button>
         </div>
         <div style={{ flex: 1, minHeight: 0 }}><PlayerView data={data} /></div>
       </div>
@@ -496,7 +496,7 @@ function EditorView({ data, setData }) {
       <div style={{ maxWidth: 1120, margin: '0 auto' }}>
         <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>⚙</div>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>â</div>
             <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading Comprehension</div>
             <div style={{ marginLeft: 'auto', color: C.purple, fontWeight: 900, fontSize: 14 }}>Edit mode</div>
           </div>
@@ -514,7 +514,7 @@ function EditorView({ data, setData }) {
             </div>
 
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity mode — choose one</label>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity mode â choose one</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <button onClick={() => patchText((t) => ({ ...t, mode: 'vocab' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'vocab' ? C.orange : C.purpleBorder}`, borderRadius: 16, background: text.mode === 'vocab' ? '#F8ECE2' : '#F6F4FD', padding: 16 }}>
                   <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 26 }}>Vocabulary meaning</div>
@@ -531,7 +531,7 @@ function EditorView({ data, setData }) {
 
         <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>📘</div>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>ð</div>
             <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Passage</div>
           </div>
 
@@ -557,7 +557,7 @@ function EditorView({ data, setData }) {
 
         <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>🟧</div>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>ð§</div>
             <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Highlighted vocabulary words</div>
             <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.words.length} words</div>
           </div>
@@ -568,7 +568,7 @@ function EditorView({ data, setData }) {
             </div>
 
             <div style={{ border: `1px solid ${C.orangeBorder}`, background: '#FFF9F4', borderRadius: 16, padding: 12, marginBottom: 12 }}>
-              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8 }}>Live preview — highlighted words</div>
+              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8 }}>Live preview â highlighted words</div>
               <div style={{ color: C.ink, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(text.body || 'Type passage text to preview highlights.', text.words) }} />
             </div>
 
@@ -607,7 +607,7 @@ function EditorView({ data, setData }) {
 
         <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
           <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>❓</div>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>â</div>
             <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading comprehension questions</div>
             <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.questions.length} questions</div>
           </div>
@@ -674,4 +674,4 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer('Reading Comprehension', 'fa-solid fa-book-open', $content);
+render_activity_viewer($content);
