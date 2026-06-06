@@ -11,60 +11,23 @@ $returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 $mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : 'view';
 
 $savedData = [];
-$savedTexts = [];
 $savedTitle = 'Reading Comprehension';
 
-function reading_comprehension_columns(PDO $pdo): array
-{
-    static $cache = null;
-    if (is_array($cache)) {
-        return $cache;
-    }
-
-    $cache = [];
-    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'activities'");
-    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) {
-            $cache[] = (string) $row['column_name'];
-        }
-    }
-    return $cache;
-}
-
 if ($activityId !== '') {
-    $columns = reading_comprehension_columns($pdo);
-    $selectFields = ['id'];
-    foreach (['data', 'content_json', 'title', 'name'] as $column) {
-        if (in_array($column, $columns, true)) {
-            $selectFields[] = $column;
-        }
-    }
-
-    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = :id AND type = 'reading_comprehension' LIMIT 1");
-    $stmt->execute(['id' => $activityId]);
+    $stmt = $pdo->prepare("SELECT data, title FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
+    $stmt->execute([$activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $rawData = $row['data'] ?? ($row['content_json'] ?? '');
-        $savedData = json_decode((string) $rawData, true) ?? [];
-
-        $columnTitle = '';
-        if (isset($row['title']) && trim((string) $row['title']) !== '') {
-            $columnTitle = trim((string) $row['title']);
-        } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-            $columnTitle = trim((string) $row['name']);
-        }
-
-        if ($columnTitle !== '') {
-            $savedTitle = $columnTitle;
-        } elseif (isset($savedData['title']) && trim((string) $savedData['title']) !== '') {
-            $savedTitle = trim((string) $savedData['title']);
-        }
-
-        if (is_array($savedData['texts'] ?? null)) {
-            $savedTexts = $savedData['texts'];
-        } elseif (isset($savedData[0]) && is_array($savedData[0])) {
-            $savedTexts = $savedData;
-        }
+        $savedData = json_decode((string) ($row['data'] ?? ''), true) ?? [];
+        $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
+    }
+} elseif ($unitId !== '') {
+    $stmt = $pdo->prepare("SELECT data, title FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
+    $stmt->execute([$unitId]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $savedData = json_decode((string) ($row['data'] ?? ''), true) ?? [];
+        $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
     }
 }
 
@@ -75,24 +38,23 @@ ob_start();
 ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
 <div id="rc-root"></div>
 
 <script>
-window.RC_ACTIVITY_ID   = <?= json_encode($activityId) ?>;
-window.RC_UNIT_ID       = <?= json_encode($unitId) ?>;
-window.RC_RETURN_TO     = <?= json_encode($returnTo) ?>;
-window.RC_ALLOW_EDITOR  = <?= $allowEditor ?>;
-window.RC_SAVED_TITLE   = <?= json_encode($savedTitle) ?>;
-window.RC_SAVED_TEXTS   = <?= json_encode($savedTexts) ?>;
+window.RC_ACTIVITY_ID  = <?= json_encode($activityId) ?>;
+window.RC_UNIT_ID      = <?= json_encode($unitId) ?>;
+window.RC_RETURN_TO    = <?= json_encode($returnTo) ?>;
+window.RC_ALLOW_EDITOR = <?= $allowEditor ?>;
+window.RC_SAVED_TITLE  = <?= json_encode($savedTitle) ?>;
+window.RC_SAVED_DATA   = <?= json_encode($savedData) ?>;
 </script>
 
 <script type="text/babel">
-const { useMemo, useState, useEffect, useRef } = React;
+const { useMemo, useState } = React;
 
 const C = {
   orange: '#F97316',
@@ -117,287 +79,315 @@ const C = {
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-function id(prefix) {
-  return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-}
+const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
 
-function countWords(text) {
-  const cleaned = String(text || '').trim();
-  if (!cleaned) return 0;
-  return cleaned.split(/\s+/).filter(Boolean).length;
-}
+const countWords = (text) => String(text || '').trim().split(/\s+/).filter(Boolean).length;
 
-function normalizeQuestion(q = {}) {
-  const optionsSource = Array.isArray(q.options) ? q.options : [];
-  const options = LETTERS.map((letter, idx) => {
-    const raw = String(optionsSource[idx] ?? '').trim();
-    if (!raw) return `${letter}) `;
-    return raw;
-  });
-  const correct = LETTERS.includes(String(q.correct || '').trim().toUpperCase())
-    ? String(q.correct || '').trim().toUpperCase()
-    : 'A';
+const escapeHtml = (value) => String(value || '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+function normalizeWord(item = {}) {
+  const distractors = Array.isArray(item.distractors) ? item.distractors : [];
   return {
-    id: String(q.id || id('q')),
-    stem: String(q.stem || ''),
-    options,
-    correct,
-    feedback: String(q.feedback || ''),
+    id: String(item.id || uid('w')),
+    word: String(item.word || ''),
+    correct: String(item.correct || ''),
+    distractors: [
+      String(distractors[0] || ''),
+      String(distractors[1] || ''),
+    ],
   };
 }
 
-function normalizeText(t = {}, idx = 0) {
-  const body = String(t.body || '');
-  const vocab = (Array.isArray(t.vocab) ? t.vocab : [])
-    .slice(0, 5)
-    .map((v) => ({ word: String(v.word || ''), def: String(v.def || '') }));
-  const questions = (Array.isArray(t.questions) ? t.questions : []).map(normalizeQuestion);
-  const wordCountRaw = Number(t.wordCount);
-  const computedWords = countWords(body);
+function normalizeQuestion(item = {}) {
+  const options = Array.isArray(item.options) ? item.options : [];
+  const rawCorrect = Number(item.correct);
   return {
-    id: String(t.id || id('text')),
-    title: String(t.title || `Text ${idx + 1}`),
-    genre: String(t.genre || 'Informative text'),
-    wordCount: Number.isFinite(wordCountRaw) && wordCountRaw > 0 ? wordCountRaw : computedWords,
+    id: String(item.id || uid('q')),
+    stem: String(item.stem || ''),
+    options: [
+      String(options[0] || ''),
+      String(options[1] || ''),
+      String(options[2] || ''),
+      String(options[3] || ''),
+    ],
+    correct: Number.isInteger(rawCorrect) ? Math.max(0, Math.min(3, rawCorrect)) : 0,
+    feedback: String(item.feedback || ''),
+  };
+}
+
+function normalizeText(input = {}) {
+  const mode = String(input.mode || 'vocab').toLowerCase() === 'comp' ? 'comp' : 'vocab';
+  const words = (Array.isArray(input.words) ? input.words : []).map(normalizeWord);
+  const questions = (Array.isArray(input.questions) ? input.questions : []).map(normalizeQuestion);
+  const body = String(input.body || '');
+  const wc = Number(input.wordCount);
+  return {
+    id: String(input.id || uid('text')),
+    mode,
+    title: String(input.title || 'The Mystery of Migration'),
+    genre: String(input.genre || 'Informative text'),
+    wordCount: Number.isFinite(wc) && wc > 0 ? wc : countWords(body),
     body,
-    vocab,
+    words,
     questions,
   };
 }
 
-function defaultText(idx = 0) {
-  return normalizeText({
-    title: `Text ${idx + 1}`,
-    genre: 'Informative text',
-    body: '',
-    vocab: [],
-    questions: [
-      {
-        stem: '',
-        options: ['A) ', 'B) ', 'C) ', 'D) '],
-        correct: 'A',
-        feedback: '',
-      },
-    ],
-  }, idx);
-}
-
-function normalizeTexts(input) {
-  const arr = Array.isArray(input) ? input : [];
-  if (!arr.length) return [defaultText(0)];
-  return arr.map((t, idx) => normalizeText(t, idx));
-}
-
-function splitParagraphs(body) {
-  return String(body || '')
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-function escapeHtml(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-function renderInlineFormatting(text) {
-  return escapeHtml(text)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<u>$1</u>');
-}
-
-function getProgress(texts, answers) {
-  let total = 0;
-  let done = 0;
-  let correct = 0;
-  texts.forEach((t) => {
-    const rows = answers[t.id] || [];
-    total += t.questions.length;
-    rows.forEach((r) => {
-      if (r.checked) done += 1;
-      if (r.checked && r.isCorrect) correct += 1;
-    });
-  });
-  return { total, done, correct, wrong: Math.max(0, done - correct), percent: total ? Math.round((correct / total) * 100) : 0 };
-}
-
-function initAnswers(texts) {
-  const out = {};
-  texts.forEach((t) => {
-    out[t.id] = t.questions.map(() => ({ selected: '', checked: false, isCorrect: false }));
-  });
-  return out;
-}
-
-async function saveCompletionScore(activityId, unitId, score) {
-  const payload = { activity_id: activityId, unit_id: unitId, score, completed: true };
-  try {
-    await fetch('../../core/save_activity.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {}
-}
-
-async function saveReadingActivity({ activityId, unitId, title, texts }) {
-  const data = {
-    title: String(title || 'Reading Comprehension').trim() || 'Reading Comprehension',
-    texts: texts.map((t, idx) => {
-      const normalized = normalizeText(t, idx);
-      return {
-        id: normalized.id,
-        title: normalized.title,
-        genre: normalized.genre,
-        wordCount: normalized.wordCount || countWords(normalized.body),
-        body: normalized.body,
-        vocab: (normalized.vocab || []).filter((v) => String(v.word || '').trim() || String(v.def || '').trim()).slice(0, 5),
-        questions: (normalized.questions || []).map(normalizeQuestion),
-      };
-    }),
-  };
-
-  const payload = {
-    id: activityId,
-    unit_id: unitId,
-    unit: unitId,
-    type: 'reading_comprehension',
-    title: data.title,
-    data,
-  };
-
-  try {
-    const res = await fetch('../../core/save_activity.php', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'same-origin',
-      body: JSON.stringify(payload),
-    });
-    if (res.ok) return { ok: true };
-  } catch (e) {}
-
-  const formPayload = new URLSearchParams();
-  formPayload.set('unit', unitId || '');
-  formPayload.set('type', 'reading_comprehension');
-  formPayload.set('content_json', JSON.stringify(data));
-
-  const fallback = await fetch('../../core/save_activity.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    credentials: 'same-origin',
-    body: formPayload.toString(),
-  });
-
-  if (!fallback.ok) throw new Error(`Save failed (${fallback.status})`);
-  return { ok: true };
-}
-
-async function uploadReadingImage(file) {
-  const form = new FormData();
-  form.append('image', file);
-  const response = await fetch('../../core/upload_image.php', {
-    method: 'POST',
-    credentials: 'same-origin',
-    body: form,
-  });
-  if (!response.ok) throw new Error('Upload failed');
-  return response.json();
-}
-
-function PlayerView({ title, texts }) {
-  const [textIdx, setTextIdx] = useState(0);
-  const [answers, setAnswers] = useState(() => initAnswers(texts));
-  const [showCompletion, setShowCompletion] = useState(false);
-
-  useEffect(() => {
-    setAnswers(initAnswers(texts));
-    setTextIdx(0);
-    setShowCompletion(false);
-  }, [texts]);
-
-  const current = texts[textIdx] || texts[0];
-  const currentAnswers = answers[current.id] || [];
-  const progress = useMemo(() => getProgress(texts, answers), [texts, answers]);
-
-  const activeQuestionIndex = current.questions.findIndex((_, idx) => !(currentAnswers[idx] && currentAnswers[idx].checked));
-  const currentAnswered = currentAnswers.filter((r) => r && r.checked).length;
-  const allAnswered = progress.total > 0 && progress.done === progress.total;
-
-  useEffect(() => {
-    if (!showCompletion || !allAnswered) return;
-    saveCompletionScore(window.RC_ACTIVITY_ID || '', window.RC_UNIT_ID || '', progress.percent);
-  }, [showCompletion, allAnswered, progress.percent]);
-
-  const onSelectOption = (qIdx, letter) => {
-    setAnswers((prev) => {
-      const rows = (prev[current.id] || []).slice();
-      const row = { ...(rows[qIdx] || { selected: '', checked: false, isCorrect: false }) };
-      if (row.checked) return prev;
-      row.selected = letter;
-      rows[qIdx] = row;
-      return { ...prev, [current.id]: rows };
-    });
-  };
-
-  const checkAnswer = (qIdx) => {
-    const q = current.questions[qIdx];
-    if (!q) return;
-    setAnswers((prev) => {
-      const rows = (prev[current.id] || []).slice();
-      const row = { ...(rows[qIdx] || { selected: '', checked: false, isCorrect: false }) };
-      if (!row.selected || row.checked) return prev;
-      row.checked = true;
-      row.isCorrect = row.selected === q.correct;
-      rows[qIdx] = row;
-      return { ...prev, [current.id]: rows };
-    });
-  };
-
-  if (showCompletion && allAnswered) {
-    return (
-      <div style={{ minHeight: 'calc(100vh - 40px)', background: C.bg, padding: '22px', display: 'grid', placeItems: 'center' }}>
-        <div style={{ width: '100%', maxWidth: 760, border: `1px solid ${C.purpleBorder}`, borderRadius: 22, padding: '24px 22px', background: 'linear-gradient(160deg,#EDE9FA,#FFF0E6)' }}>
-          <div style={{ width: 72, height: 72, margin: '0 auto 14px', borderRadius: 999, background: C.white, display: 'grid', placeItems: 'center' }}>
-            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="10" stroke={C.purple} strokeWidth="2"/><path d="M7 12.5l3.1 3L17 9" stroke={C.purple} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-          </div>
-          <h2 style={{ margin: 0, textAlign: 'center', fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.purple }}>Reading complete!</h2>
-          <div style={{ marginTop: 10, textAlign: 'center', fontFamily: 'Fredoka, sans-serif', fontSize: 52, color: C.orange }}>{progress.percent}%</div>
-          <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ background: C.white, border: `1px solid ${C.purpleBorder}`, borderRadius: 999, padding: '4px 14px', fontWeight: 700, color: C.greenDark, fontSize: 13 }}>Correct: {progress.correct}</span>
-            <span style={{ background: C.white, border: `1px solid ${C.purpleBorder}`, borderRadius: 999, padding: '4px 14px', fontWeight: 700, color: C.redDark, fontSize: 13 }}>Incorrect: {progress.wrong}</span>
-          </div>
-          <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center' }}>
-            <button onClick={() => { setAnswers(initAnswers(texts)); setTextIdx(0); setShowCompletion(false); }} style={{ border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.purple, borderRadius: 10, padding: '10px 16px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, cursor: 'pointer' }}>Try again</button>
-          </div>
-        </div>
-      </div>
-    );
+function normalizeDataset(raw) {
+  if (raw && Array.isArray(raw.texts) && raw.texts.length) {
+    return {
+      title: String(raw.title || window.RC_SAVED_TITLE || 'Reading Comprehension'),
+      texts: raw.texts.map(normalizeText),
+    };
   }
 
+  const base = normalizeText(raw || {});
+  if ((!raw || !raw.title) && window.RC_SAVED_TITLE && !base.title) {
+    base.title = String(window.RC_SAVED_TITLE || 'Reading Comprehension');
+  }
+
+  return {
+    title: String(window.RC_SAVED_TITLE || 'Reading Comprehension'),
+    texts: [base],
+  };
+}
+
+function decorateTextSegment(html, terms) {
+  return terms.reduce((acc, term) => {
+    const escaped = escapeRegExp(term);
+    const pattern = /\s/.test(term) ? `(${escaped})` : `\\b(${escaped})\\b`;
+    return acc.replace(new RegExp(pattern, 'gi'), '<span class="rc-hl">$1</span>');
+  }, html);
+}
+
+function paragraphToHtml(paragraph, words) {
+  const formatted = escapeHtml(paragraph)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/__(.+?)__/g, '<u>$1</u>');
+
+  const terms = (words || []).map((w) => String(w.word || '').trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  if (!terms.length) return formatted;
+
+  const chunks = formatted.split(/(<[^>]+>)/g);
+  return chunks.map((chunk) => (chunk.startsWith('<') ? chunk : decorateTextSegment(chunk, terms))).join('');
+}
+
+function buildVocabDeck(words) {
+  return (words || []).map((word, idx) => {
+    const options = [
+      { text: word.correct || '', correct: true, key: `c_${word.id}` },
+      { text: word.distractors?.[0] || '', correct: false, key: `d1_${word.id}` },
+      { text: word.distractors?.[1] || '', correct: false, key: `d2_${word.id}` },
+    ].filter((x) => x.text.trim() !== '');
+
+    const seed = Array.from(`${word.id}_${idx}`).reduce((a, c) => a + c.charCodeAt(0), 0);
+    const shuffled = options
+      .map((opt, i) => ({ ...opt, sortKey: ((seed + 11) * (i + 3)) % 97 }))
+      .sort((a, b) => a.sortKey - b.sortKey)
+      .map(({ sortKey, ...rest }) => rest);
+
+    return {
+      id: word.id,
+      word: word.word,
+      options: shuffled,
+    };
+  }).filter((x) => x.word.trim() && x.options.length >= 2);
+}
+
+function TopBar({ done, total }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 40px)', background: C.bg }}>
-      <div style={{ background: C.white, borderBottom: `1.5px solid ${C.border}`, height: 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', position: 'relative', flexShrink: 0 }}>
-        <button onClick={() => {
+    <div style={{ background: C.white, borderBottom: `1.5px solid ${C.border}`, height: 52, padding: '0 16px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <button
+        onClick={() => {
           const backTo = String(window.RC_RETURN_TO || '').trim();
           if (backTo) window.location.href = backTo;
           else window.history.back();
-        }} style={{ width: 32, height: 32, borderRadius: 999, border: `1px solid ${C.purpleBorder}`, background: C.white, color: C.ink, cursor: 'pointer', fontSize: 16 }}>←</button>
-        <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 18 }}>Reading Comprehension</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 90, height: 7, borderRadius: 999, background: C.purpleBorder, overflow: 'hidden' }}>
-            <div style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#F97316,#7F77DD)' }} />
+        }}
+        style={{ width: 32, height: 32, borderRadius: 999, border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, cursor: 'pointer' }}
+      >←</button>
+
+      <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 18 }}>Reading Comprehension</div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 90, height: 7, borderRadius: 999, background: C.purpleBorder, overflow: 'hidden' }}>
+          <div style={{ width: `${total ? (done / total) * 100 : 0}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#F97316,#7F77DD)' }} />
+        </div>
+        <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 12, color: C.purple }}>{done} / {total}</div>
+      </div>
+    </div>
+  );
+}
+
+function PassagePane({ text }) {
+  const paragraphs = String(text.body || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  return (
+    <div style={{ borderRight: `1px solid ${C.border}`, padding: 16, overflowY: 'auto' }}>
+      <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em', padding: '3px 14px', width: 'fit-content' }}>Reading passage</div>
+      <h2 style={{ margin: '12px 0 6px', fontFamily: 'Fredoka, sans-serif', fontSize: 20, color: C.orange }}>{text.title || 'Untitled passage'}</h2>
+      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, color: C.purpleMid, fontWeight: 700 }}>{text.genre || 'Informative text'} · {text.wordCount || countWords(text.body)} words · Read carefully</div>
+      <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
+      <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 14, lineHeight: 1.7 }}>
+        {(paragraphs.length ? paragraphs : ['No passage text available.']).map((p, idx) => (
+          <p key={`p_${idx}`} style={{ margin: '0 0 14px' }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(p, text.words) }} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VocabQuestions({ text }) {
+  const deck = useMemo(() => buildVocabDeck(text.words), [text.words]);
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState(() => deck.map(() => ({ selected: -1, checked: false, correct: false })));
+
+  const row = answers[index] || { selected: -1, checked: false, correct: false };
+  const item = deck[index] || null;
+  const done = answers.filter((a) => a.checked).length;
+
+  if (!item) {
+    return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add highlighted words with meanings to generate questions.</div>;
+  }
+
+  return (
+    <>
+      <TopBar done={done} total={deck.length} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <div style={{ width: '48%', minWidth: 0 }}><PassagePane text={text} /></div>
+        <div style={{ width: '52%', minWidth: 0, padding: 16, overflowY: 'auto' }}>
+          <div style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 18, background: C.white, padding: 18 }}>
+            <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {deck.length}</div>
+            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 22 }}>What does <span style={{ color: C.orange }}>{item.word}</span> mean?</h3>
+
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {item.options.map((opt, optIdx) => {
+                const selected = row.selected === optIdx;
+                const isCorrect = row.checked && opt.correct;
+                const isWrong = row.checked && selected && !opt.correct;
+                const border = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
+                const bg = isCorrect ? C.greenSoft : (isWrong ? C.redSoft : (selected ? C.purpleSoft : '#FBFAFF'));
+                const color = isCorrect ? C.greenDark : (isWrong ? C.redDark : C.ink);
+                return (
+                  <button key={opt.key} onClick={() => {
+                    if (row.checked) return;
+                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
+                  }} style={{ textAlign: 'left', border: `1.5px solid ${border}`, borderRadius: 12, background: bg, color, padding: '10px 12px', fontSize: 14, fontWeight: 700, cursor: row.checked ? 'default' : 'pointer' }}>
+                    {opt.text}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>← Previous</button>
+              {!row.checked ? (
+                <button
+                  onClick={() => {
+                    if (row.selected < 0) return;
+                    const isCorrect = !!item.options[row.selected]?.correct;
+                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
+                  }}
+                  disabled={row.selected < 0}
+                  style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}
+                >Check answer</button>
+              ) : (
+                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= deck.length - 1 ? 0.45 : 1 }}>{index >= deck.length - 1 ? 'Completed' : 'Next →'}</button>
+              )}
+            </div>
+
+            {row.checked && (
+              <div style={{ marginTop: 10, background: row.correct ? C.greenSoft : C.redSoft, color: row.correct ? C.greenDark : C.redDark, borderLeft: `3px solid ${row.correct ? C.green : C.red}`, padding: '10px 12px', fontWeight: 700 }}>
+                {row.correct ? 'Correct!' : 'Try again on the next round.'}
+              </div>
+            )}
           </div>
-          <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, fontWeight: 900, color: C.purple }}>{progress.done} / {progress.total || 0}</div>
         </div>
       </div>
+    </>
+  );
+}
 
+function CompQuestions({ text }) {
+  const questions = useMemo(() => (text.questions || []).filter((q) => q.options.some((o) => String(o || '').trim())), [text.questions]);
+  const [index, setIndex] = useState(0);
+  const [answers, setAnswers] = useState(() => questions.map(() => ({ selected: -1, checked: false, correct: false })));
+  const done = answers.filter((a) => a.checked).length;
+  const q = questions[index] || null;
+  const row = answers[index] || { selected: -1, checked: false, correct: false };
+
+  if (!q) {
+    return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add comprehension questions to preview this mode.</div>;
+  }
+
+  return (
+    <>
+      <TopBar done={done} total={questions.length} />
+      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
+        <div style={{ width: '48%', minWidth: 0 }}><PassagePane text={text} /></div>
+        <div style={{ width: '52%', minWidth: 0, padding: 16, overflowY: 'auto' }}>
+          <div style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 18, background: C.white, padding: 18 }}>
+            <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {questions.length}</div>
+            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>{q.stem || `Question ${index + 1}`}</h3>
+
+            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {q.options.map((opt, optIdx) => {
+                const selected = row.selected === optIdx;
+                const isCorrect = row.checked && q.correct === optIdx;
+                const isWrong = row.checked && selected && q.correct !== optIdx;
+                const border = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
+                const bg = isCorrect ? C.greenSoft : (isWrong ? C.redSoft : (selected ? C.purpleSoft : '#FBFAFF'));
+                const color = isCorrect ? C.greenDark : (isWrong ? C.redDark : C.ink);
+                return (
+                  <button key={`${q.id}_${optIdx}`} onClick={() => {
+                    if (row.checked) return;
+                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
+                  }} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: `1.5px solid ${border}`, borderRadius: 12, background: bg, color, padding: '10px 12px', fontSize: 14, fontWeight: 700, cursor: row.checked ? 'default' : 'pointer' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: 6, background: selected ? C.purple : C.purpleBorder, color: selected ? C.white : C.purple, fontSize: 10, fontWeight: 900, display: 'grid', placeItems: 'center' }}>{LETTERS[optIdx]}</span>
+                    <span>{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>← Previous</button>
+              {!row.checked ? (
+                <button onClick={() => {
+                  if (row.selected < 0) return;
+                  setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: row.selected === q.correct } : a));
+                }} disabled={row.selected < 0} style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}>Check answer</button>
+              ) : (
+                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= questions.length - 1 ? 0.45 : 1 }}>{index >= questions.length - 1 ? 'Completed' : 'Next →'}</button>
+              )}
+            </div>
+
+            {row.checked && (
+              <div style={{ marginTop: 10, background: row.correct ? C.greenSoft : C.orangeSoft, color: row.correct ? C.greenDark : C.orangeDark, borderLeft: `3px solid ${row.correct ? C.green : C.orange}`, padding: '10px 12px', fontWeight: 700 }}>
+                {q.feedback || (row.correct ? 'Correct answer!' : `Correct answer: ${LETTERS[q.correct]}`)}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PlayerView({ data }) {
+  const texts = data.texts || [];
+  const [textIdx, setTextIdx] = useState(0);
+  const current = texts[textIdx] || texts[0] || normalizeText();
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 40px)', background: C.bg }}>
       {texts.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '8px 14px 0', borderBottom: `1px solid ${C.border}`, background: C.white, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '8px 14px 0', borderBottom: `1px solid ${C.border}`, background: C.white }}>
           {texts.map((_, idx) => (
             <button key={`tab_${idx}`} onClick={() => setTextIdx(idx)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: idx === textIdx ? C.orange : C.purpleMid, fontFamily: 'Nunito, sans-serif', fontWeight: 900, padding: '8px 2px 10px', borderBottom: idx === textIdx ? `2.5px solid ${C.orange}` : '2.5px solid transparent', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span>Text {idx + 1}</span>
@@ -407,339 +397,225 @@ function PlayerView({ title, texts }) {
         </div>
       )}
 
-      <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '48% 52%', gap: 0 }}>
-        <div style={{ borderRight: `1px solid ${C.border}`, padding: '16px', overflowY: 'auto' }}>
-          <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', padding: '3px 14px', width: 'fit-content' }}>Reading passage</div>
-          <h2 style={{ margin: '12px 0 6px', fontFamily: 'Fredoka, sans-serif', fontSize: 30, color: C.orange }}>{current.title || 'Untitled text'}</h2>
-          <div style={{ fontSize: 11, color: C.purpleMid, fontFamily: 'Nunito, sans-serif', fontWeight: 700 }}>{current.genre || 'Informative text'} · {current.wordCount || countWords(current.body)} words · Read carefully</div>
-          <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
-          <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 13.5, lineHeight: 1.75, fontWeight: 500 }}>
-            {(splitParagraphs(current.body).length ? splitParagraphs(current.body) : ['No passage text yet.']).map((p, idx) => (
-              <p key={`p_${idx}`} style={{ margin: '0 0 14px' }} dangerouslySetInnerHTML={{ __html: renderInlineFormatting(p) }} />
-            ))}
-          </div>
-          {!!current.vocab.length && (
-            <div style={{ background: '#F9F8FF', border: `1px solid ${C.purpleBorder}`, borderRadius: 12, padding: '12px 14px', marginTop: 16 }}>
-              <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, fontWeight: 900, color: C.purple, textTransform: 'uppercase', marginBottom: 8 }}>Vocabulary help</div>
-              {current.vocab.map((entry, idx) => (
-                <div key={`v_${idx}`} style={{ display: 'grid', gridTemplateColumns: '16px 1fr', gap: 10, alignItems: 'start', marginBottom: 8 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: 999, background: C.purple, color: C.white, fontSize: 10, fontWeight: 900, display: 'grid', placeItems: 'center' }}>{idx + 1}</div>
-                  <div style={{ fontSize: 12.5, lineHeight: 1.4 }}><strong style={{ color: C.ink }}>{entry.word}</strong> <span style={{ color: C.purpleMid }}>{entry.def}</span></div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: '16px', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 28, height: 28, borderRadius: 10, background: C.purpleBorder, color: C.purple, display: 'grid', placeItems: 'center', fontWeight: 900 }}>?</div>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 15, color: C.purple }}>Questions</div>
-            </div>
-            <div style={{ textAlign: 'right', fontSize: 11, color: C.purpleMid, fontWeight: 700 }}>{current.questions.length} questions · {current.questions.length ? Math.round(100 / current.questions.length) : 0} pts each</div>
-          </div>
-
-          {current.questions.map((q, qIdx) => {
-            const row = currentAnswers[qIdx] || { selected: '', checked: false, isCorrect: false };
-            const unlocked = qIdx === 0 || (currentAnswers[qIdx - 1] && currentAnswers[qIdx - 1].checked);
-            const active = qIdx === activeQuestionIndex && unlocked;
-            const done = !!row.checked;
-            return (
-              <div key={q.id} style={{ background: C.white, border: `1.5px solid ${active ? C.purple : C.purpleBorder}`, borderRadius: 20, padding: '16px 18px', marginBottom: 12, boxShadow: active ? '0 4px 20px rgba(127,119,221,.13)' : 'none', opacity: unlocked ? (done ? 0.85 : 1) : 0.4, pointerEvents: unlocked ? 'auto' : 'none' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 999, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, color: C.orangeDark, fontSize: 10, fontWeight: 900, display: 'grid', placeItems: 'center' }}>{qIdx + 1}</div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: C.ink, lineHeight: 1.5 }}>{q.stem || `Question ${qIdx + 1}`}</div>
-                </div>
-
-                {!unlocked && <div style={{ marginBottom: 8, fontSize: 11, color: C.purpleMid, fontWeight: 800 }}>Answer Q{qIdx} to unlock</div>}
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {q.options.map((opt, optIdx) => {
-                    const letter = LETTERS[optIdx];
-                    const selected = row.selected === letter;
-                    const isCorrect = row.checked && q.correct === letter;
-                    const isWrong = row.checked && selected && q.correct !== letter;
-                    const borderColor = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
-                    const bg = isCorrect ? C.greenSoft : (isWrong ? C.redSoft : (selected ? C.purpleSoft : '#F9F8FF'));
-                    const color = isCorrect ? C.greenDark : (isWrong ? C.redDark : (selected ? C.purple : C.ink));
-                    const badgeBg = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
-                    const badgeColor = selected || isCorrect || isWrong ? C.white : C.purple;
-                    return (
-                      <button key={`${q.id}_${letter}`} onClick={() => onSelectOption(qIdx, letter)} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', padding: '9px 12px', border: `1.5px solid ${borderColor}`, borderRadius: 12, fontSize: 12.5, fontWeight: 600, color, background: bg, cursor: row.checked ? 'default' : 'pointer' }}>
-                        <span style={{ width: 20, height: 20, borderRadius: 6, background: badgeBg, color: badgeColor, display: 'grid', placeItems: 'center', fontSize: 10, fontWeight: 900 }}>{letter}</span>
-                        <span>{opt}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {active && !row.checked && (
-                  <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end' }}>
-                    <button onClick={() => checkAnswer(qIdx)} disabled={!row.selected} style={{ background: C.purple, color: C.white, border: 'none', borderRadius: 10, padding: '8px 20px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 13, cursor: row.selected ? 'pointer' : 'not-allowed', opacity: row.selected ? 1 : 0.45 }}>Check answer</button>
-                  </div>
-                )}
-
-                {row.checked && (
-                  <div style={{ marginTop: 10, background: row.isCorrect ? C.greenSoft : C.orangeSoft, borderLeft: `3px solid ${row.isCorrect ? C.green : C.orange}`, color: row.isCorrect ? C.greenDark : C.orangeDark, padding: '9px 12px', fontSize: 12, fontWeight: 700 }}>
-                    <span style={{ marginRight: 8 }}>{row.isCorrect ? '✓' : '✗'}</span>
-                    <span>{q.feedback || (row.isCorrect ? 'Correct answer!' : `Correct answer: ${q.correct}`)}</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div style={{ flexShrink: 0, background: C.white, borderTop: `1.5px solid ${C.border}`, height: 64, display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 10, padding: '0 16px' }}>
-        <div>
-          <button onClick={() => setTextIdx((prev) => Math.max(0, prev - 1))} disabled={textIdx === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, color: C.purple, background: C.white, padding: '8px 14px', fontWeight: 900, fontFamily: 'Nunito, sans-serif', opacity: textIdx === 0 ? 0.5 : 1, cursor: textIdx === 0 ? 'not-allowed' : 'pointer' }}>← Previous</button>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-          {texts.map((t, idx) => {
-            const rows = answers[t.id] || [];
-            const done = rows.length > 0 && rows.every((r) => r.checked);
-            const active = idx === textIdx;
-            return <span key={`dot_${t.id}`} style={{ width: active ? 14 : 10, height: active ? 14 : 10, borderRadius: 999, background: active ? C.orange : (done ? C.purple : C.purpleBorder), display: 'inline-block' }} />;
-          })}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          {textIdx < texts.length - 1 && (
-            <button onClick={() => setTextIdx((prev) => Math.min(texts.length - 1, prev + 1))} style={{ border: 'none', borderRadius: 10, color: C.white, background: C.orange, padding: '8px 14px', fontWeight: 900, fontFamily: 'Nunito, sans-serif', cursor: 'pointer' }}>Next text →</button>
-          )}
-          {textIdx === texts.length - 1 && (
-            <button onClick={() => allAnswered && setShowCompletion(true)} disabled={!allAnswered} style={{ border: 'none', borderRadius: 10, color: C.white, background: C.orange, padding: '8px 14px', fontWeight: 900, fontFamily: 'Nunito, sans-serif', cursor: allAnswered ? 'pointer' : 'not-allowed', opacity: allAnswered ? 1 : 0.45 }}>{allAnswered ? 'Finish' : 'Next text →'}</button>
-          )}
-        </div>
-      </div>
+      {current.mode === 'comp' ? <CompQuestions text={current} /> : <VocabQuestions text={current} />}
     </div>
   );
 }
 
-function EditorView({ title, setTitle, texts, setTexts }) {
-  const [collapsed, setCollapsed] = useState({});
-  const [saving, setSaving] = useState(false);
+async function saveActivity(data) {
+  const formPayload = new URLSearchParams();
+  formPayload.set('unit', window.RC_UNIT_ID || '');
+  formPayload.set('type', 'reading_comprehension');
+  formPayload.set('content_json', JSON.stringify(data));
+
+  const res = await fetch('../../core/save_activity.php', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    credentials: 'same-origin',
+    body: formPayload.toString(),
+  });
+
+  if (!res.ok) {
+    throw new Error(`Save failed (${res.status})`);
+  }
+}
+
+function EditorView({ data, setData }) {
   const [status, setStatus] = useState('');
-  const bodyRefs = useRef({});
+  const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
 
-  const patchText = (textId, mutator) => {
-    setTexts((prev) => prev.map((t) => (t.id === textId ? mutator(t) : t)));
+  const text = data.texts[0] || normalizeText();
+  const patchText = (patcher) => {
+    setData((prev) => ({ ...prev, texts: [patcher(prev.texts[0] || normalizeText())] }));
   };
 
-  const addText = () => {
-    setTexts((prev) => [...prev, defaultText(prev.length)]);
-  };
-
-  const deleteText = (textId) => {
-    setTexts((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((t) => t.id !== textId);
-    });
-  };
-
-  const moveText = (textId, dir) => {
-    setTexts((prev) => {
-      const idx = prev.findIndex((t) => t.id === textId);
-      if (idx < 0) return prev;
-      const next = idx + dir;
-      if (next < 0 || next >= prev.length) return prev;
-      const copy = prev.slice();
-      const tmp = copy[idx];
-      copy[idx] = copy[next];
-      copy[next] = tmp;
-      return copy;
-    });
-  };
-
-  const addVocab = (textId) => {
-    patchText(textId, (t) => {
-      if ((t.vocab || []).length >= 5) return t;
-      return { ...t, vocab: [...(t.vocab || []), { word: '', def: '' }] };
-    });
-  };
-
-  const patchVocab = (textId, idx, key, value) => {
-    patchText(textId, (t) => {
-      const vocab = (t.vocab || []).slice();
-      vocab[idx] = { ...(vocab[idx] || { word: '', def: '' }), [key]: value };
-      return { ...t, vocab };
-    });
-  };
-
-  const deleteVocab = (textId, idx) => {
-    patchText(textId, (t) => ({ ...t, vocab: (t.vocab || []).filter((_, i) => i !== idx) }));
-  };
-
-  const addQuestion = (textId) => {
-    patchText(textId, (t) => ({
-      ...t,
-      questions: [...(t.questions || []), normalizeQuestion({ options: ['A) ', 'B) ', 'C) ', 'D) '] })],
-    }));
-  };
-
-  const patchQuestion = (textId, qIdx, updater) => {
-    patchText(textId, (t) => {
-      const questions = (t.questions || []).slice();
-      questions[qIdx] = updater(questions[qIdx] || normalizeQuestion());
-      return { ...t, questions };
-    });
-  };
-
-  const deleteQuestion = (textId, qIdx) => {
-    patchText(textId, (t) => ({ ...t, questions: (t.questions || []).filter((_, i) => i !== qIdx) }));
-  };
-
-  const applyBodyMarkup = (textId, token) => {
-    const textarea = bodyRefs.current[textId];
-    if (!textarea) return;
-    const source = String(textarea.value || '');
-    const start = Number.isFinite(textarea.selectionStart) ? textarea.selectionStart : source.length;
-    const end = Number.isFinite(textarea.selectionEnd) ? textarea.selectionEnd : source.length;
-    const from = Math.max(0, Math.min(start, end));
-    const to = Math.max(0, Math.max(start, end));
-    const selected = source.slice(from, to) || 'important word';
-    const replacement = `${token}${selected}${token}`;
-    const nextBody = `${source.slice(0, from)}${replacement}${source.slice(to)}`;
-
-    patchText(textId, (prev) => ({ ...prev, body: nextBody }));
-
-    requestAnimationFrame(() => {
-      const refreshed = bodyRefs.current[textId];
-      if (!refreshed) return;
-      refreshed.focus();
-      refreshed.setSelectionRange(from + token.length, from + token.length + selected.length);
-    });
-  };
+  const addWord = () => patchText((t) => ({ ...t, words: [...t.words, normalizeWord()] }));
+  const addQuestion = () => patchText((t) => ({ ...t, questions: [...t.questions, normalizeQuestion()] }));
 
   const save = async () => {
     setSaving(true);
     setStatus('Saving...');
     try {
-      await saveReadingActivity({
-        activityId: window.RC_ACTIVITY_ID || '',
-        unitId: window.RC_UNIT_ID || '',
-        title,
-        texts,
-      });
+      const payload = {
+        mode: text.mode,
+        title: text.title,
+        genre: text.genre,
+        wordCount: text.wordCount || countWords(text.body),
+        body: text.body,
+        words: text.words,
+        questions: text.questions,
+      };
+      await saveActivity(payload);
       setStatus('Saved successfully.');
-    } catch (e) {
+    } catch (err) {
       setStatus('Could not save activity.');
     } finally {
       setSaving(false);
     }
   };
 
+  if (previewing) {
+    return (
+      <div style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: 10 }}>
+          <button onClick={() => setPreviewing(false)} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900 }}>← Back to editor</button>
+        </div>
+        <div style={{ flex: 1, minHeight: 0 }}><PlayerView data={data} /></div>
+      </div>
+    );
+  }
+
   return (
-    <div style={{ height: '100%', minHeight: 0, background: C.bg, padding: '16px 18px 30px', overflowY: 'auto' }}>
-      <div style={{ maxWidth: 980, margin: '0 auto' }}>
-        <h2 style={{ margin: '0 0 10px', fontFamily: 'Fredoka, sans-serif', color: C.orange }}>Reading Comprehension Editor</h2>
+    <div style={{ height: 'calc(100vh - 40px)', overflowY: 'auto', background: C.bg, padding: 20 }}>
+      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
+        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>⚙</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading Comprehension</div>
+            <div style={{ marginLeft: 'auto', color: C.purple, fontWeight: 900, fontSize: 14 }}>Edit mode</div>
+          </div>
 
-        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 16, padding: 14, marginBottom: 12 }}>
-          <label style={{ display: 'block', fontWeight: 900, color: C.purple, marginBottom: 6 }}>Activity title</label>
-          <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontFamily: 'Nunito, sans-serif' }} />
+          <div style={{ padding: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity title</label>
+                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontSize: 18, fontWeight: 700 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Level</label>
+                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontSize: 18, fontWeight: 700 }} />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 12 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity mode — choose one</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <button onClick={() => patchText((t) => ({ ...t, mode: 'vocab' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'vocab' ? C.orange : C.purpleBorder}`, borderRadius: 16, background: text.mode === 'vocab' ? '#F8ECE2' : '#F6F4FD', padding: 16 }}>
+                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 26 }}>Vocabulary meaning</div>
+                  <div style={{ color: C.purpleMid, fontWeight: 700 }}>Students read the passage and choose the correct meaning for each highlighted word.</div>
+                </button>
+                <button onClick={() => patchText((t) => ({ ...t, mode: 'comp' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'comp' ? C.orange : C.purpleBorder}`, borderRadius: 16, background: text.mode === 'comp' ? '#F8ECE2' : '#F6F4FD', padding: 16 }}>
+                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.purple, fontSize: 26 }}>Reading comprehension</div>
+                  <div style={{ color: C.purpleMid, fontWeight: 700 }}>Students answer questions about the passage to demonstrate understanding.</div>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div style={{ marginBottom: 12 }}>
-          <button onClick={addText} style={{ border: 'none', background: C.purple, color: C.white, borderRadius: 10, padding: '10px 14px', fontWeight: 900, fontFamily: 'Nunito, sans-serif', cursor: 'pointer' }}>+ Add text</button>
+        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>📘</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Passage</div>
+          </div>
+
+          <div style={{ padding: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 220px', gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Title</label>
+                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Genre</label>
+                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Word count</label>
+                <input type="number" value={text.wordCount || ''} onChange={(e) => patchText((t) => ({ ...t, wordCount: Number(e.target.value || 0) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+              </div>
+            </div>
+            <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Passage body</label>
+            <textarea rows={8} value={text.body} onChange={(e) => patchText((t) => ({ ...t, body: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.purpleBorder}`, fontFamily: 'Nunito, sans-serif', fontSize: 18, fontWeight: 700 }} />
+          </div>
         </div>
 
-        {texts.map((t, textIdx) => {
-          const isCollapsed = !!collapsed[t.id];
-          return (
-            <div key={t.id} style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, padding: 20, marginBottom: 12 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <button onClick={() => setCollapsed((prev) => ({ ...prev, [t.id]: !prev[t.id] }))} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'Fredoka, sans-serif', color: C.purple, fontSize: 18 }}>{isCollapsed ? '▶' : '▼'} Text {textIdx + 1}: {t.title || 'Untitled'}</button>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button onClick={() => moveText(t.id, -1)} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, cursor: 'pointer' }}>↑</button>
-                  <button onClick={() => moveText(t.id, 1)} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, cursor: 'pointer' }}>↓</button>
-                  <button onClick={() => deleteText(t.id)} style={{ border: `1px solid ${C.red}`, color: C.red, background: C.white, borderRadius: 8, cursor: 'pointer' }}>🗑</button>
+        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>🟧</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Highlighted vocabulary words</div>
+            <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.words.length} words</div>
+          </div>
+
+          <div style={{ padding: 18 }}>
+            <div style={{ marginBottom: 10, background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 12, padding: '10px 12px', color: C.purple, fontWeight: 800 }}>
+              Add each word that appears in the passage. It will be highlighted in orange for students.
+            </div>
+
+            <div style={{ border: `1px solid ${C.orangeBorder}`, background: '#FFF9F4', borderRadius: 16, padding: 12, marginBottom: 12 }}>
+              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8 }}>Live preview — highlighted words</div>
+              <div style={{ color: C.ink, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(text.body || 'Type passage text to preview highlights.', text.words) }} />
+            </div>
+
+            {text.words.map((word, idx) => (
+              <div key={word.id} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: 12, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 24 }}>Word card {idx + 1}</div>
+                  <button onClick={() => patchText((t) => ({ ...t, words: t.words.filter((_, i) => i !== idx) }))} style={{ border: `1px solid ${C.red}`, borderRadius: 8, background: C.white, color: C.red, padding: '4px 10px', fontWeight: 900 }}>Delete</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Word (as it appears in text)</label>
+                    <input value={word.word} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, word: e.target.value } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Correct meaning</label>
+                    <input value={word.correct} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, correct: e.target.value } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 1</label>
+                    <input value={word.distractors[0] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [e.target.value, w.distractors?.[1] || ''] } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 2</label>
+                    <input value={word.distractors[1] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [w.distractors?.[0] || '', e.target.value] } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                  </div>
                 </div>
               </div>
+            ))}
 
-              {!isCollapsed && (
-                <div>
-                  <div style={{ display: 'grid', gap: 10, gridTemplateColumns: '1fr 1fr 180px', marginBottom: 12 }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 4, fontWeight: 800, color: C.ink }}>Title</label>
-                      <input type="text" value={t.title} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, title: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 4, fontWeight: 800, color: C.ink }}>Genre</label>
-                      <input type="text" value={t.genre} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, genre: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: 4, fontWeight: 800, color: C.ink }}>Word count</label>
-                      <input type="number" value={t.wordCount || ''} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, wordCount: Number(e.target.value || 0) }))} placeholder={`Auto: ${countWords(t.body)}`} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                    </div>
-                  </div>
+            <button onClick={addWord} style={{ width: '100%', border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, borderRadius: 12, padding: '10px 12px', fontSize: 32, fontWeight: 900 }}>+ Add vocabulary word</button>
+          </div>
+        </div>
 
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
-                      <label style={{ display: 'block', fontWeight: 800, color: C.ink }}>Body text</label>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <button type="button" onClick={() => applyBodyMarkup(t.id, '**')} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontWeight: 900 }}>B</button>
-                        <button type="button" onClick={() => applyBodyMarkup(t.id, '__')} style={{ border: `1px solid ${C.purpleBorder}`, background: C.white, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', textDecoration: 'underline', fontWeight: 900 }}>U</button>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: 11, color: C.purpleMid, marginBottom: 6 }}>Use the buttons (or write **bold** and __underline__) for important words.</div>
-                    <textarea rows={10} ref={(node) => { bodyRefs.current[t.id] = node; }} value={t.body} onChange={(e) => patchText(t.id, (prev) => ({ ...prev, body: e.target.value }))} placeholder="Paste or type the reading passage here. Separate paragraphs with a blank line." style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.purpleBorder}`, resize: 'vertical', fontFamily: 'Nunito, sans-serif' }} />
-                  </div>
-
-                  <div style={{ marginBottom: 12 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <strong style={{ color: C.purple }}>Vocabulary help</strong>
-                      <button onClick={() => addVocab(t.id)} disabled={(t.vocab || []).length >= 5} style={{ border: 'none', background: 'transparent', color: C.purple, fontWeight: 900, cursor: 'pointer', opacity: (t.vocab || []).length >= 5 ? 0.4 : 1 }}>+ Add word</button>
-                    </div>
-                    {(t.vocab || []).map((v, vIdx) => (
-                      <div key={`${t.id}_v_${vIdx}`} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, marginBottom: 6 }}>
-                        <input type="text" value={v.word} placeholder="Word" onChange={(e) => patchVocab(t.id, vIdx, 'word', e.target.value)} style={{ padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                        <input type="text" value={v.def} placeholder="Definition" onChange={(e) => patchVocab(t.id, vIdx, 'def', e.target.value)} style={{ padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                        <button onClick={() => deleteVocab(t.id, vIdx)} style={{ border: `1px solid ${C.red}`, background: C.white, color: C.red, borderRadius: 8, cursor: 'pointer' }}>Delete</button>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                      <strong style={{ color: C.purple }}>Questions</strong>
-                      <button onClick={() => addQuestion(t.id)} style={{ border: 'none', background: 'transparent', color: C.purple, fontWeight: 900, cursor: 'pointer' }}>+ Add question</button>
-                    </div>
-                    {(t.questions || []).map((q, qIdx) => (
-                      <div key={q.id} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 12, padding: 12, marginBottom: 8, background: '#FCFBFF' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <strong style={{ color: C.ink }}>Question {qIdx + 1}</strong>
-                          <button onClick={() => deleteQuestion(t.id, qIdx)} style={{ border: `1px solid ${C.red}`, background: C.white, color: C.red, borderRadius: 8, cursor: 'pointer' }}>Delete question</button>
-                        </div>
-                        <input type="text" value={q.stem} placeholder="Stem" onChange={(e) => patchQuestion(t.id, qIdx, (prev) => ({ ...prev, stem: e.target.value }))} style={{ width: '100%', marginBottom: 8, padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                        {LETTERS.map((letter, optIdx) => (
-                          <input key={`${q.id}_o_${letter}`} type="text" value={q.options[optIdx] || `${letter}) `} placeholder={`Option ${letter}`} onChange={(e) => patchQuestion(t.id, qIdx, (prev) => {
-                            const options = (prev.options || []).slice();
-                            options[optIdx] = e.target.value;
-                            return { ...prev, options };
-                          })} style={{ width: '100%', marginBottom: 6, padding: '8px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                        ))}
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ fontWeight: 800, color: C.ink }}>Correct answer:</span>
-                          {LETTERS.map((letter) => (
-                            <label key={`${q.id}_c_${letter}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <input type="radio" name={`${q.id}_correct`} checked={q.correct === letter} onChange={() => patchQuestion(t.id, qIdx, (prev) => ({ ...prev, correct: letter }))} /> {letter}
-                            </label>
-                          ))}
-                        </div>
-                        <input type="text" value={q.feedback} placeholder="Feedback" onChange={(e) => patchQuestion(t.id, qIdx, (prev) => ({ ...prev, feedback: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}` }} />
-                      </div>
-                    ))}
-                  </div>
+        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>❓</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading comprehension questions</div>
+            <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.questions.length} questions</div>
+          </div>
+          <div style={{ padding: 18 }}>
+            {text.questions.map((q, idx) => (
+              <div key={q.id} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: 12, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 24 }}>Question {idx + 1}</div>
+                  <button onClick={() => patchText((t) => ({ ...t, questions: t.questions.filter((_, i) => i !== idx) }))} style={{ border: `1px solid ${C.red}`, borderRadius: 8, background: C.white, color: C.red, padding: '4px 10px', fontWeight: 900 }}>Delete</button>
                 </div>
-              )}
-            </div>
-          );
-        })}
+                <input value={q.stem} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, stem: e.target.value } : x) }))} placeholder="Question stem" style={{ width: '100%', marginBottom: 8, padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                {q.options.map((opt, optIdx) => (
+                  <input key={`${q.id}_${optIdx}`} value={opt} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, options: x.options.map((o, j) => j === optIdx ? e.target.value : o) } : x) }))} placeholder={`Option ${LETTERS[optIdx]}`} style={{ width: '100%', marginBottom: 6, padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                ))}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 900, color: C.ink }}>Correct:</span>
+                  {LETTERS.map((label, optIdx) => (
+                    <label key={`${q.id}_c_${optIdx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 800 }}>
+                      <input type="radio" checked={q.correct === optIdx} onChange={() => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, correct: optIdx } : x) }))} /> {label}
+                    </label>
+                  ))}
+                </div>
+                <input value={q.feedback} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, feedback: e.target.value } : x) }))} placeholder="Feedback" style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+              </div>
+            ))}
+            <button onClick={addQuestion} style={{ width: '100%', border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, borderRadius: 12, padding: '10px 12px', fontSize: 32, fontWeight: 900 }}>+ Add comprehension question</button>
+          </div>
+        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button onClick={save} disabled={saving} style={{ border: 'none', background: C.orange, color: C.white, borderRadius: 10, padding: '10px 28px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>Save</button>
-          <span style={{ color: C.purple, fontWeight: 800 }}>{status}</span>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'center', position: 'sticky', bottom: 0, background: C.bg, paddingBottom: 12 }}>
+          <button onClick={() => setPreviewing(true)} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 12, background: C.white, color: C.ink, padding: '12px 14px', fontWeight: 900, fontSize: 28 }}>Preview as student</button>
+          <span style={{ color: C.purple, fontWeight: 900, fontSize: 14 }}>{status}</span>
+          <button onClick={save} disabled={saving} style={{ border: 'none', borderRadius: 12, background: C.white, color: C.ink, padding: '12px 18px', fontWeight: 900, fontSize: 28, opacity: saving ? 0.45 : 1 }}>Save activity</button>
         </div>
       </div>
     </div>
@@ -747,18 +623,30 @@ function EditorView({ title, setTitle, texts, setTexts }) {
 }
 
 function App() {
-  const [title, setTitle] = useState(String(window.RC_SAVED_TITLE || 'Reading Comprehension'));
-  const [texts, setTexts] = useState(() => normalizeTexts(window.RC_SAVED_TEXTS));
+  const [data, setData] = useState(() => normalizeDataset(window.RC_SAVED_DATA || {}));
   const allowEditor = !!window.RC_ALLOW_EDITOR;
 
   if (allowEditor) {
-    return <EditorView title={title} setTitle={setTitle} texts={texts} setTexts={setTexts} />;
+    return <EditorView data={data} setData={setData} />;
   }
-  return <PlayerView title={title} texts={texts} />;
+
+  return <PlayerView data={data} />;
 }
 
 ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 </script>
+
+<style>
+.rc-hl{
+  color:#C2580A;
+  font-weight:900;
+  border-bottom:2px solid #F97316;
+  background:#FFF0E6;
+  border-radius:4px;
+  padding:0 2px;
+}
+</style>
+
 <?php
 $content = ob_get_clean();
 render_activity_viewer('Reading Comprehension', 'fa-solid fa-book-open', $content);
