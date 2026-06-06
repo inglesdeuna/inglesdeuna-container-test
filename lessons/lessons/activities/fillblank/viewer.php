@@ -296,11 +296,7 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
     text-align: center;
     margin-bottom: 1.25rem;
     min-height: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 6px;
+    display: block;
     font-family: 'Nunito', sans-serif;
 }
 
