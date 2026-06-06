@@ -351,29 +351,36 @@ ob_start();
 .wp-comp-label.green{color:#1D9E75;}
 .wp-comp-label.purple{color:#534AB7;}
 
-.wp-tokens{display:flex;flex-wrap:wrap;gap:6px;}
+.wp-tokens{
+    line-height:2;
+    font-size:15px;
+    font-weight:700;
+    color:#271B5D;
+}
 
 .wp-token{
-    display:inline-flex;align-items:center;
-    padding:4px 10px;border-radius:999px;
-    font-size:13px;font-weight:900;
+    display:inline;
+    padding:1px 3px;
+    border-radius:4px;
+    font-size:inherit;
+    font-weight:800;
 }
 .wp-token.match{
-    background:#E6F9F2;color:#0F6E56;
-    border:1px solid #9FE1CB;
+    background:rgba(29,158,117,.18);
+    color:#0F6E56;
 }
 .wp-token.miss{
-    background:#FCEBEB;color:#A32D2D;
-    border:1px solid #F7C1C1;
+    background:rgba(226,75,74,.15);
+    color:#A32D2D;
     text-decoration:line-through;
 }
 .wp-token.extra{
-    background:#FFF0E6;color:#C2580A;
-    border:1px solid #FCDDBF;
+    background:rgba(249,115,22,.18);
+    color:#C2580A;
 }
 .wp-token.neutral{
-    background:#EEEDFE;color:#534AB7;
-    border:1px solid #CECBF6;
+    background:transparent;
+    color:#271B5D;
 }
 
 .wp-nav-row{
@@ -586,25 +593,27 @@ function checkAnswer(){
     var sTok = el('wp-student-tokens');
     sTok.innerHTML = '';
     var usedC2 = {};
-    studentWords.forEach(function(w){
+    studentWords.forEach(function(w, i){
         usedC2[w] = (usedC2[w]||0)+1;
         var isMatch = modelFreq[w] && usedC2[w] <= modelFreq[w];
         var span = document.createElement('span');
         span.className = 'wp-token ' + (isMatch ? 'match' : 'extra');
         span.textContent = w;
         sTok.appendChild(span);
+        if(i < studentWords.length - 1) sTok.appendChild(document.createTextNode(' '));
     });
 
     var aTok = el('wp-answer-tokens');
     aTok.innerHTML = '';
     var usedM = {};
-    modelWords.forEach(function(w){
+    modelWords.forEach(function(w, i){
         usedM[w] = (usedM[w]||0)+1;
         var found = studentFreq[w] && usedM[w] <= studentFreq[w];
         var span = document.createElement('span');
         span.className = 'wp-token ' + (found ? 'neutral' : 'miss');
         span.textContent = w;
         aTok.appendChild(span);
+        if(i < modelWords.length - 1) aTok.appendChild(document.createTextNode(' '));
     });
 
     el('wp-result').classList.add('show');
