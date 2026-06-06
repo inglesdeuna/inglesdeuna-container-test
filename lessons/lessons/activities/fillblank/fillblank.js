@@ -316,14 +316,33 @@ document.addEventListener('DOMContentLoaded', function () {
         resizeBlankInput(input);
       });
 
-      input.addEventListener('keydown', function (evt) {
-        if (evt.key === 'Enter') {
-          evt.preventDefault();
-          if (!answered && !revealed) {
-            checkAnswer();
+      input.addEventListener('keydown', (function (capturedIdx) {
+        return function (evt) {
+          var isLast = capturedIdx === inputEls.length - 1;
+
+          if (evt.key === 'Enter') {
+            evt.preventDefault();
+            if (!answered && !revealed) {
+              if (!isLast) {
+                inputEls[capturedIdx + 1].focus();
+                inputEls[capturedIdx + 1].select();
+              } else {
+                checkAnswer();
+              }
+            }
           }
-        }
-      });
+
+          if (evt.key === 'ArrowRight') {
+            var atEnd = input.selectionStart === input.value.length &&
+                        input.selectionEnd === input.value.length;
+            if (atEnd && !isLast && !answered && !revealed) {
+              evt.preventDefault();
+              inputEls[capturedIdx + 1].focus();
+              inputEls[capturedIdx + 1].setSelectionRange(0, 0);
+            }
+          }
+        };
+      }(idx)));
     });
 
     if (inputEls.length) {
