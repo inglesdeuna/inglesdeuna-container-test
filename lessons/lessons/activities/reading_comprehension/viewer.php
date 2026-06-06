@@ -264,6 +264,7 @@ const C = {
   orangeBorder: '#FCDDBF',
   orangeDark: '#C2580A',
   purple: '#7F77DD',
+  purpleDark: '#5A50C8',
   purpleSoft: '#F5F3FF',
   purpleBorder: '#EDE9FA',
   purpleMid: '#9B8FCC',
@@ -280,6 +281,110 @@ const C = {
 };
 
 const LETTERS = ['A', 'B', 'C', 'D'];
+
+const baseButtonStyle = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  border: 'none',
+  borderRadius: 999,
+  padding: '11px 22px',
+  minWidth: 120,
+  fontFamily: 'Nunito, sans-serif',
+  fontSize: 14,
+  fontWeight: 900,
+  lineHeight: 1,
+  textDecoration: 'none',
+  transition: 'filter .15s ease, transform .15s ease',
+};
+
+function buttonStyle(variant = 'secondary', disabled = false) {
+  const variants = {
+    primary: {
+      background: C.orange,
+      color: C.white,
+      boxShadow: '0 8px 20px rgba(249,115,22,.22)',
+    },
+    accent: {
+      background: C.purple,
+      color: C.white,
+      boxShadow: '0 8px 20px rgba(127,119,221,.18)',
+    },
+    secondary: {
+      background: C.white,
+      color: C.purpleDark,
+      border: `1.5px solid ${C.purpleBorder}`,
+      boxShadow: '0 6px 18px rgba(127,119,221,.08)',
+    },
+    subtle: {
+      background: '#FBFAFF',
+      color: C.ink,
+      border: `1.5px solid ${C.purpleBorder}`,
+      boxShadow: 'none',
+    },
+    danger: {
+      background: C.white,
+      color: C.red,
+      border: `1px solid ${C.red}`,
+      boxShadow: 'none',
+    },
+  };
+
+  return {
+    ...baseButtonStyle,
+    ...(variants[variant] || variants.secondary),
+    opacity: disabled ? 0.45 : 1,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+  };
+}
+
+function optionButtonStyle({ border, bg, color, disabled = false }) {
+  return {
+    ...baseButtonStyle,
+    width: '100%',
+    minWidth: 0,
+    justifyContent: 'flex-start',
+    textAlign: 'left',
+    whiteSpace: 'normal',
+    padding: '12px 16px',
+    borderRadius: 16,
+    border: `1.5px solid ${border}`,
+    background: bg,
+    color,
+    boxShadow: 'none',
+    cursor: disabled ? 'default' : 'pointer',
+  };
+}
+
+const editorInputStyle = {
+  width: '100%',
+  padding: '11px 13px',
+  borderRadius: 12,
+  border: `1px solid ${C.purpleBorder}`,
+  fontFamily: 'Nunito, sans-serif',
+  fontSize: 14,
+  fontWeight: 700,
+  color: C.ink,
+  background: C.white,
+};
+
+const editorSectionStyle = {
+  background: C.white,
+  border: `1.5px solid ${C.purpleBorder}`,
+  borderRadius: 24,
+  overflow: 'hidden',
+  marginBottom: 18,
+  boxShadow: '0 10px 28px rgba(127,119,221,.08)',
+};
+
+const editorSectionHeaderStyle = {
+  padding: '16px 20px',
+  borderBottom: `1px solid ${C.border}`,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+};
 
 const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
 
@@ -405,23 +510,26 @@ function buildVocabDeck(words) {
 
 function TopBar({ done, total }) {
   return (
-    <div style={{ background: C.white, borderBottom: `1.5px solid ${C.border}`, height: 52, padding: '0 16px', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div className="rc-topbar">
       <button
         onClick={() => {
           const backTo = String(window.RC_RETURN_TO || '').trim();
           if (backTo) window.location.href = backTo;
           else window.history.back();
         }}
-        style={{ width: 32, height: 32, borderRadius: 999, border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, cursor: 'pointer' }}
-      >â</button>
+        style={{ ...buttonStyle('secondary'), width: 42, height: 42, minWidth: 42, padding: 0, boxShadow: 'none' }}
+      >←</button>
 
-      <div style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 18 }}>Reading Comprehension</div>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase' }}>Activity</div>
+        <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(24px, 3vw, 32px)', lineHeight: 1.05 }}>Reading Comprehension</div>
+      </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 90, height: 7, borderRadius: 999, background: C.purpleBorder, overflow: 'hidden' }}>
+        <div style={{ width: 110, height: 8, borderRadius: 999, background: C.purpleBorder, overflow: 'hidden' }}>
           <div style={{ width: `${total ? (done / total) * 100 : 0}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#F97316,#7F77DD)' }} />
         </div>
-        <div style={{ fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 12, color: C.purple }}>{done} / {total}</div>
+        <div style={{ minWidth: 58, textAlign: 'center', background: C.purpleSoft, color: C.purpleDark, borderRadius: 999, padding: '6px 10px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 12 }}>{done} / {total}</div>
       </div>
     </div>
   );
@@ -430,12 +538,12 @@ function TopBar({ done, total }) {
 function PassagePane({ text }) {
   const paragraphs = String(text.body || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   return (
-    <div style={{ borderRight: `1px solid ${C.border}`, padding: 16, overflowY: 'auto' }}>
-      <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em', padding: '3px 14px', width: 'fit-content' }}>Reading passage</div>
-      <h2 style={{ margin: '12px 0 6px', fontFamily: 'Fredoka, sans-serif', fontSize: 20, color: C.orange }}>{text.title || 'Untitled passage'}</h2>
-      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 11, color: C.purpleMid, fontWeight: 700 }}>{text.genre || 'Informative text'} Â· {text.wordCount || countWords(text.body)} words Â· Read carefully</div>
+    <div className="rc-passage-pane">
+      <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em', padding: '4px 14px', width: 'fit-content' }}>Reading passage</div>
+      <h2 style={{ margin: '14px 0 8px', fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(26px, 3vw, 34px)', color: C.orange, lineHeight: 1.05 }}>{text.title || 'Untitled passage'}</h2>
+      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: C.purpleMid, fontWeight: 800 }}>{text.genre || 'Informative text'} · {text.wordCount || countWords(text.body)} words · Read carefully</div>
       <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
-      <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 14, lineHeight: 1.7 }}>
+      <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 15, lineHeight: 1.75 }}>
         {(paragraphs.length ? paragraphs : ['No passage text available.']).map((p, idx) => (
           <p key={`p_${idx}`} style={{ margin: '0 0 14px' }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(p, text.words) }} />
         ))}
@@ -458,16 +566,16 @@ function VocabQuestions({ text }) {
   }
 
   return (
-    <>
+    <div className="rc-stage-shell">
       <TopBar done={done} total={deck.length} />
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <div style={{ width: '48%', minWidth: 0 }}><PassagePane text={text} /></div>
-        <div style={{ width: '52%', minWidth: 0, padding: 16, overflowY: 'auto' }}>
-          <div style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 18, background: C.white, padding: 18 }}>
+      <div className="rc-stage-layout">
+        <div style={{ minWidth: 0 }}><PassagePane text={text} /></div>
+        <div className="rc-question-pane">
+          <div className="rc-question-card">
             <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {deck.length}</div>
-            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 22 }}>What does <span style={{ color: C.orange }}>{item.word}</span> mean?</h3>
+            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(22px, 2.2vw, 28px)', lineHeight: 1.15 }}>What does <span style={{ color: C.orange }}>{item.word}</span> mean?</h3>
 
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {item.options.map((opt, optIdx) => {
                 const selected = row.selected === optIdx;
                 const isCorrect = row.checked && opt.correct;
@@ -479,15 +587,15 @@ function VocabQuestions({ text }) {
                   <button key={opt.key} onClick={() => {
                     if (row.checked) return;
                     setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
-                  }} style={{ textAlign: 'left', border: `1.5px solid ${border}`, borderRadius: 12, background: bg, color, padding: '10px 12px', fontSize: 14, fontWeight: 700, cursor: row.checked ? 'default' : 'pointer' }}>
+                  }} style={optionButtonStyle({ border, bg, color, disabled: row.checked })}>
                     {opt.text}
                   </button>
                 );
               })}
             </div>
 
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>â Previous</button>
+            <div className="rc-actions">
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={buttonStyle('secondary', index === 0)}>← Previous</button>
               {!row.checked ? (
                 <button
                   onClick={() => {
@@ -496,22 +604,22 @@ function VocabQuestions({ text }) {
                     setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
                   }}
                   disabled={row.selected < 0}
-                  style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}
+                  style={buttonStyle('accent', row.selected < 0)}
                 >Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= deck.length - 1 ? 0.45 : 1 }}>{index >= deck.length - 1 ? 'Completed' : 'Next â'}</button>
+                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={buttonStyle('primary', index >= deck.length - 1)}>{index >= deck.length - 1 ? 'Completed' : 'Next →'}</button>
               )}
             </div>
 
             {row.checked && (
-              <div style={{ marginTop: 10, background: row.correct ? C.greenSoft : C.redSoft, color: row.correct ? C.greenDark : C.redDark, borderLeft: `3px solid ${row.correct ? C.green : C.red}`, padding: '10px 12px', fontWeight: 700 }}>
+              <div style={{ marginTop: 14, background: row.correct ? C.greenSoft : C.redSoft, color: row.correct ? C.greenDark : C.redDark, borderLeft: `4px solid ${row.correct ? C.green : C.red}`, borderRadius: 14, padding: '12px 14px', fontWeight: 700 }}>
                 {row.correct ? 'Correct!' : 'Try again on the next round.'}
               </div>
             )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -528,16 +636,16 @@ function CompQuestions({ text }) {
   }
 
   return (
-    <>
+    <div className="rc-stage-shell">
       <TopBar done={done} total={questions.length} />
-      <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-        <div style={{ width: '48%', minWidth: 0 }}><PassagePane text={text} /></div>
-        <div style={{ width: '52%', minWidth: 0, padding: 16, overflowY: 'auto' }}>
-          <div style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 18, background: C.white, padding: 18 }}>
+      <div className="rc-stage-layout">
+        <div style={{ minWidth: 0 }}><PassagePane text={text} /></div>
+        <div className="rc-question-pane">
+          <div className="rc-question-card">
             <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {questions.length}</div>
-            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>{q.stem || `Question ${index + 1}`}</h3>
+            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(22px, 2.2vw, 28px)', lineHeight: 1.15 }}>{q.stem || `Question ${index + 1}`}</h3>
 
-            <div style={{ marginTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               {q.options.map((opt, optIdx) => {
                 const selected = row.selected === optIdx;
                 const isCorrect = row.checked && q.correct === optIdx;
@@ -549,7 +657,7 @@ function CompQuestions({ text }) {
                   <button key={`${q.id}_${optIdx}`} onClick={() => {
                     if (row.checked) return;
                     setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
-                  }} style={{ display: 'flex', alignItems: 'center', gap: 10, textAlign: 'left', border: `1.5px solid ${border}`, borderRadius: 12, background: bg, color, padding: '10px 12px', fontSize: 14, fontWeight: 700, cursor: row.checked ? 'default' : 'pointer' }}>
+                  }} style={{ ...optionButtonStyle({ border, bg, color, disabled: row.checked }), gap: 10 }}>
                     <span style={{ width: 20, height: 20, borderRadius: 6, background: selected ? C.purple : C.purpleBorder, color: selected ? C.white : C.purple, fontSize: 10, fontWeight: 900, display: 'grid', placeItems: 'center' }}>{LETTERS[optIdx]}</span>
                     <span>{opt}</span>
                   </button>
@@ -557,27 +665,27 @@ function CompQuestions({ text }) {
               })}
             </div>
 
-            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900, opacity: index === 0 ? 0.45 : 1 }}>â Previous</button>
+            <div className="rc-actions">
+              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={buttonStyle('secondary', index === 0)}>← Previous</button>
               {!row.checked ? (
                 <button onClick={() => {
                   if (row.selected < 0) return;
                   setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: row.selected === q.correct } : a));
-                }} disabled={row.selected < 0} style={{ border: 'none', borderRadius: 10, background: C.purple, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: row.selected < 0 ? 0.45 : 1 }}>Check answer</button>
+                }} disabled={row.selected < 0} style={buttonStyle('accent', row.selected < 0)}>Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={{ border: 'none', borderRadius: 10, background: C.orange, color: C.white, padding: '8px 14px', fontWeight: 900, opacity: index >= questions.length - 1 ? 0.45 : 1 }}>{index >= questions.length - 1 ? 'Completed' : 'Next â'}</button>
+                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={buttonStyle('primary', index >= questions.length - 1)}>{index >= questions.length - 1 ? 'Completed' : 'Next →'}</button>
               )}
             </div>
 
             {row.checked && (
-              <div style={{ marginTop: 10, background: row.correct ? C.greenSoft : C.orangeSoft, color: row.correct ? C.greenDark : C.orangeDark, borderLeft: `3px solid ${row.correct ? C.green : C.orange}`, padding: '10px 12px', fontWeight: 700 }}>
+              <div style={{ marginTop: 14, background: row.correct ? C.greenSoft : C.orangeSoft, color: row.correct ? C.greenDark : C.orangeDark, borderLeft: `4px solid ${row.correct ? C.green : C.orange}`, borderRadius: 14, padding: '12px 14px', fontWeight: 700 }}>
                 {q.feedback || (row.correct ? 'Correct answer!' : `Correct answer: ${LETTERS[q.correct]}`)}
               </div>
             )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -587,9 +695,10 @@ function PlayerView({ data }) {
   const current = texts[textIdx] || texts[0] || normalizeText();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 40px)', background: C.bg }}>
+    <div className="rc-page">
+      <div className="rc-app">
       {texts.length > 1 && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '8px 14px 0', borderBottom: `1px solid ${C.border}`, background: C.white }}>
+        <div className="rc-tabs">
           {texts.map((_, idx) => (
             <button key={`tab_${idx}`} onClick={() => setTextIdx(idx)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: idx === textIdx ? C.orange : C.purpleMid, fontFamily: 'Nunito, sans-serif', fontWeight: 900, padding: '8px 2px 10px', borderBottom: idx === textIdx ? `2.5px solid ${C.orange}` : '2.5px solid transparent', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span>Text {idx + 1}</span>
@@ -600,6 +709,7 @@ function PlayerView({ data }) {
       )}
 
       {current.mode === 'comp' ? <CompQuestions text={current} /> : <VocabQuestions text={current} />}
+      </div>
     </div>
   );
 }
@@ -662,167 +772,175 @@ function EditorView({ data, setData }) {
     }
   };
 
+  const sectionTitleStyle = { fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 22, lineHeight: 1.1 };
+  const countBadgeStyle = { marginLeft: 'auto', background: C.purpleSoft, color: C.purpleDark, borderRadius: 999, padding: '5px 12px', fontWeight: 900, fontSize: 12 };
+  const sectionCardStyle = { border: `1px solid ${C.purpleBorder}`, borderRadius: 18, padding: 14, marginBottom: 12, background: '#FBFAFF' };
+
   if (previewing) {
     return (
-      <div style={{ height: 'calc(100vh - 40px)', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ background: C.white, borderBottom: `1px solid ${C.border}`, padding: 10 }}>
-          <button onClick={() => setPreviewing(false)} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 10, background: C.white, color: C.purple, padding: '8px 12px', fontWeight: 900 }}>â Back to editor</button>
+      <div style={{ minHeight: '100vh', background: C.bg }}>
+        <div style={{ width: 'min(1120px, 100%)', margin: '0 auto', padding: '16px 18px 0' }}>
+          <button onClick={() => setPreviewing(false)} style={buttonStyle('secondary')}>← Back to editor</button>
         </div>
-        <div style={{ flex: 1, minHeight: 0 }}><PlayerView data={data} /></div>
+        <PlayerView data={data} />
       </div>
     );
   }
 
   return (
-    <div style={{ height: 'calc(100vh - 40px)', overflowY: 'auto', background: C.bg, padding: 20 }}>
-      <div style={{ maxWidth: 1120, margin: '0 auto' }}>
-        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>â</div>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading Comprehension</div>
-            <div style={{ marginLeft: 'auto', color: C.purple, fontWeight: 900, fontSize: 14 }}>Edit mode</div>
+    <div className="rc-editor-page">
+      <div className="rc-editor-app">
+        <div style={editorSectionStyle}>
+          <div style={editorSectionHeaderStyle}>
+            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>⚙</div>
+            <div>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 'clamp(24px, 2.6vw, 32px)', lineHeight: 1.05 }}>Reading Comprehension</div>
+              <div style={{ color: C.purpleMid, fontSize: 13, fontWeight: 800 }}>Edit mode</div>
+            </div>
+            <div style={{ ...countBadgeStyle, background: C.orangeSoft, color: C.orangeDark }}>Activity setup</div>
           </div>
 
-          <div style={{ padding: 18 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div style={{ padding: 20 }}>
+            <div className="rc-editor-grid-main" style={{ marginBottom: 16 }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity title</label>
-                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontSize: 18, fontWeight: 700 }} />
+                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={editorInputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Level</label>
-                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontSize: 18, fontWeight: 700 }} />
+                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={editorInputStyle} />
               </div>
             </div>
 
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity mode â choose one</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <button onClick={() => patchText((t) => ({ ...t, mode: 'vocab' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'vocab' ? C.orange : C.purpleBorder}`, borderRadius: 16, background: text.mode === 'vocab' ? '#F8ECE2' : '#F6F4FD', padding: 16 }}>
-                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 26 }}>Vocabulary meaning</div>
-                  <div style={{ color: C.purpleMid, fontWeight: 700 }}>Students read the passage and choose the correct meaning for each highlighted word.</div>
+            <div>
+              <label style={{ display: 'block', marginBottom: 8, fontWeight: 900, color: C.purple }}>Activity mode — choose one</label>
+              <div className="rc-editor-grid-half">
+                <button onClick={() => patchText((t) => ({ ...t, mode: 'vocab' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'vocab' ? C.orange : C.purpleBorder}`, borderRadius: 18, background: text.mode === 'vocab' ? '#FFF7F0' : '#FBFAFF', padding: 18, cursor: 'pointer' }}>
+                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 20, marginBottom: 6 }}>Vocabulary meaning</div>
+                  <div style={{ color: C.purpleMid, fontWeight: 700, fontSize: 14, lineHeight: 1.5 }}>Students read the passage and choose the correct meaning for each highlighted word.</div>
                 </button>
-                <button onClick={() => patchText((t) => ({ ...t, mode: 'comp' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'comp' ? C.orange : C.purpleBorder}`, borderRadius: 16, background: text.mode === 'comp' ? '#F8ECE2' : '#F6F4FD', padding: 16 }}>
-                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.purple, fontSize: 26 }}>Reading comprehension</div>
-                  <div style={{ color: C.purpleMid, fontWeight: 700 }}>Students answer questions about the passage to demonstrate understanding.</div>
+                <button onClick={() => patchText((t) => ({ ...t, mode: 'comp' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'comp' ? C.orange : C.purpleBorder}`, borderRadius: 18, background: text.mode === 'comp' ? '#FFF7F0' : '#FBFAFF', padding: 18, cursor: 'pointer' }}>
+                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.purpleDark, fontSize: 20, marginBottom: 6 }}>Reading comprehension</div>
+                  <div style={{ color: C.purpleMid, fontWeight: 700, fontSize: 14, lineHeight: 1.5 }}>Students answer questions about the passage to demonstrate understanding.</div>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>ð</div>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Passage</div>
+        <div style={editorSectionStyle}>
+          <div style={editorSectionHeaderStyle}>
+            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>📘</div>
+            <div style={sectionTitleStyle}>Passage</div>
           </div>
 
-          <div style={{ padding: 18 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 220px', gap: 10, marginBottom: 10 }}>
+          <div style={{ padding: 20 }}>
+            <div className="rc-editor-grid-passage" style={{ marginBottom: 12 }}>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Title</label>
-                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={editorInputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Genre</label>
-                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={editorInputStyle} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Word count</label>
-                <input type="number" value={text.wordCount || ''} onChange={(e) => patchText((t) => ({ ...t, wordCount: Number(e.target.value || 0) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                <input type="number" value={text.wordCount || ''} onChange={(e) => patchText((t) => ({ ...t, wordCount: Number(e.target.value || 0) }))} style={editorInputStyle} />
               </div>
             </div>
             <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Passage body</label>
-            <textarea rows={8} value={text.body} onChange={(e) => patchText((t) => ({ ...t, body: e.target.value }))} style={{ width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${C.purpleBorder}`, fontFamily: 'Nunito, sans-serif', fontSize: 18, fontWeight: 700 }} />
+            <textarea rows={8} value={text.body} onChange={(e) => patchText((t) => ({ ...t, body: e.target.value }))} style={{ ...editorInputStyle, minHeight: 180, lineHeight: 1.6, resize: 'vertical' }} />
           </div>
         </div>
 
-        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>ð§</div>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Highlighted vocabulary words</div>
-            <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.words.length} words</div>
+        <div style={editorSectionStyle}>
+          <div style={editorSectionHeaderStyle}>
+            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>🟧</div>
+            <div style={sectionTitleStyle}>Highlighted vocabulary words</div>
+            <div style={countBadgeStyle}>{text.words.length} words</div>
           </div>
 
-          <div style={{ padding: 18 }}>
-            <div style={{ marginBottom: 10, background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 12, padding: '10px 12px', color: C.purple, fontWeight: 800 }}>
+          <div style={{ padding: 20 }}>
+            <div style={{ marginBottom: 12, background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: '12px 14px', color: C.purpleDark, fontWeight: 800, fontSize: 14 }}>
               Add each word that appears in the passage. It will be highlighted in orange for students.
             </div>
 
-            <div style={{ border: `1px solid ${C.orangeBorder}`, background: '#FFF9F4', borderRadius: 16, padding: 12, marginBottom: 12 }}>
-              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8 }}>Live preview â highlighted words</div>
+            <div style={{ border: `1px solid ${C.orangeBorder}`, background: '#FFF9F4', borderRadius: 18, padding: 14, marginBottom: 14 }}>
+              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>Live preview — highlighted words</div>
               <div style={{ color: C.ink, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(text.body || 'Type passage text to preview highlights.', text.words) }} />
             </div>
 
             {text.words.map((word, idx) => (
-              <div key={word.id} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: 12, marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 24 }}>Word card {idx + 1}</div>
-                  <button onClick={() => patchText((t) => ({ ...t, words: t.words.filter((_, i) => i !== idx) }))} style={{ border: `1px solid ${C.red}`, borderRadius: 8, background: C.white, color: C.red, padding: '4px 10px', fontWeight: 900 }}>Delete</button>
+              <div key={word.id} style={sectionCardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>Word card {idx + 1}</div>
+                  <button onClick={() => patchText((t) => ({ ...t, words: t.words.filter((_, i) => i !== idx) }))} style={buttonStyle('danger')}>Delete</button>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 8 }}>
+                <div className="rc-editor-grid-half" style={{ marginBottom: 10 }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Word (as it appears in text)</label>
-                    <input value={word.word} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, word: e.target.value } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                    <input value={word.word} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, word: e.target.value } : w) }))} style={editorInputStyle} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Correct meaning</label>
-                    <input value={word.correct} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, correct: e.target.value } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                    <input value={word.correct} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, correct: e.target.value } : w) }))} style={editorInputStyle} />
                   </div>
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="rc-editor-grid-half">
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 1</label>
-                    <input value={word.distractors[0] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [e.target.value, w.distractors?.[1] || ''] } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                    <input value={word.distractors[0] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [e.target.value, w.distractors?.[1] || ''] } : w) }))} style={editorInputStyle} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 2</label>
-                    <input value={word.distractors[1] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [w.distractors?.[0] || '', e.target.value] } : w) }))} style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                    <input value={word.distractors[1] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [w.distractors?.[0] || '', e.target.value] } : w) }))} style={editorInputStyle} />
                   </div>
                 </div>
               </div>
             ))}
 
-            <button onClick={addWord} style={{ width: '100%', border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, borderRadius: 12, padding: '10px 12px', fontSize: 32, fontWeight: 900 }}>+ Add vocabulary word</button>
+            <button onClick={addWord} style={{ ...buttonStyle('secondary'), width: '100%' }}>+ Add vocabulary word</button>
           </div>
         </div>
 
-        <div style={{ background: C.white, border: `1.5px solid ${C.purpleBorder}`, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
-          <div style={{ padding: '14px 18px', borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 12, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>â</div>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 28 }}>Reading comprehension questions</div>
-            <div style={{ marginLeft: 'auto', background: C.purpleSoft, color: C.purple, borderRadius: 8, padding: '2px 10px', fontWeight: 900 }}>{text.questions.length} questions</div>
+        <div style={editorSectionStyle}>
+          <div style={editorSectionHeaderStyle}>
+            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>❓</div>
+            <div style={sectionTitleStyle}>Reading comprehension questions</div>
+            <div style={countBadgeStyle}>{text.questions.length} questions</div>
           </div>
-          <div style={{ padding: 18 }}>
+
+          <div style={{ padding: 20 }}>
             {text.questions.map((q, idx) => (
-              <div key={q.id} style={{ border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: 12, marginBottom: 10 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 24 }}>Question {idx + 1}</div>
-                  <button onClick={() => patchText((t) => ({ ...t, questions: t.questions.filter((_, i) => i !== idx) }))} style={{ border: `1px solid ${C.red}`, borderRadius: 8, background: C.white, color: C.red, padding: '4px 10px', fontWeight: 900 }}>Delete</button>
+              <div key={q.id} style={sectionCardStyle}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
+                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>Question {idx + 1}</div>
+                  <button onClick={() => patchText((t) => ({ ...t, questions: t.questions.filter((_, i) => i !== idx) }))} style={buttonStyle('danger')}>Delete</button>
                 </div>
-                <input value={q.stem} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, stem: e.target.value } : x) }))} placeholder="Question stem" style={{ width: '100%', marginBottom: 8, padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                <input value={q.stem} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, stem: e.target.value } : x) }))} placeholder="Question stem" style={{ ...editorInputStyle, marginBottom: 10 }} />
                 {q.options.map((opt, optIdx) => (
-                  <input key={`${q.id}_${optIdx}`} value={opt} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, options: x.options.map((o, j) => j === optIdx ? e.target.value : o) } : x) }))} placeholder={`Option ${LETTERS[optIdx]}`} style={{ width: '100%', marginBottom: 6, padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                  <input key={`${q.id}_${optIdx}`} value={opt} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, options: x.options.map((o, j) => j === optIdx ? e.target.value : o) } : x) }))} placeholder={`Option ${LETTERS[optIdx]}`} style={{ ...editorInputStyle, marginBottom: 8 }} />
                 ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 900, color: C.ink }}>Correct:</span>
                   {LETTERS.map((label, optIdx) => (
-                    <label key={`${q.id}_c_${optIdx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 800 }}>
+                    <label key={`${q.id}_c_${optIdx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, color: C.purpleDark }}>
                       <input type="radio" checked={q.correct === optIdx} onChange={() => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, correct: optIdx } : x) }))} /> {label}
                     </label>
                   ))}
                 </div>
-                <input value={q.feedback} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, feedback: e.target.value } : x) }))} placeholder="Feedback" style={{ width: '100%', padding: '9px 10px', borderRadius: 10, border: `1px solid ${C.purpleBorder}`, fontWeight: 700, fontSize: 18 }} />
+                <input value={q.feedback} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, feedback: e.target.value } : x) }))} placeholder="Feedback" style={editorInputStyle} />
               </div>
             ))}
-            <button onClick={addQuestion} style={{ width: '100%', border: `1.5px solid ${C.purpleBorder}`, background: C.white, color: C.ink, borderRadius: 12, padding: '10px 12px', fontSize: 32, fontWeight: 900 }}>+ Add comprehension question</button>
+            <button onClick={addQuestion} style={{ ...buttonStyle('secondary'), width: '100%' }}>+ Add comprehension question</button>
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: 12, alignItems: 'center', position: 'sticky', bottom: 0, background: C.bg, paddingBottom: 12 }}>
-          <button onClick={() => setPreviewing(true)} style={{ border: `1.5px solid ${C.purpleBorder}`, borderRadius: 12, background: C.white, color: C.ink, padding: '12px 14px', fontWeight: 900, fontSize: 28 }}>Preview as student</button>
-          <span style={{ color: C.purple, fontWeight: 900, fontSize: 14 }}>{status}</span>
-          <button onClick={save} disabled={saving} style={{ border: 'none', borderRadius: 12, background: C.white, color: C.ink, padding: '12px 18px', fontWeight: 900, fontSize: 28, opacity: saving ? 0.45 : 1 }}>Save activity</button>
+        <div className="rc-editor-actions">
+          <div style={{ color: C.purple, fontWeight: 900, fontSize: 14, textAlign: 'right' }}>{status}</div>
+          <button onClick={() => setPreviewing(true)} style={buttonStyle('secondary')}>Preview as student</button>
+          <button onClick={save} disabled={saving} style={buttonStyle('primary', saving)}>Save activity</button>
         </div>
       </div>
     </div>
@@ -844,6 +962,157 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 </script>
 
 <style>
+html,body{
+  width:100%;
+  min-height:100%;
+  margin:0;
+  background:#F8F7FF;
+  font-family:'Nunito','Segoe UI',sans-serif;
+}
+body{
+  margin:0!important;
+  padding:0!important;
+  background:#F8F7FF!important;
+}
+.activity-wrapper{
+  max-width:100%!important;
+  margin:0!important;
+  padding:0!important;
+  min-height:100vh!important;
+  display:flex!important;
+  flex-direction:column!important;
+  background:transparent!important;
+}
+.top-row,
+.activity-header,
+.viewer-header{
+  display:none!important;
+}
+.viewer-content{
+  flex:1!important;
+  min-height:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  border:none!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+  overflow:hidden!important;
+}
+.rc-page{
+  width:100%;
+  flex:1;
+  min-height:0;
+  overflow:auto;
+  padding:clamp(14px,2.2vw,28px);
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  background:#F8F7FF;
+}
+.rc-app,
+.rc-editor-app{
+  width:min(1120px,100%);
+  margin:0 auto;
+}
+.rc-tabs{
+  margin-bottom:14px;
+  padding:0 18px;
+  min-height:54px;
+  display:flex;
+  align-items:flex-end;
+  gap:18px;
+  border:1px solid #EDE9FA;
+  border-radius:22px;
+  background:#fff;
+  box-shadow:0 8px 28px rgba(127,119,221,.08);
+}
+.rc-stage-shell{
+  display:grid;
+  grid-template-rows:auto minmax(0,1fr);
+  min-height:min(760px,calc(100vh - 72px));
+  background:#fff;
+  border:1px solid #EDE9FA;
+  border-radius:28px;
+  overflow:hidden;
+  box-shadow:0 12px 36px rgba(127,119,221,.12);
+}
+.rc-topbar{
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  align-items:center;
+  gap:16px;
+  padding:18px 22px;
+  border-bottom:1px solid #F0EEF8;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfaff 100%);
+}
+.rc-stage-layout{
+  display:grid;
+  grid-template-columns:minmax(0,1.03fr) minmax(320px,.97fr);
+  min-height:0;
+}
+.rc-passage-pane{
+  height:100%;
+  min-height:0;
+  overflow:auto;
+  padding:22px;
+  border-right:1px solid #F0EEF8;
+  background:#FCFBFF;
+}
+.rc-question-pane{
+  min-height:0;
+  overflow:auto;
+  padding:22px;
+  background:#fff;
+}
+.rc-question-card{
+  border:1px solid #EDE9FA;
+  border-radius:24px;
+  background:#fff;
+  padding:22px;
+  box-shadow:0 8px 24px rgba(127,119,221,.08);
+}
+.rc-actions{
+  margin-top:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.rc-editor-page{
+  min-height:100vh;
+  overflow:auto;
+  background:#F8F7FF;
+  padding:20px;
+}
+.rc-editor-grid-main{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:12px;
+}
+.rc-editor-grid-passage{
+  display:grid;
+  grid-template-columns:1fr 1fr 220px;
+  gap:10px;
+}
+.rc-editor-grid-half{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.rc-editor-actions{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:12px;
+  align-items:center;
+  position:sticky;
+  bottom:0;
+  padding:12px 0 2px;
+  background:linear-gradient(180deg,rgba(248,247,255,0) 0%,#F8F7FF 34%);
+}
 .rc-hl{
   color:#C2580A;
   font-weight:900;
@@ -851,6 +1120,43 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
   background:#FFF0E6;
   border-radius:4px;
   padding:0 2px;
+}
+@media (max-width: 980px){
+  .rc-stage-shell{
+    min-height:auto;
+  }
+  .rc-stage-layout,
+  .rc-editor-grid-main,
+  .rc-editor-grid-passage,
+  .rc-editor-grid-half,
+  .rc-editor-actions{
+    grid-template-columns:1fr;
+  }
+  .rc-passage-pane{
+    border-right:none;
+    border-bottom:1px solid #F0EEF8;
+  }
+  .rc-editor-actions{
+    position:static;
+    background:transparent;
+    padding-top:0;
+  }
+}
+@media (max-width: 640px){
+  .rc-page,
+  .rc-editor-page{
+    padding:12px;
+  }
+  .rc-topbar,
+  .rc-question-pane,
+  .rc-passage-pane{
+    padding:16px;
+  }
+  .rc-tabs{
+    padding:0 14px;
+    gap:12px;
+    overflow:auto;
+  }
 }
 </style>
 
