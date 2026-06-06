@@ -245,7 +245,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     for (var i = 0; i < blankCount; i++) {
       var leftPart = parts[i] !== undefined ? parts[i] : '';
-      html += escHtml(leftPart);
+      html += escHtml(leftPart).replace(/\n/g, '<br>');
 
       var value = String(values[i] || '');
 
@@ -266,7 +266,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    html += escHtml(parts[blankCount] !== undefined ? parts[blankCount] : '');
+    html += escHtml(parts[blankCount] !== undefined ? parts[blankCount] : '').replace(/\n/g, '<br>');
     sentenceEl.innerHTML = html;
   }
 
