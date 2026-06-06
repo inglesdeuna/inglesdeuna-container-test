@@ -528,6 +528,30 @@ function buildVocabDeck(words) {
   }).filter((x) => x.word.trim() && x.options.length >= 2);
 }
 
+function ScoreGrid({ answers }) {
+  const checked = answers.filter(a => a.checked);
+  if (!checked.length) return null;
+  const correct = checked.filter(a => a.correct).length;
+  const wrong = checked.filter(a => !a.correct).length;
+  const pct = checked.length > 0 ? Math.round((correct / checked.length) * 100) : 0;
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 16 }}>
+      <div style={{ background: C.greenSoft, border: `1px solid ${C.green}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.green, lineHeight: 1 }}>{correct}</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: C.greenDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Correct</div>
+      </div>
+      <div style={{ background: C.redSoft, border: `1px solid ${C.red}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.red, lineHeight: 1 }}>{wrong}</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: C.redDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Wrong</div>
+      </div>
+      <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: C.purpleDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Score</div>
+      </div>
+    </div>
+  );
+}
+
 function TopBar({ done, total }) {
   return (
     <div className="rc-topbar">
@@ -653,6 +677,8 @@ function VocabQuestions({ text, onDone }) {
                 {row.correct ? 'Correct!' : 'Try again on the next round.'}
               </div>
             )}
+
+            <ScoreGrid answers={answers} />
           </div>
         </div>
       </div>
@@ -736,6 +762,8 @@ function CompQuestions({ text, onDone }) {
                 {q.feedback || (row.correct ? 'Correct answer!' : `Correct answer: ${LETTERS[q.correct]}`)}
               </div>
             )}
+
+            <ScoreGrid answers={answers} />
           </div>
         </div>
       </div>
@@ -743,19 +771,16 @@ function CompQuestions({ text, onDone }) {
   );
 }
 
-function CompletedScreen({ score, title }) {
+function CompletedScreen({ score, title, onRestart }) {
   const pct = score.percent;
-  const emoji = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪';
   const msg = pct >= 80 ? 'Excellent work!' : pct >= 50 ? 'Good effort!' : 'Keep practicing!';
+  const scoreLine = `${score.correct} correct · ${score.wrong} wrong · ${pct}%`;
   return (
-    <div className="rc-page">
-      <div className="rc-app">
-        <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center', padding: 'clamp(24px,4vw,48px) 16px' }}>
-          <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 16 }}>{emoji}</div>
-          <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(28px,4vw,40px)', color: C.orange, lineHeight: 1.05, marginBottom: 8 }}>{title || 'Reading Comprehension'}</div>
-          <div style={{ color: C.purpleMid, fontWeight: 800, fontSize: 14, marginBottom: 28 }}>Activity completed · {msg}</div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 28 }}>
+    <div className="rc-stage-shell">
+      <TopBar done={score.total} total={score.total} />
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(20px,3vw,36px) 20px', overflowY: 'auto' }}>
+        <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
             <div style={{ background: C.greenSoft, border: `1px solid ${C.green}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
               <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.green, lineHeight: 1 }}>{score.correct}</div>
               <div style={{ fontSize: 10, fontWeight: 900, color: C.greenDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Correct</div>
@@ -769,15 +794,25 @@ function CompletedScreen({ score, title }) {
               <div style={{ fontSize: 10, fontWeight: 900, color: C.purpleDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Score</div>
             </div>
           </div>
-
-          <button
-            onClick={() => {
-              const back = String(window.RC_RETURN_TO || '').trim();
-              if (back) { try { if (window.top && window.top !== window.self) { window.top.location.href = back; return; } } catch(e) {} window.location.href = back; }
-              else window.history.back();
-            }}
-            style={buttonStyle('primary')}
-          >← Back</button>
+          <div style={{ background: C.white, border: `1px solid ${C.purpleBorder}`, borderRadius: 24, padding: '28px 24px', boxShadow: '0 8px 28px rgba(127,119,221,.10)' }}>
+            <div style={{ fontSize: 36, lineHeight: 1, marginBottom: 12 }}>✅</div>
+            <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(24px,3vw,32px)', color: C.orange, lineHeight: 1.05, marginBottom: 10 }}>{title || 'Reading Comprehension'}</div>
+            <p style={{ color: C.purpleMid, fontWeight: 800, fontSize: 14, margin: '0 0 8px' }}>You've completed {title || 'Reading Comprehension'}. {msg}</p>
+            <p style={{ fontWeight: 900, fontSize: 15, color: C.purpleDark, margin: '0 0 20px' }}>{scoreLine}</p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+              {typeof onRestart === 'function' && (
+                <button onClick={onRestart} style={buttonStyle('accent')}>Restart</button>
+              )}
+              <button
+                onClick={() => {
+                  const back = String(window.RC_RETURN_TO || '').trim();
+                  if (back) { try { if (window.top && window.top !== window.self) { window.top.location.href = back; return; } } catch(e) {} window.location.href = back; }
+                  else window.history.back();
+                }}
+                style={buttonStyle('primary')}
+              >← Back</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -789,6 +824,7 @@ function PlayerView({ data }) {
   const [textIdx, setTextIdx] = useState(0);
   const [completed, setCompleted] = useState(false);
   const [score, setScore] = useState(null);
+  const [restartKey, setRestartKey] = useState(0);
   const current = texts[textIdx] || texts[0] || normalizeText();
 
   async function handleDone(textScore) {
@@ -803,8 +839,21 @@ function PlayerView({ data }) {
     }
   }
 
+  function handleRestart() {
+    setCompleted(false);
+    setScore(null);
+    setTextIdx(0);
+    setRestartKey(k => k + 1);
+  }
+
   if (completed && score) {
-    return <CompletedScreen score={score} title={data.title || String(window.RC_SAVED_TITLE || 'Reading Comprehension')} />;
+    return (
+      <div className="rc-page">
+        <div className="rc-app">
+          <CompletedScreen score={score} title={data.title || String(window.RC_SAVED_TITLE || 'Reading Comprehension')} onRestart={handleRestart} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -821,7 +870,7 @@ function PlayerView({ data }) {
         </div>
       )}
 
-      {current.mode === 'comp' ? <CompQuestions text={current} onDone={handleDone} /> : <VocabQuestions text={current} onDone={handleDone} />}
+      {current.mode === 'comp' ? <CompQuestions key={`comp_${textIdx}_${restartKey}`} text={current} onDone={handleDone} /> : <VocabQuestions key={`vocab_${textIdx}_${restartKey}`} text={current} onDone={handleDone} />}
       </div>
     </div>
   );
