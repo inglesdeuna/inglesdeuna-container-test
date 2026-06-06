@@ -256,12 +256,12 @@ document.addEventListener('DOMContentLoaded', function () {
         var ok = normalize(value) === normalize(correct);
 
         if (revealed) {
-          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(correct) + '</span></span> ';
+          html += ' <span class="fb-blank-filled" style="background:rgba(29,158,117,.18); color:#0F6E56; border-radius:4px; padding:1px 3px; font-weight:800; cursor:default;"><span class="fb-blank-text">' + escHtml(correct) + '</span></span> ';
         } else if (ok) {
-          html += ' <span class="fb-blank-filled" style="background:#f0fdf4; color:#15803d; cursor:default;"><span class="fb-blank-text">' + escHtml(value) + '</span></span> ';
+          html += ' <span class="fb-blank-filled" style="background:rgba(29,158,117,.18); color:#0F6E56; border-radius:4px; padding:1px 3px; font-weight:800; cursor:default;"><span class="fb-blank-text">' + escHtml(value) + '</span></span> ';
         } else {
-          html += ' <span class="fb-blank-filled" style="background:#fef2f2; color:#b91c1c; cursor:default;"><span class="fb-blank-text" style="text-decoration:line-through;">' + escHtml(value || '\u2014') + '</span></span> ';
-          html += ' <span style="background:#f0fdf4; color:#15803d; border-radius:8px; padding:2px 8px; font-weight:800; display:inline-flex; align-items:center; vertical-align:bottom; margin:0 6px;">' + escHtml(correct) + '</span> ';
+          html += ' <span class="fb-blank-filled" style="background:rgba(226,75,74,.15); color:#A32D2D; border-radius:4px; padding:1px 3px; font-weight:800; cursor:default;"><span class="fb-blank-text" style="text-decoration:line-through;">' + escHtml(value || '\u2014') + '</span></span> ';
+          html += ' <span style="background:rgba(29,158,117,.18); color:#0F6E56; border-radius:4px; padding:1px 3px; font-weight:800; display:inline;">' + escHtml(correct) + '</span> ';
         }
       }
     }
