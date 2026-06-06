@@ -244,6 +244,9 @@ ob_start();
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<audio id="rc-win-sound"  src="../../hangman/assets/win.mp3"       preload="auto"></audio>
+<audio id="rc-lose-sound" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>
+<audio id="rc-done-sound" src="../../hangman/assets/win (1).mp3"   preload="auto"></audio>
 <div id="rc-root"></div>
 
 <script>
@@ -272,6 +275,16 @@ function rcPersistScore(url) {
   return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
     .then(function(r) { return !!(r && r.ok); })
     .catch(function() { return false; });
+}
+
+function rcPlaySound(id) {
+  try {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.pause();
+    el.currentTime = 0;
+    el.play();
+  } catch(e) {}
 }
 </script>
 
@@ -536,17 +549,17 @@ function ScoreGrid({ answers }) {
   const pct = checked.length > 0 ? Math.round((correct / checked.length) * 100) : 0;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 16 }}>
-      <div style={{ background: C.greenSoft, border: `1px solid ${C.green}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.green, lineHeight: 1 }}>{correct}</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: C.greenDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Correct</div>
+      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.green, lineHeight: 1 }}>{correct}</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Correct</div>
       </div>
-      <div style={{ background: C.redSoft, border: `1px solid ${C.red}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.red, lineHeight: 1 }}>{wrong}</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: C.redDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Wrong</div>
+      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.red, lineHeight: 1 }}>{wrong}</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Wrong</div>
       </div>
-      <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: C.purpleDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Score</div>
+      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Score</div>
       </div>
     </div>
   );
@@ -648,6 +661,7 @@ function VocabQuestions({ text, onDone }) {
                     if (row.selected < 0) return;
                     const isCorrect = !!item.options[row.selected]?.correct;
                     setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
+                    rcPlaySound(isCorrect ? 'rc-win-sound' : 'rc-lose-sound');
                   }}
                   disabled={row.selected < 0}
                   style={buttonStyle('accent', row.selected < 0)}
@@ -735,7 +749,9 @@ function CompQuestions({ text, onDone }) {
               {!row.checked ? (
                 <button onClick={() => {
                   if (row.selected < 0) return;
-                  setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: row.selected === q.correct } : a));
+                  const isCorrect = row.selected === q.correct;
+                  setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
+                  rcPlaySound(isCorrect ? 'rc-win-sound' : 'rc-lose-sound');
                 }} disabled={row.selected < 0} style={buttonStyle('accent', row.selected < 0)}>Check answer</button>
               ) : (
                 <button
@@ -781,17 +797,17 @@ function CompletedScreen({ score, title, onRestart }) {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(20px,3vw,36px) 20px', overflowY: 'auto' }}>
         <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            <div style={{ background: C.greenSoft, border: `1px solid ${C.green}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.green, lineHeight: 1 }}>{score.correct}</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.greenDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Correct</div>
+            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.green, lineHeight: 1 }}>{score.correct}</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Correct</div>
             </div>
-            <div style={{ background: C.redSoft, border: `1px solid ${C.red}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.red, lineHeight: 1 }}>{score.wrong}</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.redDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Wrong</div>
+            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.red, lineHeight: 1 }}>{score.wrong}</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Wrong</div>
             </div>
-            <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.purple, lineHeight: 1 }}>{pct}%</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: C.purpleDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Score</div>
+            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Score</div>
             </div>
           </div>
           <div style={{ background: C.white, border: `1px solid ${C.purpleBorder}`, borderRadius: 24, padding: '28px 24px', boxShadow: '0 8px 28px rgba(127,119,221,.10)' }}>
@@ -832,6 +848,7 @@ function PlayerView({ data }) {
     const finalScore = textScore;
     setScore(finalScore);
     setCompleted(true);
+    rcPlaySound('rc-done-sound');
 
     const saveUrl = rcBuildSaveUrl(finalScore.percent, finalScore.wrong, finalScore.total);
     if (saveUrl) {
