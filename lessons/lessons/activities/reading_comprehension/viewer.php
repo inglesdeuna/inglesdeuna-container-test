@@ -674,4 +674,4 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($content);
+render_activity_viewer($savedTitle, '📖', $content);
