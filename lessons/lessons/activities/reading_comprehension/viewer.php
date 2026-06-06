@@ -253,6 +253,26 @@ window.RC_RETURN_TO    = <?= json_encode($returnTo) ?>;
 window.RC_ALLOW_EDITOR = <?= $allowEditor ?>;
 window.RC_SAVED_TITLE  = <?= json_encode($savedTitle) ?>;
 window.RC_SAVED_DATA   = <?= json_encode($savedData) ?>;
+
+function rcBuildSaveUrl(percent, errors, total) {
+  const returnTo = String(window.RC_RETURN_TO || '').trim();
+  const activityId = String(window.RC_ACTIVITY_ID || '').trim();
+  if (!returnTo || !activityId) return '';
+  const joiner = returnTo.indexOf('?') !== -1 ? '&' : '?';
+  return returnTo
+    + joiner + 'activity_percent=' + encodeURIComponent(String(percent))
+    + '&activity_errors=' + encodeURIComponent(String(errors))
+    + '&activity_total=' + encodeURIComponent(String(total))
+    + '&activity_id=' + encodeURIComponent(String(activityId))
+    + '&activity_type=reading_comprehension';
+}
+
+function rcPersistScore(url) {
+  if (!url) return Promise.resolve(false);
+  return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+    .then(function(r) { return !!(r && r.ok); })
+    .catch(function() { return false; });
+}
 </script>
 
 <script type="text/babel">
@@ -552,7 +572,7 @@ function PassagePane({ text }) {
   );
 }
 
-function VocabQuestions({ text }) {
+function VocabQuestions({ text, onDone }) {
   const deck = useMemo(() => buildVocabDeck(text.words), [text.words]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState(() => deck.map(() => ({ selected: -1, checked: false, correct: false })));
@@ -564,6 +584,8 @@ function VocabQuestions({ text }) {
   if (!item) {
     return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add highlighted words with meanings to generate questions.</div>;
   }
+
+  const isLast = index >= deck.length - 1;
 
   return (
     <div className="rc-stage-shell">
@@ -607,7 +629,22 @@ function VocabQuestions({ text }) {
                   style={buttonStyle('accent', row.selected < 0)}
                 >Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(deck.length - 1, p + 1))} disabled={index >= deck.length - 1} style={buttonStyle('primary', index >= deck.length - 1)}>{index >= deck.length - 1 ? 'Completed' : 'Next →'}</button>
+                <button
+                  onClick={() => {
+                    if (isLast) {
+                      if (typeof onDone === 'function') {
+                        const correct = answers.filter((a) => a.correct).length;
+                        const wrong = answers.filter((a) => a.checked && !a.correct).length;
+                        const total = deck.length;
+                        const scorable = correct + wrong;
+                        onDone({ correct, wrong, total, percent: scorable > 0 ? Math.round((correct / scorable) * 100) : 0 });
+                      }
+                    } else {
+                      setIndex((p) => p + 1);
+                    }
+                  }}
+                  style={buttonStyle('primary')}
+                >{isLast ? 'Finish ✓' : 'Next →'}</button>
               )}
             </div>
 
@@ -623,7 +660,7 @@ function VocabQuestions({ text }) {
   );
 }
 
-function CompQuestions({ text }) {
+function CompQuestions({ text, onDone }) {
   const questions = useMemo(() => (text.questions || []).filter((q) => q.options.some((o) => String(o || '').trim())), [text.questions]);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState(() => questions.map(() => ({ selected: -1, checked: false, correct: false })));
@@ -634,6 +671,8 @@ function CompQuestions({ text }) {
   if (!q) {
     return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add comprehension questions to preview this mode.</div>;
   }
+
+  const isLast = index >= questions.length - 1;
 
   return (
     <div className="rc-stage-shell">
@@ -673,7 +712,22 @@ function CompQuestions({ text }) {
                   setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: row.selected === q.correct } : a));
                 }} disabled={row.selected < 0} style={buttonStyle('accent', row.selected < 0)}>Check answer</button>
               ) : (
-                <button onClick={() => setIndex((p) => Math.min(questions.length - 1, p + 1))} disabled={index >= questions.length - 1} style={buttonStyle('primary', index >= questions.length - 1)}>{index >= questions.length - 1 ? 'Completed' : 'Next →'}</button>
+                <button
+                  onClick={() => {
+                    if (isLast) {
+                      if (typeof onDone === 'function') {
+                        const correct = answers.filter((a) => a.correct).length;
+                        const wrong = answers.filter((a) => a.checked && !a.correct).length;
+                        const total = questions.length;
+                        const scorable = correct + wrong;
+                        onDone({ correct, wrong, total, percent: scorable > 0 ? Math.round((correct / scorable) * 100) : 0 });
+                      }
+                    } else {
+                      setIndex((p) => p + 1);
+                    }
+                  }}
+                  style={buttonStyle('primary')}
+                >{isLast ? 'Finish ✓' : 'Next →'}</button>
               )}
             </div>
 
@@ -689,10 +743,69 @@ function CompQuestions({ text }) {
   );
 }
 
+function CompletedScreen({ score, title }) {
+  const pct = score.percent;
+  const emoji = pct >= 80 ? '🎉' : pct >= 50 ? '👍' : '💪';
+  const msg = pct >= 80 ? 'Excellent work!' : pct >= 50 ? 'Good effort!' : 'Keep practicing!';
+  return (
+    <div className="rc-page">
+      <div className="rc-app">
+        <div style={{ maxWidth: 560, margin: '0 auto', textAlign: 'center', padding: 'clamp(24px,4vw,48px) 16px' }}>
+          <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 16 }}>{emoji}</div>
+          <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(28px,4vw,40px)', color: C.orange, lineHeight: 1.05, marginBottom: 8 }}>{title || 'Reading Comprehension'}</div>
+          <div style={{ color: C.purpleMid, fontWeight: 800, fontSize: 14, marginBottom: 28 }}>Activity completed · {msg}</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 28 }}>
+            <div style={{ background: C.greenSoft, border: `1px solid ${C.green}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.green, lineHeight: 1 }}>{score.correct}</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.greenDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Correct</div>
+            </div>
+            <div style={{ background: C.redSoft, border: `1px solid ${C.red}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.red, lineHeight: 1 }}>{score.wrong}</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.redDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Wrong</div>
+            </div>
+            <div style={{ background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: '14px 8px', textAlign: 'center' }}>
+              <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 28, color: C.purple, lineHeight: 1 }}>{pct}%</div>
+              <div style={{ fontSize: 10, fontWeight: 900, color: C.purpleDark, textTransform: 'uppercase', letterSpacing: '.06em', marginTop: 4 }}>Score</div>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              const back = String(window.RC_RETURN_TO || '').trim();
+              if (back) { try { if (window.top && window.top !== window.self) { window.top.location.href = back; return; } } catch(e) {} window.location.href = back; }
+              else window.history.back();
+            }}
+            style={buttonStyle('primary')}
+          >← Back</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PlayerView({ data }) {
   const texts = data.texts || [];
   const [textIdx, setTextIdx] = useState(0);
+  const [completed, setCompleted] = useState(false);
+  const [score, setScore] = useState(null);
   const current = texts[textIdx] || texts[0] || normalizeText();
+
+  async function handleDone(textScore) {
+    // aggregate across all texts (single-text case just uses textScore directly)
+    const finalScore = textScore;
+    setScore(finalScore);
+    setCompleted(true);
+
+    const saveUrl = rcBuildSaveUrl(finalScore.percent, finalScore.wrong, finalScore.total);
+    if (saveUrl) {
+      await rcPersistScore(saveUrl);
+    }
+  }
+
+  if (completed && score) {
+    return <CompletedScreen score={score} title={data.title || String(window.RC_SAVED_TITLE || 'Reading Comprehension')} />;
+  }
 
   return (
     <div className="rc-page">
@@ -708,7 +821,7 @@ function PlayerView({ data }) {
         </div>
       )}
 
-      {current.mode === 'comp' ? <CompQuestions text={current} /> : <VocabQuestions text={current} />}
+      {current.mode === 'comp' ? <CompQuestions text={current} onDone={handleDone} /> : <VocabQuestions text={current} onDone={handleDone} />}
       </div>
     </div>
   );
