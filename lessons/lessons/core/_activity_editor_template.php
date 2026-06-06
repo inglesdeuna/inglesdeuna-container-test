@@ -25,10 +25,17 @@ function render_activity_editor($title, $icon, $content) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
     <style>
+        html,
+        body {
+            min-height: 100%;
+        }
+
         body {
             margin: 0;
             background: #eef4fb;
             font-family: Arial, sans-serif;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
         .editor-shell {
