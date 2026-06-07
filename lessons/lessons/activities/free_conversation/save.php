@@ -99,6 +99,12 @@ if (isset($input['hints']) && is_array($input['hints'])) {
     }
 }
 
+$validLanguages = ['English', 'Spanish', 'French', 'Portuguese', 'German', 'Italian', 'Chinese', 'Japanese', 'Korean', 'Arabic'];
+$targetLanguage = isset($input['targetLanguage']) ? trim((string) $input['targetLanguage']) : 'English';
+if (!in_array($targetLanguage, $validLanguages, true)) {
+    $targetLanguage = 'English';
+}
+
 $dataPayload = [
     'title'             => substr(trim((string) ($input['title'] ?? 'Free Conversation')), 0, 200),
     'topic'             => substr(trim((string) ($input['topic'] ?? '')), 0, 1000),
@@ -109,6 +115,7 @@ $dataPayload = [
     'teacherVoiceId'    => $teacherVoiceId,
     'targetVocab'       => $targetVocab,
     'hints'             => $hints,
+    'targetLanguage'    => $targetLanguage,
 ];
 
 $dataJson = json_encode($dataPayload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
