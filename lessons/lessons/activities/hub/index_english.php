@@ -60,8 +60,12 @@ $activityTypes = [
     "writing_practice" => "Writing Practice",
     "question_answer" => "Question Answer",
     "reading_comprehension" => "Reading Comprehension",
+    "fillblank" => "Fill in the Blank",
+    "crossword" => "Crossword Puzzle",
     "roleplay" => "Roleplay",
     "roleplay_kids" => "Roleplay (Kids)",
+    "free_conversation" => "Free Conversation",
+    "quiz" => "Quiz",
 ];
 
 /* ===============================
