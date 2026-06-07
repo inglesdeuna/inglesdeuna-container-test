@@ -55,6 +55,7 @@ $defaults = [
     'teacherVoiceId'    => 'nzFihrBIvB34imQBuxub',
     'targetVocab'       => [],
     'hints'             => ['Tell me about your day', 'What are your hobbies?', 'Describe your family'],
+    'targetLanguage'    => 'English',
 ];
 
 $payload = array_merge($defaults, $savedData ?? []);
@@ -145,10 +146,25 @@ function extractJson(text) {
   return null;
 }
 
+// ── LANGUAGE CODE MAP ─────────────────────────────────────────
+const LANG_CODES = {
+  'English':    'en-US',
+  'Spanish':    'es-ES',
+  'French':     'fr-FR',
+  'Portuguese': 'pt-BR',
+  'German':     'de-DE',
+  'Italian':    'it-IT',
+  'Chinese':    'zh-CN',
+  'Japanese':   'ja-JP',
+  'Korean':     'ko-KR',
+  'Arabic':     'ar-SA',
+};
+
 // ── CLAUDE API ────────────────────────────────────────────────
 async function callClaude(userMessage, history, payload) {
   const mode = payload.conversation_mode || 'chat_feedback';
   const vocab = (payload.targetVocab || []).filter(Boolean);
+  const lang = payload.targetLanguage || 'English';
 
   const modeInstr = {
     chat_feedback: 'Have a natural, friendly conversation about the topic.',
@@ -165,16 +181,17 @@ async function callClaude(userMessage, history, payload) {
 
   const vocabLine = vocab.length > 0 ? '\nTarget vocabulary to encourage: ' + vocab.join(', ') : '';
 
-  const system = 'You are ' + (payload.agentName || 'Alex') + ', a friendly English conversation partner.\n\n'
+  const system = 'You are ' + (payload.agentName || 'Alex') + ', a friendly ' + lang + ' conversation partner.\n\n'
+    + 'IMPORTANT: Conduct the ENTIRE conversation in ' + lang + '. All your replies must be written in ' + lang + '.\n\n'
     + 'TOPIC: ' + (payload.topic || 'General conversation') + '\n'
     + 'DIFFICULTY: ' + (payload.difficulty || 'intermediate') + ' — ' + diffInstr
     + vocabLine + '\n\n'
     + modeInstr + '\n\n'
     + 'Respond ONLY with valid JSON (no markdown, no extra text):\n'
     + '{\n'
-    + '  "response": "<your conversational reply>",\n'
+    + '  "response": "<your conversational reply in ' + lang + '>",\n'
     + '  "feedback": {\n'
-    + '    "corrected": "<corrected student message, or same if already correct>",\n'
+    + '    "corrected": "<corrected student message in ' + lang + ', or same if already correct>",\n'
     + '    "grammar": <0-100>,\n'
     + '    "vocabulary": <0-100>,\n'
     + '    "fluency": <0-100>,\n'
@@ -190,10 +207,13 @@ async function callClaude(userMessage, history, payload) {
   const resp = await fetch('claude_proxy.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1024, system: system, messages: messages }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 1024, system: system, messages: messages }),
   });
 
-  if (!resp.ok) throw new Error('API returned ' + resp.status);
+  if (!resp.ok) {
+    const errData = await resp.json().catch(function() { return {}; });
+    throw new Error(errData.error || 'API error ' + resp.status);
+  }
 
   const data = await resp.json();
   const rawText = ((data && data.content && data.content[0] && data.content[0].text) || '').trim();
@@ -438,6 +458,23 @@ function EditorView({ payload, activityId, onSaved, onPreview }) {
               placeholder="e.g. Let's talk about your daily routine and weekend plans" />
           </div>
 
+          {/* Target Language */}
+          <div style={{ marginBottom: 18 }}>
+            <label style={labelStyle}>Target Language</label>
+            <select style={fieldStyle} value={d.targetLanguage || 'English'} onChange={function(e) { set('targetLanguage', e.target.value); }}>
+              <option value="English">English</option>
+              <option value="Spanish">Spanish</option>
+              <option value="French">French</option>
+              <option value="Portuguese">Portuguese</option>
+              <option value="German">German</option>
+              <option value="Italian">Italian</option>
+              <option value="Chinese">Chinese</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Korean">Korean</option>
+              <option value="Arabic">Arabic</option>
+            </select>
+          </div>
+
           {/* Mode + Difficulty */}
           <div style={col2}>
             <div>
@@ -604,7 +641,7 @@ function PlayerView({ payload, activityId, returnTo, onComplete, onBack }) {
       ]);
     }).catch(function() {
       if (!active) return;
-      var greeting = 'Hi! I\'m ' + (payload.agentName || 'Alex') + '. Ready to practice English? ' + (payload.topic || '');
+      var greeting = 'Hi! I\'m ' + (payload.agentName || 'Alex') + '. Ready to practice ' + (payload.targetLanguage || 'English') + '? ' + (payload.topic || '');
       setMessages([{ role: 'assistant', content: greeting.trim() }]);
       setHistory([
         { role: 'user', content: '[START]' },
@@ -697,7 +734,7 @@ function PlayerView({ payload, activityId, returnTo, onComplete, onBack }) {
         playTTS(result.response, payload.teacherVoiceId).catch(function() {});
       }
     } catch (e) {
-      setMessages(function(prev) { return prev.concat([{ role: 'assistant', content: '⚠️ Connection error. Please try again.', isError: true }]); });
+      setMessages(function(prev) { return prev.concat([{ role: 'assistant', content: '⚠️ ' + (e.message || 'Connection error. Please try again.'), isError: true }]); });
     } finally {
       setIsLoading(false);
       if (inputRef.current) inputRef.current.focus();
@@ -713,7 +750,7 @@ function PlayerView({ payload, activityId, returnTo, onComplete, onBack }) {
       return;
     }
     var rec = new SR();
-    rec.lang = 'en-US';
+    rec.lang = LANG_CODES[payload.targetLanguage] || 'en-US';
     rec.continuous = false;
     rec.interimResults = false;
     rec.onstart = function() { setIsListening(true); };
@@ -736,6 +773,10 @@ function PlayerView({ payload, activityId, returnTo, onComplete, onBack }) {
         )}
         <span style={{ color: C.white, fontFamily: 'Fredoka, sans-serif', fontSize: 18, fontWeight: 600, flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           💬 {payload.title || 'Free Conversation'}
+        </span>
+        <span style={{ background: 'rgba(255,255,255,0.25)', color: C.white, borderRadius: 10, padding: '2px 9px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, flexShrink: 0 }}>
+          { { chat_feedback: 'Chat+Feedback', voice_only: 'Voice', debate: 'Debate', interview: 'Interview' }[payload.conversation_mode || 'chat_feedback'] }
+          {payload.targetLanguage && payload.targetLanguage !== 'English' ? ' · ' + payload.targetLanguage : ''}
         </span>
         <span style={{ color: timerColor, fontWeight: 700, fontSize: 15, fontFamily: 'monospace', flexShrink: 0 }}>⏱ {formatTime(timeLeft)}</span>
         <button onClick={doEndSession} disabled={sessionEnded} className="fc-btn" style={{
@@ -837,10 +878,9 @@ function PlayerView({ payload, activityId, returnTo, onComplete, onBack }) {
             onChange={function(e) { setInputText(e.target.value); }}
             onKeyDown={function(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
             placeholder={isListening ? '🎤 Listening…' : 'Type your message or press the mic…'}
-            disabled={isLoading}
             style={{
               flex: 1, padding: '9px 14px', border: '1.5px solid ' + C.cardBorder, borderRadius: 22,
-              fontSize: 14, fontFamily: 'Nunito, sans-serif', background: isLoading ? '#F3F4F6' : C.white,
+              fontSize: 14, fontFamily: 'Nunito, sans-serif', background: C.white,
               transition: 'box-shadow 0.2s',
             }}
           />
