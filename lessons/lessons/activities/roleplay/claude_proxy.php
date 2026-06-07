@@ -11,6 +11,8 @@ header('Content-Type: application/json');
 $isAuth = !empty($_SESSION['admin_logged'])
     || !empty($_SESSION['academic_logged'])
     || !empty($_SESSION['teacher_logged'])
+    || !empty($_SESSION['teacher_id'])
+    || !empty($_SESSION['teacher_username'])
     || !empty($_SESSION['student_logged']);
 
 if (!$isAuth) {
