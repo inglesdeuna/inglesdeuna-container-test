@@ -212,7 +212,10 @@ async function callClaude(userMessage, history, payload) {
 
   if (!resp.ok) {
     const errData = await resp.json().catch(function() { return {}; });
-    throw new Error(errData.error || 'API error ' + resp.status);
+    const errMsg = typeof errData.error === 'string'
+      ? errData.error
+      : (errData.error && errData.error.message) || 'API error ' + resp.status;
+    throw new Error(errMsg);
   }
 
   const data = await resp.json();
