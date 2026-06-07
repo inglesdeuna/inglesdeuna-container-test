@@ -190,7 +190,7 @@ async function callClaude(userMessage, history, payload) {
   const resp = await fetch('claude_proxy.php', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'claude-opus-4-5', max_tokens: 1024, system: system, messages: messages }),
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 1024, system: system, messages: messages }),
   });
 
   if (!resp.ok) throw new Error('API returned ' + resp.status);
