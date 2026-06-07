@@ -380,6 +380,7 @@ function EditorView({ payload, activityId, onSaved, onPreview }) {
   const [d, setD] = useState(Object.assign({}, payload));
   const [saving, setSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
+  const [vocabInput, setVocabInput] = useState((payload.targetVocab || []).join(', '));
 
   function set(key, val) { setD(function(prev) { return Object.assign({}, prev, { [key]: val }); }); }
 
@@ -487,8 +488,12 @@ function EditorView({ payload, activityId, onSaved, onPreview }) {
           <div style={{ marginBottom: 18 }}>
             <label style={labelStyle}>Target Vocabulary (comma-separated)</label>
             <input style={fieldStyle}
-              value={(d.targetVocab || []).join(', ')}
-              onChange={function(e) { set('targetVocab', e.target.value.split(',').map(function(s) { return s.trim(); }).filter(Boolean)); }}
+              value={vocabInput}
+              onChange={function(e) {
+                var raw = e.target.value;
+                setVocabInput(raw);
+                set('targetVocab', raw.split(',').map(function(s) { return s.trim(); }).filter(Boolean));
+              }}
               placeholder="e.g. routine, schedule, commute, hobby" />
           </div>
 
