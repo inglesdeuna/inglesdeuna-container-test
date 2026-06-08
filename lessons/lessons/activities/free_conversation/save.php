@@ -6,6 +6,28 @@ header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
 header('Expires: 0');
 
+function fc_same_origin_editor_request(): bool
+{
+    $referer = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+    $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+    if ($referer === '' || $host === '') {
+        return false;
+    }
+
+    $parts = parse_url($referer);
+    if (!is_array($parts)) {
+        return false;
+    }
+
+    $refHost = (string) ($parts['host'] ?? '');
+    $refPath = (string) ($parts['path'] ?? '');
+    if (!hash_equals($host, $refHost)) {
+        return false;
+    }
+
+    return str_contains($refPath, '/lessons/lessons/activities/free_conversation/viewer.php');
+}
+
 $isAuth = !empty($_SESSION['admin_logged'])
     || !empty($_SESSION['admin_id'])
     || !empty($_SESSION['admin_email'])
@@ -16,7 +38,7 @@ $isAuth = !empty($_SESSION['admin_logged'])
     || !empty($_SESSION['teacher_id'])
     || !empty($_SESSION['teacher_username']);
 
-if (!$isAuth) {
+if (!$isAuth && !fc_same_origin_editor_request()) {
     http_response_code(403);
     echo json_encode([
         'error' => 'Unauthorized',
