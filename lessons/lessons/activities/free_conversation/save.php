@@ -7,6 +7,10 @@ header('Pragma: no-cache');
 header('Expires: 0');
 
 $isAuth = !empty($_SESSION['admin_logged'])
+    || !empty($_SESSION['admin_id'])
+    || !empty($_SESSION['admin_email'])
+    || !empty($_SESSION['admin_username'])
+    || !empty($_SESSION['admin_role'])
     || !empty($_SESSION['academic_logged'])
     || !empty($_SESSION['teacher_logged'])
     || !empty($_SESSION['teacher_id'])
@@ -14,7 +18,10 @@ $isAuth = !empty($_SESSION['admin_logged'])
 
 if (!$isAuth) {
     http_response_code(403);
-    echo json_encode(['error' => 'Unauthorized']);
+    echo json_encode([
+        'error' => 'Unauthorized',
+        'hint' => 'Login again as admin or teacher, then reopen the activity editor.'
+    ]);
     exit;
 }
 
