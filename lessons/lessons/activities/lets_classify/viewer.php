@@ -115,14 +115,13 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 
 /* categories grid */
 .lc-cats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
-.lc-cat-zone{position:relative;border:2px dashed #CDC7F3;border-radius:18px;min-height:180px;padding:12px;box-sizing:border-box;background:#FAFAFE;transition:border-color .15s,background .15s,box-shadow .15s;display:flex;flex-direction:column}
+.lc-cat-zone{position:relative;border:2px dashed #CDC7F3;border-radius:18px;overflow:hidden;min-height:180px;padding:0;box-sizing:border-box;background:#FAFAFE;transition:border-color .15s,background .15s,box-shadow .15s;display:flex;flex-direction:column}
 .lc-cat-zone.drag-over{border-color:var(--lc-purple);background:#F3F2FF;box-shadow:0 4px 18px rgba(127,119,221,.15)}
-.lc-cat-bg{position:absolute;inset:0;border-radius:16px;background-size:cover;background-position:center;opacity:.18;pointer-events:none}
-.lc-cat-header{position:relative;z-index:1;display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.lc-cat-img-thumb{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1.5px solid #EDE9FA}
-.lc-cat-name{font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:#1E1B3A}
-.lc-cat-drop-area{position:relative;z-index:1;flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;min-height:100px}
-.lc-cat-empty-hint{color:#9B94BE;font-size:12px;font-weight:700;font-style:normal;pointer-events:none;align-self:center;width:100%;text-align:center;padding:10px 0}
+.lc-cat-img-banner{width:100%;height:90px;object-fit:cover;display:block;flex-shrink:0}
+.lc-cat-header{display:flex;align-items:center;justify-content:center;padding:6px 10px 4px;background:#fff;border-bottom:1px solid #EDE9FA}
+.lc-cat-name{font-family:'Nunito',sans-serif;font-size:14px;font-weight:900;color:#1E1B3A;text-align:center}
+.lc-cat-drop-area{flex:1;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;min-height:80px;padding:10px}
+.lc-cat-empty-hint{color:#9B94BE;font-size:12px;font-weight:700;font-style:normal;pointer-events:none;align-self:center;width:100%;text-align:center;padding:14px 0}
 
 /* item pool */
 .lc-pool-label{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
@@ -221,17 +220,14 @@ $colCount  = min(4, max(2, count($categories)));
                 $showName = in_array($labelMode, ['name',  'both'], true);
             ?>
             <div class="lc-cat-zone" id="lc-cat-<?php echo $catId; ?>" data-cat="<?php echo $catId; ?>">
-                <?php if ($catImg !== ''): ?>
-                    <div class="lc-cat-bg" style="background-image:url('<?php echo $catImg; ?>')"></div>
+                <?php if ($showImg && $catImg !== ''): ?>
+                    <img class="lc-cat-img-banner" src="<?php echo $catImg; ?>" alt="<?php echo $catName; ?>">
                 <?php endif; ?>
+                <?php if ($showName): ?>
                 <div class="lc-cat-header">
-                    <?php if ($showImg && $catImg !== ''): ?>
-                        <img class="lc-cat-img-thumb" src="<?php echo $catImg; ?>" alt="<?php echo $catName; ?>">
-                    <?php endif; ?>
-                    <?php if ($showName): ?>
-                        <span class="lc-cat-name"><?php echo $catName; ?></span>
-                    <?php endif; ?>
+                    <span class="lc-cat-name"><?php echo $catName; ?></span>
                 </div>
+                <?php endif; ?>
                 <div class="lc-cat-drop-area" id="lc-drop-<?php echo $catId; ?>">
                     <span class="lc-cat-empty-hint">Drop here</span>
                 </div>
