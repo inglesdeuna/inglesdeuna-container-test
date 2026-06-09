@@ -199,7 +199,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-pool-label{font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;color:#9B94BE;letter-spacing:.08em;text-transform:uppercase}
 .lc-pool{
     display:flex;flex-direction:column;gap:8px;
-    max-height:66vh;overflow-y:auto;
     padding:4px 2px;
 }
 .lc-pool.drag-over .lc-pool-inner{border-color:var(--lc-purple);background:#F9F9FF}
@@ -209,14 +208,14 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     display:flex;align-items:center;gap:10px;
     padding:10px 14px;background:#fff;
     border:2px solid #EDE9FA;border-bottom-width:4px;
-    border-radius:12px;cursor:grab;user-select:none;
+    border-radius:0;cursor:grab;user-select:none;
     box-shadow:0 3px 10px rgba(0,0,0,.1);
     transition:transform .12s,box-shadow .12s,border-color .12s
 }
 .lc-pool-chip:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.16);border-color:var(--lc-purple)}
 .lc-pool-chip:active{cursor:grabbing;transform:translateY(1px)}
 .lc-pool-chip.dragging{opacity:.4;transform:scale(.95)}
-.lc-pool-chip img{width:50px;height:50px;object-fit:contain;border-radius:8px;flex-shrink:0;pointer-events:none}
+.lc-pool-chip img{width:50px;height:50px;object-fit:contain;border-radius:0;flex-shrink:0;pointer-events:none}
 .lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:#1E1B3A;pointer-events:none;line-height:1.3}
 
 /* score grid */
