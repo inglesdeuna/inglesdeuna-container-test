@@ -184,9 +184,10 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     transform: scale(1.06);
 }
 .ddk-zone.filled {
-    border-color: #7F77DD;
-    background: rgba(127,119,221,.35);
-    color: #4c1d95;
+    border-color: #7c3aed !important;
+    background: #fff !important;
+    color: #4c1d95 !important;
+    box-shadow: none !important;
     cursor: default;
 }
 .ddk-zone.wrong {
@@ -213,14 +214,14 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
 .ddk-chip {
     padding: 8px 16px;
     border-radius: 5px;
-    color: #4c1d95;
+    color: #4c1d95 !important;
     font-weight: 800;
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: clamp(16px, 1.8vw, 19px);
     cursor: grab;
-    background: #fff;
+    background: #fff !important;
     border: 2px solid #7c3aed;
-    box-shadow: none;
+    box-shadow: none !important;
     user-select: none;
     touch-action: manipulation;
     transition: filter .15s, transform .15s;
