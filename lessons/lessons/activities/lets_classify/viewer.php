@@ -130,12 +130,12 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-pool-empty-hint{color:#9B94BE;font-size:13px;font-weight:700;font-style:normal;align-self:center}
 
 /* item card */
-.lc-item{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:8px 10px;background:#fff;border:1.5px solid #CDC7F3;border-bottom-width:4px;border-radius:12px;cursor:grab;user-select:none;min-width:80px;max-width:110px;box-shadow:0 2px 0 rgba(127,119,221,.14);transition:transform .12s,box-shadow .12s,border-color .12s,opacity .12s}
-.lc-item:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(127,119,221,.18);border-color:#AFA6EA}
+.lc-item{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:4px;padding:8px 8px;background:#fff;border:2px solid rgba(255,255,255,.7);border-bottom-width:4px;border-radius:12px;cursor:grab;user-select:none;min-width:0;width:100%;box-sizing:border-box;box-shadow:0 3px 10px rgba(0,0,0,.18);transition:transform .12s,box-shadow .12s,border-color .12s,opacity .12s}
+.lc-item:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.22)}
 .lc-item:active{cursor:grabbing;transform:translateY(1px)}
 .lc-item.dragging{opacity:.45;transform:scale(.96)}
-.lc-item img{width:60px;height:60px;object-fit:contain;border-radius:8px;pointer-events:none}
-.lc-item .lc-item-lbl{font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;color:#1E1B3A;text-align:center;word-break:break-word;max-width:90px;line-height:1.3;pointer-events:none}
+.lc-item img{width:52px;height:52px;object-fit:contain;border-radius:8px;pointer-events:none}
+.lc-item .lc-item-lbl{font-family:'Nunito',sans-serif;font-size:10px;font-weight:900;color:#1E1B3A;text-align:center;word-break:break-word;max-width:100%;line-height:1.3;pointer-events:none}
 .lc-item.is-correct{border-color:var(--lc-green);border-bottom-color:var(--lc-green);background:var(--lc-green-soft);cursor:default}
 .lc-item.is-correct .lc-item-lbl{color:var(--lc-green-dark)}
 .lc-item.is-wrong{border-color:var(--lc-red);border-bottom-color:var(--lc-red);background:var(--lc-red-soft);cursor:default}
