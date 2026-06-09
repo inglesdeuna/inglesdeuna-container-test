@@ -67,6 +67,7 @@ $activityTypes = [
     "free_conversation" => "Free Conversation",
     "quiz" => "Quiz",
     "lets_classify" => "Let's Classify",
+    "review_match"  => "Review Match",
 ];
 
 /* ===============================
