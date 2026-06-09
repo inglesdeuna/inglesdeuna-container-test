@@ -248,7 +248,10 @@ ob_start();
     font-family: inherit;
     padding: 2px 0;
 }
-.lc-cat-name:focus { outline: none; border-color: #7F77DD+ }
+.lc-cat-name:focus { outline: none; border-color: #7F77DD; }
+.lc-cat-card.lc-cat-error { border-color: #fca5a5; background: #fff5f5; }
+.lc-cat-card.lc-cat-error .lc-cat-name { border-bottom-color: #f87171; }
+.lc-inline-alert { display:none; padding:12px 16px; border-radius:10px; font-size:14px; font-weight:600; margin-bottom:16px; background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
 .lc-cat-del {
     background: none; border: none; cursor: pointer;
     color: #F0997B; font-size: 17px; line-height: 1; padding: 0 2px;
@@ -455,6 +458,7 @@ ob_start();
 <div class="lc-alert lc-alert-success">✔ Activity saved successfully!</div>
 <?php endif; ?>
 
+<div class="lc-inline-alert" id="lcInlineAlert"></div>
 <form method="POST" enctype="multipart/form-data" id="lcForm">
     <input type="hidden" name="categories_json" id="lcCatsJson" value="">
     <input type="hidden" name="items_json"       id="lcItemsJson" value="">
@@ -601,7 +605,7 @@ function renderCats() {
         nameInp.type = 'text';
         nameInp.value = c.name;
         nameInp.placeholder = 'Category name';
-        nameInp.addEventListener('input', () => { c.name = nameInp.value.trim(); });
+        nameInp.addEventListener('input', () => { c.name = nameInp.value.trim(); if (c.name) card.classList.remove('lc-cat-error'); });
 
         const del = document.createElement('button');
         del.type = 'button';
@@ -963,8 +967,8 @@ function updateStatus() {
 /* ════════════════════════════════════════════════
    SERIALIZE ON SUBMIT
    ════════════════════════════════════════════════ */
-document.getElementById('lcForm').addEventListener('submit', function() {
-    /* capture current names from DOM inputs before serializing */
+document.getElementById('lcForm').addEventListener('submit', function(e) {
+    /* capture current names from DOM inputs before validating */
     tbody.querySelectorAll('tr').forEach(tr => {
         const id = parseInt(tr.dataset.id);
         const item = items.find(i => i.id === id);
@@ -982,9 +986,40 @@ document.getElementById('lcForm').addEventListener('submit', function() {
             const inp = card.querySelector('.lc-cat-name');
             if (inp) cat.name = inp.value.trim();
         }
+        card.classList.remove('lc-cat-error');
     });
-    document.getElementById('lcCatsJson').value  = JSON.stringify(cats);
-    document.getElementById('lcItemsJson').value = JSON.stringify(items);
+
+    /* client-side validation — prevents page reload on error, preserving images */
+    const inlineAlert = document.getElementById('lcInlineAlert');
+    inlineAlert.style.display = 'none';
+    let errors = [];
+
+    const validCats = cats.filter(c => c.name !== '');
+    const missingName = cats.filter(c => c.name === '');
+    if (missingName.length) {
+        missingName.forEach(c => {
+            const card = catsGrid.querySelector('.lc-cat-card[data-id="' + c.id + '"]');
+            if (card) { card.classList.add('lc-cat-error'); card.querySelector('.lc-cat-name')?.focus(); }
+        });
+        errors.push('Each category needs a name. Fill in the highlighted ' + (missingName.length === 1 ? 'category' : 'categories') + '.');
+    }
+    if (cats.length < 2) errors.push('Add at least 2 categories.');
+    if (validCats.length < 2 && !errors.some(m => m.startsWith('Each'))) errors.push('At least 2 categories must have a name.');
+
+    const validItems = items.filter(i => i.name !== '');
+    if (validItems.length < 2) errors.push('Add at least 2 items with names.');
+
+    if (errors.length) {
+        e.preventDefault();
+        inlineAlert.textContent = errors[0];
+        inlineAlert.style.display = 'block';
+        inlineAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        return;
+    }
+
+    /* strip display-only _preview before serializing to keep POST body small */
+    document.getElementById('lcCatsJson').value  = JSON.stringify(cats.map(({_preview, ...rest}) => rest));
+    document.getElementById('lcItemsJson').value = JSON.stringify(items.map(({_preview, ...rest}) => rest));
 });
 
 /* ════════════════════════════════════════════════
