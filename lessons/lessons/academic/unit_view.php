@@ -263,6 +263,7 @@ $activityLabels = [
     'build_sentence' => 'Build the Sentence',
     'writing_practice' => 'Writing Practice',
     'lets_classify' => "Let's Classify",
+    'review_match'  => 'Review Match',
 ];
 ?>
 <!DOCTYPE html>
