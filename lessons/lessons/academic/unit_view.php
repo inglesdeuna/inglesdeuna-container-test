@@ -152,6 +152,7 @@ function activity_display_title(array $activity): string
         'powerpoint' => 'PowerPoint',
         'crossword' => 'Crossword Puzzle',
         'build_sentence' => 'Build the Sentence',
+        'lets_classify' => "Let's Classify",
     ];
 
     $fallback = $defaultMap[$type] ?? ucwords(str_replace('_', ' ', $type));
@@ -261,6 +262,7 @@ $activityLabels = [
     'crossword' => 'Crossword Puzzle',
     'build_sentence' => 'Build the Sentence',
     'writing_practice' => 'Writing Practice',
+    'lets_classify' => "Let's Classify",
 ];
 ?>
 <!DOCTYPE html>
