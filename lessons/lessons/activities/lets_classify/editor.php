@@ -106,9 +106,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $pdo->prepare("UPDATE activities SET data = :data WHERE id = :id AND type = 'lets_classify'");
             $stmt->execute(['data' => $payload, 'id' => $activityId]);
         } else {
-            $stmt = $pdo->prepare("INSERT INTO activities (unit_id, type, data) VALUES (:unit, 'lets_classify', :data)");
-            $stmt->execute(['unit' => $unit, 'data' => $payload]);
-            $activityId = (string) $pdo->lastInsertId();
+            $stmt = $pdo->prepare("
+                INSERT INTO activities (unit_id, type, data, position, created_at)
+                VALUES (
+                    :unit,
+                    'lets_classify',
+                    :data,
+                    (SELECT COALESCE(MAX(position), 0) + 1 FROM activities WHERE unit_id = :unit2),
+                    CURRENT_TIMESTAMP
+                )
+                RETURNING id
+            ");
+            $stmt->execute(['unit' => $unit, 'unit2' => $unit, 'data' => $payload]);
+            $activityId = (string) $stmt->fetchColumn();
         }
         $saved = true;
     }
@@ -598,7 +608,11 @@ function renderCats() {
         del.className = 'lc-cat-del';
         del.innerHTML = '&times;';
         del.title = 'Remove category';
-        del.addEventListener('click', () => { cats = cats.filter(x => x.id !== c.id); renderCats(); renderItems(); updateStatus(); });
+        del.addEventListener('click', () => {
+            delete pendingFiles['cat_' + c.id];
+            cats = cats.filter(x => x.id !== c.id);
+            renderCats(); renderItems(); updateStatus();
+        });
 
         const top = document.createElement('div');
         top.className = 'lc-cat-top';
@@ -614,13 +628,24 @@ function renderCats() {
         fileInput.className = 'lc-file-hidden';
         fileInput.id = 'catFile_' + c.id;
 
+        /* re-attach any pending file so it survives re-renders */
+        if (pendingFiles['cat_' + c.id]) {
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(pendingFiles['cat_' + c.id]);
+                fileInput.files = dt.files;
+            } catch (e) { /* DataTransfer not supported — file will need re-selection */ }
+        }
+
+        const hasPendingPreview = !!c._preview;
+        const previewSrc = c._preview || c.image || '';
         const preview = document.createElement('div');
-        preview.className = 'lc-img-preview' + (c.image ? ' has-img' : '');
+        preview.className = 'lc-img-preview' + (previewSrc ? ' has-img' : '');
         preview.id = 'catPreview_' + c.id;
 
-        if (c.image) {
+        if (previewSrc) {
             const img = document.createElement('img');
-            img.src = c.image;
+            img.src = previewSrc;
             preview.appendChild(img);
         }
         const overlay = document.createElement('div');
@@ -628,7 +653,7 @@ function renderCats() {
         overlay.innerHTML = '<i class="fas fa-camera"></i> Change';
         preview.appendChild(overlay);
 
-        if (!c.image) {
+        if (!previewSrc) {
             const lbl = document.createElement('span');
             lbl.className = 'lc-img-label';
             lbl.innerHTML = '<i class="fas fa-upload"></i> Upload image';
@@ -642,6 +667,7 @@ function renderCats() {
             pendingFiles['cat_' + c.id] = file;
             const reader = new FileReader();
             reader.onload = e => {
+                c._preview = e.target.result;
                 preview.classList.add('has-img');
                 preview.innerHTML = '';
                 const img = document.createElement('img');
@@ -697,12 +723,22 @@ function renderItems() {
         fileInput.className = 'lc-file-hidden';
         fileInput.id = 'itemFile_' + item.id;
 
+        /* re-attach any pending file so it survives re-renders */
+        if (pendingFiles['item_' + item.id]) {
+            try {
+                const dt = new DataTransfer();
+                dt.items.add(pendingFiles['item_' + item.id]);
+                fileInput.files = dt.files;
+            } catch (e) { /* DataTransfer not supported — file will need re-selection */ }
+        }
+
+        const itemPreviewSrc = item._preview || item.image || '';
         const thumb = document.createElement('div');
-        thumb.className = 'lc-thumb-wrap' + (item.image ? ' has-img' : '');
+        thumb.className = 'lc-thumb-wrap' + (itemPreviewSrc ? ' has-img' : '');
         thumb.id = 'itemThumb_' + item.id;
-        if (item.image) {
+        if (itemPreviewSrc) {
             const img = document.createElement('img');
-            img.src = item.image;
+            img.src = itemPreviewSrc;
             thumb.appendChild(img);
         }
         const thOv = document.createElement('div');
@@ -714,8 +750,10 @@ function renderItems() {
         fileInput.addEventListener('change', function() {
             const file = this.files[0];
             if (!file) return;
+            pendingFiles['item_' + item.id] = file;
             const reader = new FileReader();
             reader.onload = e => {
+                item._preview = e.target.result;
                 thumb.classList.add('has-img');
                 thumb.innerHTML = '';
                 const img = document.createElement('img');
@@ -779,7 +817,11 @@ function renderItems() {
         delBtn.type = 'button';
         delBtn.className = 'lc-del-btn';
         delBtn.innerHTML = '<i class="fas fa-trash"></i>';
-        delBtn.addEventListener('click', () => { items = items.filter(x => x.id !== item.id); renderItems(); updateStatus(); });
+        delBtn.addEventListener('click', () => {
+            delete pendingFiles['item_' + item.id];
+            items = items.filter(x => x.id !== item.id);
+            renderItems(); updateStatus();
+        });
         tdDel.appendChild(delBtn);
 
         tr.appendChild(tdDrag);
