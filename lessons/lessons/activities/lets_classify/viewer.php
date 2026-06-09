@@ -102,38 +102,39 @@ $catPalette = [
     --lc-green:#16a34a;--lc-green-soft:#f0fdf4;--lc-green-dark:#15803d;
     --lc-red:#ef4444;--lc-red-soft:#fef2f2;--lc-red-dark:#b91c1c;
 }
-html,body{width:100%;min-height:100%}
+html,body{width:100%;height:100%;overflow:hidden}
 body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
-.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
+.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;height:100%;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
 .viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 
 /* page scaffold */
-.lc-page{width:100%;flex:1;overflow-y:auto;padding:clamp(14px,2.5vw,34px);box-sizing:border-box;background:#fff}
-.lc-app{width:min(1120px,100%);margin:0 auto}
+.lc-page{width:100%;flex:1;min-height:0;overflow:hidden;padding:clamp(8px,1.5vw,20px);box-sizing:border-box;background:#fff;display:flex;flex-direction:column}
+.lc-app{width:min(1120px,100%);margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0}
 
 /* topbar */
-.lc-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:6px}
+.lc-topbar{height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
 .lc-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
 
 /* hero */
-.lc-hero{text-align:center;margin-bottom:clamp(12px,2vw,22px)}
+.lc-hero{text-align:center;margin-bottom:clamp(4px,0.8vw,10px)}
 .lc-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
 .lc-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(26px,4.5vw,48px);font-weight:700;color:var(--lc-orange);margin:0;line-height:1.05}
 .lc-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.7vw,16px);font-weight:800;color:#9B94BE;margin:8px 0 0}
 
 /* stage card */
-.lc-stage{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(14px,2vw,24px);box-shadow:0 8px 40px rgba(127,119,221,.12);box-sizing:border-box}
+.lc-stage{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(10px,1.5vw,18px);box-shadow:0 8px 40px rgba(127,119,221,.12);box-sizing:border-box;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 
 /* ── TWO-COLUMN LAYOUT ── */
-.lc-layout{display:flex;gap:18px;align-items:flex-start}
-.lc-col-cats{flex:0 0 62%;min-width:0;display:flex;flex-direction:column;gap:14px}
-.lc-col-pool{flex:1;min-width:0;position:sticky;top:20px;display:flex;flex-direction:column;gap:10px}
+.lc-layout{display:flex;gap:18px;align-items:stretch;flex:1;min-height:0;overflow:hidden}
+.lc-col-cats{flex:0 0 62%;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.lc-col-pool{flex:1;min-width:0;position:static;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
 
 /* ── CATEGORY CARDS (big, full color) ── */
 .lc-cat-card{
     position:relative;border-radius:20px;overflow:hidden;
-    min-height:clamp(160px,22vw,250px);
+    flex:1;
+    min-height:clamp(80px,10vw,140px);
     background:linear-gradient(135deg,#7F77DD,#534AB7);
     box-shadow:0 6px 28px rgba(0,0,0,.16);
     transition:box-shadow .15s,outline-color .1s;
@@ -198,28 +199,29 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 /* ── POOL COLUMN (right) ── */
 .lc-pool-label{font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;color:#9B94BE;letter-spacing:.08em;text-transform:uppercase}
 .lc-pool{
-    display:flex;flex-direction:column;gap:8px;
+    display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
     padding:4px 2px;
 }
 .lc-pool.drag-over .lc-pool-inner{border-color:var(--lc-purple);background:#F9F9FF}
-.lc-pool-empty-hint{color:#9B94BE;font-size:13px;font-weight:700;padding:18px 0;text-align:center}
+.lc-pool-empty-hint{color:#9B94BE;font-size:13px;font-weight:700;padding:18px 0;text-align:center;grid-column:1/-1}
 /* individual pool chip */
 .lc-pool-chip{
-    display:flex;align-items:center;gap:10px;
-    padding:10px 14px;background:#fff;
-    border:2px solid #EDE9FA;border-bottom-width:4px;
-    border-radius:0;cursor:grab;user-select:none;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    padding:6px;background:#fff;
+    border:2px solid #EDE9FA;border-bottom-width:3px;
+    border-radius:10px;cursor:grab;user-select:none;
+    aspect-ratio:1;min-width:0;
     box-shadow:0 3px 10px rgba(0,0,0,.1);
     transition:transform .12s,box-shadow .12s,border-color .12s
 }
 .lc-pool-chip:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.16);border-color:var(--lc-purple)}
 .lc-pool-chip:active{cursor:grabbing;transform:translateY(1px)}
 .lc-pool-chip.dragging{opacity:.4;transform:scale(.95)}
-.lc-pool-chip img{width:50px;height:50px;object-fit:contain;border-radius:0;flex-shrink:0;pointer-events:none}
-.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;color:#1E1B3A;pointer-events:none;line-height:1.3}
+.lc-pool-chip img{width:100%;flex:1;min-height:0;object-fit:contain;border-radius:0;pointer-events:none}
+.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;color:#1E1B3A;pointer-events:none;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
 
 /* score grid */
-.lc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.lc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .lc-score-grid.visible{display:grid}
 .lc-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:14px;padding:12px;text-align:center}
 .lc-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:26px;line-height:1}
@@ -229,7 +231,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.08em}
 
 /* controls */
-.lc-controls{border-top:1px solid #F0EEF8;margin-top:16px;padding-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.lc-controls{border-top:1px solid #F0EEF8;margin-top:8px;padding-top:8px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;flex-shrink:0}
 .lc-btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 26px;border:none;border-radius:8px;color:#fff;cursor:pointer;font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
 .lc-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .lc-btn:active{transform:scale(.98)}
@@ -254,11 +256,10 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 #lc-ghost{position:fixed;pointer-events:none;z-index:9999;display:none;width:68px;height:68px;border-radius:11px;box-shadow:0 8px 28px rgba(127,119,221,.3);opacity:.92;overflow:hidden;background:#fff}
 
 @media(max-width:660px){
-    .lc-layout{flex-direction:column}
-    .lc-col-cats{flex:unset;width:100%}
-    .lc-col-pool{position:static;width:100%}
-    .lc-pool{flex-direction:row;flex-wrap:wrap;max-height:unset;overflow-y:visible}
-    .lc-pool-chip{flex:0 0 calc(50% - 4px);width:calc(50% - 4px)}
+    .lc-layout{flex-direction:column;overflow-y:auto}
+    .lc-col-cats{flex:unset;width:100%;overflow:visible}
+    .lc-col-pool{position:static;width:100%;overflow-y:visible}
+    .lc-pool{grid-template-columns:repeat(3,1fr)}
     .lc-controls{flex-direction:column;gap:8px}
     .lc-btn{width:100%}
     .lc-score-grid{grid-template-columns:1fr}
