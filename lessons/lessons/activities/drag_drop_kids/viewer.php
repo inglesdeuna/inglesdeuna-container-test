@@ -218,9 +218,9 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     font-family: 'Fredoka', 'Trebuchet MS', sans-serif;
     font-size: clamp(16px, 1.8vw, 19px);
     cursor: grab;
-    background: #ede9fe;
+    background: #fff;
     border: 2px solid #7c3aed;
-    box-shadow: 0 4px 12px rgba(124,58,237,.18);
+    box-shadow: none;
     user-select: none;
     touch-action: manipulation;
     transition: filter .15s, transform .15s;
