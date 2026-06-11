@@ -201,7 +201,12 @@ try {
     ");
 
     // Agregar unit_id a eval_exams si no existe (migración)
-    $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT REFERENCES units(id) ON DELETE SET NULL");
+    // En bases de datos antiguas units.id puede ser INTEGER; en ese caso se agrega la columna sin FK.
+    try {
+        $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT REFERENCES units(id) ON DELETE SET NULL");
+    } catch (Exception $e) {
+        $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT");
+    }
 
     /* ===============================
        EVAL_QUESTIONS
