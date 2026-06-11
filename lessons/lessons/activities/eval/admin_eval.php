@@ -28,22 +28,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $status    = in_array($_POST['status'] ?? '', ['draft','active','closed'], true) ? $_POST['status'] : 'draft';
         $modalities = array_values(array_filter((array) ($_POST['modalities'] ?? ['online'])));
         $instructions = trim($_POST['instructions'] ?? '');
+        $unitId    = trim($_POST['unit_id'] ?? '') ?: null;
 
         if ($examId > 0) {
             $stmt = $pdo->prepare(
                 "UPDATE eval_exams SET title=?, cefr_level=?, time_limit_min=?, max_attempts=?,
-                 status=?, modalities=?, instructions=? WHERE id=?"
+                 status=?, modalities=?, instructions=?, unit_id=? WHERE id=?"
             );
             $stmt->execute([$title, $level ?: null, $timeLimit, $maxAtt,
-                $status, json_encode($modalities), $instructions, $examId]);
+                $status, json_encode($modalities), $instructions, $unitId, $examId]);
         } else {
             $stmt = $pdo->prepare(
                 "INSERT INTO eval_exams (title, cefr_level, time_limit_min, max_attempts,
-                 status, modalities, instructions, created_by)
-                 VALUES (?,?,?,?,?,?,?,?) RETURNING id"
+                 status, modalities, instructions, unit_id, created_by)
+                 VALUES (?,?,?,?,?,?,?,?,?) RETURNING id"
             );
             $stmt->execute([$title, $level ?: null, $timeLimit, $maxAtt,
-                $status, json_encode($modalities), $instructions,
+                $status, json_encode($modalities), $instructions, $unitId,
                 $_SESSION['admin_username'] ?? 'admin']);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $examId = $row['id'];
@@ -218,11 +219,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 // ─── Cargar datos para la vista ───────────────────────────────────────────────
 $currentExamId = (int) ($_GET['exam_id'] ?? $_POST['exam_id'] ?? 0);
 
-// Lista de exámenes
+// Lista de exámenes (con nombre de unidad asociada)
 $exams = $pdo->query(
-    "SELECT e.*, (SELECT COUNT(*) FROM eval_questions WHERE exam_id=e.id) AS q_count
-     FROM eval_exams e ORDER BY e.created_at DESC"
+    "SELECT e.*, u.name AS unit_name,
+            (SELECT COUNT(*) FROM eval_questions WHERE exam_id=e.id) AS q_count
+     FROM eval_exams e
+     LEFT JOIN units u ON u.id = e.unit_id
+     ORDER BY e.created_at DESC"
 )->fetchAll(PDO::FETCH_ASSOC);
+
+// Unidades agrupadas por curso para el selector
+$unitsByCourse = [];
+try {
+    $uRows = $pdo->query(
+        "SELECT u.id, u.name AS unit_name, c.name AS course_name
+         FROM units u
+         LEFT JOIN courses c ON c.id = u.course_id
+         ORDER BY c.name, u.position, u.name"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    foreach ($uRows as $ur) {
+        $cName = $ur['course_name'] ?? 'Sin curso';
+        $unitsByCourse[$cName][] = $ur;
+    }
+} catch (Exception $e) {
+    // tabla units vacía o sin datos — no bloqueante
+}
 
 $currentExam = null;
 $examQuestions = [];
@@ -231,7 +252,9 @@ $examResults = [];
 $cefrRanges = [];
 
 if ($currentExamId > 0) {
-    $stmt = $pdo->prepare("SELECT * FROM eval_exams WHERE id=?");
+    $stmt = $pdo->prepare(
+        "SELECT e.*, u.name AS unit_name FROM eval_exams e LEFT JOIN units u ON u.id = e.unit_id WHERE e.id=?"
+    );
     $stmt->execute([$currentExamId]);
     $currentExam = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -446,7 +469,7 @@ tr:hover td{background:#f7fcf8;}
         <table id="exam-table">
           <thead>
             <tr>
-              <th>Nivel</th><th>Nombre</th><th>Preguntas / Tiempo</th>
+              <th>Nivel</th><th>Nombre</th><th>Unidad</th><th>Preguntas / Tiempo</th>
               <th>Status</th><th>Acciones</th>
             </tr>
           </thead>
@@ -456,6 +479,7 @@ tr:hover td{background:#f7fcf8;}
           <tr data-title="<?= h(strtolower($ex['title'])) ?>" data-level="<?= h($ex['cefr_level'] ?? '') ?>">
             <td><?php if ($ex['cefr_level']): ?><span class="cefr-badge" style="background:<?= $cc ?>"><?= h($ex['cefr_level']) ?></span><?php endif; ?></td>
             <td><strong><?= h($ex['title']) ?></strong></td>
+            <td><?php if ($ex['unit_name']): ?><span class="badge badge-online" style="font-size:11px;">📚 <?= h($ex['unit_name']) ?></span><?php else: ?><span style="color:var(--muted);font-size:12px;">—</span><?php endif; ?></td>
             <td><?= (int)$ex['q_count'] ?> preguntas / <?= (int)$ex['time_limit_min'] ?> min</td>
             <td><span class="badge badge-<?= h($ex['status']) ?>"><?= h($ex['status']) ?></span></td>
             <td>
@@ -491,6 +515,21 @@ tr:hover td{background:#f7fcf8;}
                 <?php endforeach; ?>
               </select>
             </div>
+          </div>
+          <div class="form-group">
+            <label>Unidad asociada <span style="font-weight:400;color:var(--muted)">(opcional — para exámenes de unidad con link compartible)</span></label>
+            <select name="unit_id">
+              <option value="">— Sin unidad —</option>
+              <?php foreach ($unitsByCourse as $courseName => $courseUnits): ?>
+              <optgroup label="<?= h($courseName) ?>">
+                <?php foreach ($courseUnits as $u): ?>
+                <option value="<?= h($u['id']) ?>" <?= ($currentExam['unit_id'] ?? '') === $u['id'] ? 'selected' : '' ?>>
+                  <?= h($u['unit_name']) ?>
+                </option>
+                <?php endforeach; ?>
+              </optgroup>
+              <?php endforeach; ?>
+            </select>
           </div>
           <div class="form-row-3">
             <div class="form-group">
@@ -641,20 +680,28 @@ tr:hover td{background:#f7fcf8;}
 
       <?php if (!empty($examLinks)): ?>
       <div class="card">
-        <h3>Links activos — <?= h($currentExam['title'] ?? '') ?></h3>
+        <h3>Links activos — <?= h($currentExam['title'] ?? '') ?><?php if (!empty($currentExam['unit_name'])): ?> <span class="badge badge-online" style="font-size:12px;">📚 <?= h($currentExam['unit_name']) ?></span><?php endif; ?></h3>
         <table>
-          <thead><tr><th>Token</th><th>Tipo</th><th>Estudiante</th><th>Expira</th><th>Usos</th><th>URL</th></tr></thead>
+          <thead><tr><th>Token</th><th>Tipo</th><th>Estudiante</th><th>Expira</th><th>Usos</th><th>Compartir</th></tr></thead>
           <tbody>
           <?php foreach ($examLinks as $lnk): ?>
+          <?php
+            $linkUrl   = $baseUrl . $lnk['token'];
+            $examTitle = h($currentExam['title'] ?? 'Examen');
+            $waMsg     = urlencode('Realiza tu examen "' . ($currentExam['title'] ?? 'Examen') . '" aquí: ' . $linkUrl);
+            $emailSubj = urlencode('Examen: ' . ($currentExam['title'] ?? 'Examen'));
+            $emailBody = urlencode("Hola,\n\nTe invitamos a realizar el examen \"" . ($currentExam['title'] ?? 'Examen') . "\".\n\nAccede desde el siguiente enlace:\n" . $linkUrl . "\n\nSaludos.");
+          ?>
           <tr>
             <td><code><?= h(substr($lnk['token'], 0, 8)) ?>…</code></td>
             <td><span class="badge <?= $lnk['link_type'] === 'group' ? 'badge-active' : 'badge-online' ?>"><?= h($lnk['link_type']) ?></span></td>
-            <td><?= h($lnk['student_name'] ?? '-') ?></td>
+            <td><?= h($lnk['student_name'] ?? '-') ?><?php if ($lnk['student_email']): ?><br><small style="color:var(--muted)"><?= h($lnk['student_email']) ?></small><?php endif; ?></td>
             <td><?= $lnk['expires_at'] ? h(date('d/m/Y H:i', strtotime($lnk['expires_at']))) : '∞' ?></td>
             <td><?= (int)$lnk['submissions'] ?> / <?= (int)$lnk['max_uses'] ?></td>
-            <td>
-              <button class="btn btn-secondary btn-sm" onclick="copyLink('<?= h($baseUrl . $lnk['token']) ?>')">Copiar</button>
-              <a class="btn btn-primary btn-sm" href="https://wa.me/?text=<?= urlencode('Realiza tu examen aquí: ' . $baseUrl . $lnk['token']) ?>" target="_blank">WA</a>
+            <td style="white-space:nowrap;">
+              <button class="btn btn-secondary btn-sm" onclick="copyLink('<?= h($linkUrl) ?>')">Copiar</button>
+              <a class="btn btn-primary btn-sm" href="https://wa.me/<?= $lnk['student_phone'] ? h(preg_replace('/\D/','',$lnk['student_phone'])) : '' ?>?text=<?= $waMsg ?>" target="_blank" title="Enviar por WhatsApp">📱 WA</a>
+              <a class="btn btn-secondary btn-sm" href="mailto:<?= h($lnk['student_email'] ?? '') ?>?subject=<?= $emailSubj ?>&body=<?= $emailBody ?>" title="Enviar por correo">✉️ Email</a>
             </td>
           </tr>
           <?php endforeach; ?>
