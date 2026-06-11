@@ -73,6 +73,17 @@ $dashboardSections = [
             ['label' => 'Asignaciones', 'href' => '../academic/student_assignments.php', 'variant' => 'secondary'],
         ],
     ],
+    [
+        'id' => 'evaluaciones',
+        'eyebrow' => 'EVALUACIONES',
+        'title' => 'Evaluaciones y Placement',
+        'nav_href' => '../activities/eval/admin_eval.php',
+        'description' => 'Crea placement tests y evaluaciones institucionales. Aplica online por link, impreso o con usuario registrado.',
+        'links' => [
+            ['label' => 'Gestionar evaluaciones', 'href' => '../activities/eval/admin_eval.php', 'variant' => 'primary'],
+            ['label' => 'Ver resultados', 'href' => '../activities/eval/eval_results.php', 'variant' => 'secondary'],
+        ],
+    ],
 ];
 ?>
 <!DOCTYPE html>
