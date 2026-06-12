@@ -114,16 +114,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'generate_group_link') {
-        $examId  = (int) ($_POST['exam_id'] ?? 0);
-        $expires = trim($_POST['expires_at'] ?? '');
-        $maxUses = (int) ($_POST['max_uses'] ?? 999);
-        $token   = bin2hex(random_bytes(16));
+        $examId       = (int) ($_POST['exam_id'] ?? 0);
+        $availDate    = trim($_POST['available_date'] ?? '');
+        $durationHrs  = max(1, (int) ($_POST['duration_hours'] ?? 24));
+        $maxUses      = (int) ($_POST['max_uses'] ?? 999);
+        $token        = bin2hex(random_bytes(16));
+
+        // Compute expires_at: start of available_date + duration_hours
+        if ($availDate !== '') {
+            $expiresTs = strtotime($availDate . ' 00:00:00') + ($durationHrs * 3600);
+            $expires   = date('Y-m-d H:i:s', $expiresTs);
+        } else {
+            $expires = null;
+        }
 
         $stmt = $pdo->prepare(
             "INSERT INTO eval_links (exam_id, token, link_type, max_uses, expires_at, created_by)
              VALUES (?,?,'group',?,?,?) RETURNING id"
         );
-        $stmt->execute([$examId, $token, $maxUses, $expires ?: null,
+        $stmt->execute([$examId, $token, $maxUses, $expires,
             $_SESSION['admin_username'] ?? 'admin']);
         $msg = 'Link de grupo generado.';
         $tab = 'links';
@@ -214,14 +223,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 
     if ($action === 'edit_link') {
-        $linkId    = (int)   ($_POST['link_id']    ?? 0);
-        $examId    = (int)   ($_POST['exam_id']    ?? 0);
-        $expiresAt = trim(   ($_POST['expires_at'] ?? ''));
-        $maxUses   = (int)   ($_POST['max_uses']   ?? 999);
+        $linkId      = (int) ($_POST['link_id']       ?? 0);
+        $examId      = (int) ($_POST['exam_id']       ?? 0);
+        $availDate   = trim($_POST['available_date']  ?? '');
+        $durationHrs = max(1, (int) ($_POST['duration_hours'] ?? 24));
+        $maxUses     = (int) ($_POST['max_uses']      ?? 999);
         if ($linkId > 0) {
+            if ($availDate !== '') {
+                $expiresTs = strtotime($availDate . ' 00:00:00') + ($durationHrs * 3600);
+                $expiresAt = date('Y-m-d H:i:s', $expiresTs);
+            } else {
+                $expiresAt = null;
+            }
             $pdo->prepare(
                 "UPDATE eval_links SET expires_at=?, max_uses=? WHERE id=?"
-            )->execute([$expiresAt ?: null, $maxUses, $linkId]);
+            )->execute([$expiresAt, $maxUses, $linkId]);
             $msg = 'Link actualizado.';
             $tab = 'links';
         }
@@ -672,8 +688,20 @@ tr:hover td{background:#f7fcf8;}
               </select>
             </div>
             <div class="form-group">
-              <label>Expira el</label>
-              <input type="datetime-local" name="expires_at">
+              <label>Fecha disponible</label>
+              <input type="date" name="available_date" id="avail-date"
+                     min="<?= date('Y-m-d') ?>"
+                     value="<?= date('Y-m-d') ?>"
+                     onchange="updateExpiryPreview()">
+            </div>
+            <div class="form-group">
+              <label>Duración (horas)</label>
+              <input type="number" name="duration_hours" id="avail-hours"
+                     min="1" max="720" value="24"
+                     onchange="updateExpiryPreview()">
+              <small id="expiry-preview" style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
+                Expira: <?= date('d/m/Y') ?> a las 23:59
+              </small>
             </div>
             <div class="form-group">
               <label>Usos máximos</label>
@@ -762,11 +790,36 @@ tr:hover td{background:#f7fcf8;}
             <td><code><?= h(substr($lnk['token'], 0, 8)) ?>…</code></td>
             <td><span class="badge <?= $lnk['link_type'] === 'group' ? 'badge-active' : 'badge-online' ?>"><?= h($lnk['link_type']) ?></span></td>
             <td><?= h($lnk['student_name'] ?? '-') ?><?php if ($lnk['student_email']): ?><br><small style="color:var(--muted)"><?= h($lnk['student_email']) ?></small><?php endif; ?></td>
-            <td><?= $lnk['expires_at'] ? h(date('d/m/Y H:i', strtotime($lnk['expires_at']))) : '∞' ?></td>
+            <td>
+              <?php if ($lnk['expires_at']): ?>
+                <?php
+                  $expTs  = strtotime($lnk['expires_at']);
+                  $today  = strtotime(date('Y-m-d'));
+                  $expDay = strtotime(date('Y-m-d', $expTs));
+                  $diff   = (int)(($expTs - time()) / 3600);
+                  $label  = date('d/m/Y', $expTs);
+                  $style  = $expTs < time() ? 'color:#dc3545;font-weight:700;' : ($diff < 24 ? 'color:#F97316;font-weight:700;' : '');
+                ?>
+                <span style="<?= $style ?>"><?= $label ?></span>
+                <?php if ($expTs < time()): ?>
+                  <span style="font-size:10px;background:#dc3545;color:#fff;border-radius:4px;padding:1px 5px;margin-left:3px;">expirado</span>
+                <?php elseif ($diff < 24): ?>
+                  <span style="font-size:10px;background:#F97316;color:#fff;border-radius:4px;padding:1px 5px;margin-left:3px;">hoy</span>
+                <?php endif; ?>
+              <?php else: ?>
+                <span style="color:var(--muted);">∞ sin límite</span>
+              <?php endif; ?>
+            </td>
             <td><?= (int)$lnk['submissions'] ?> / <?= (int)$lnk['max_uses'] ?></td>
             <td style="white-space:nowrap;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
               <button class="btn btn-secondary btn-sm" onclick="copyLink('<?= h($linkUrl) ?>')">Copiar</button>
-              <a class="btn btn-primary btn-sm" href="https://wa.me/<?= $lnk['student_phone'] ? h(preg_replace('/\D/','',$lnk['student_phone'])) : '' ?>?text=<?= $waMsg ?>" target="_blank" title="Enviar por WhatsApp">📱 WA</a>
+              <?php
+                $waPhone = $lnk['student_phone'] ? preg_replace('/\D/','', $lnk['student_phone']) : '';
+                $waHref  = $waPhone
+                    ? 'https://wa.me/' . $waPhone . '?text=' . $waMsg
+                    : 'https://api.whatsapp.com/send?text=' . $waMsg;
+              ?>
+              <a class="btn btn-primary btn-sm" href="<?= h($waHref) ?>" target="_blank" title="Enviar por WhatsApp">📱 WA</a>
               <a class="btn btn-secondary btn-sm" href="mailto:<?= h($lnk['student_email'] ?? '') ?>?subject=<?= $emailSubj ?>&body=<?= $emailBody ?>" title="Enviar por correo">✉️ Email</a>
               <button class="btn btn-secondary btn-sm" style="background:#F97316;color:#fff;border-color:#F97316;"
                       onclick="openEditLink(<?= $lnk['id'] ?>, '<?= $currentExamId ?>', '<?= h($lnk['expires_at'] ?? '') ?>', <?= (int)$lnk['max_uses'] ?>)"
@@ -986,11 +1039,19 @@ tr:hover td{background:#f7fcf8;}
       <input type="hidden" name="link_id" id="el-link-id">
       <input type="hidden" name="exam_id" id="el-exam-id">
       <div class="form-group">
-        <label>Fecha y hora de expiración</label>
-        <input type="datetime-local" name="expires_at" id="el-expires-at"
-               style="width:100%;padding:8px 10px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;">
-        <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
-          Deja vacío para que nunca expire.
+        <label>Fecha disponible</label>
+        <input type="date" name="available_date" id="el-avail-date"
+               style="width:100%;padding:8px 10px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;"
+               onchange="updateEditPreview()">
+      </div>
+      <div class="form-group">
+        <label>Duración (horas)</label>
+        <input type="number" name="duration_hours" id="el-duration-hrs"
+               min="1" max="720" value="24"
+               style="width:100%;padding:8px 10px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;"
+               onchange="updateEditPreview()">
+        <small id="el-expiry-preview" style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
+          El link expira automáticamente después de las horas indicadas.
         </small>
       </div>
       <div class="form-group">
@@ -1093,25 +1154,60 @@ function copyLink(url) {
   });
 }
 
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+function updateExpiryPreview() {
+  var d = document.getElementById('avail-date');
+  var h = document.getElementById('avail-hours');
+  var p = document.getElementById('expiry-preview');
+  if (!d || !h || !p) return;
+  var date = d.value, hrs = parseInt(h.value) || 24;
+  if (!date) { p.textContent = ''; return; }
+  var start = new Date(date + 'T00:00:00');
+  var end   = new Date(start.getTime() + hrs * 3600 * 1000);
+  p.textContent = 'Expira: ' + pad2(end.getDate()) + '/' + pad2(end.getMonth()+1) + '/' + end.getFullYear()
+                + ' a las ' + pad2(end.getHours()) + ':' + pad2(end.getMinutes());
+}
+
+function updateEditPreview() {
+  var d = document.getElementById('el-avail-date');
+  var h = document.getElementById('el-duration-hrs');
+  var p = document.getElementById('el-expiry-preview');
+  if (!d || !h || !p) return;
+  var date = d.value, hrs = parseInt(h.value) || 24;
+  if (!date) { p.textContent = 'Sin fecha de expiración.'; return; }
+  var start = new Date(date + 'T00:00:00');
+  var end   = new Date(start.getTime() + hrs * 3600 * 1000);
+  p.textContent = 'Expira: ' + pad2(end.getDate()) + '/' + pad2(end.getMonth()+1) + '/' + end.getFullYear()
+                + ' a las ' + pad2(end.getHours()) + ':' + pad2(end.getMinutes());
+}
+
 function openEditLink(linkId, examId, expiresAt, maxUses) {
   document.getElementById('el-link-id').value  = linkId;
   document.getElementById('el-exam-id').value  = examId;
   document.getElementById('el-max-uses').value = maxUses;
-  // Convert DB timestamp to datetime-local format (YYYY-MM-DDTHH:MM)
+
+  // Pre-fill date and compute duration from existing expires_at
+  var dateEl = document.getElementById('el-avail-date');
+  var hrsEl  = document.getElementById('el-duration-hrs');
   if (expiresAt && expiresAt !== '') {
-    // expiresAt comes as "YYYY-MM-DD HH:MM:SS" or similar
-    var d = new Date(expiresAt);
-    if (!isNaN(d.getTime())) {
-      var pad = n => String(n).padStart(2,'0');
-      var local = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
-                + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-      document.getElementById('el-expires-at').value = local;
+    var exp = new Date(expiresAt.replace(' ','T'));
+    if (!isNaN(exp.getTime())) {
+      // Set date to expiry date
+      dateEl.value = exp.getFullYear() + '-' + pad2(exp.getMonth()+1) + '-' + pad2(exp.getDate());
+      // Compute hours from midnight of that day
+      var midnight = new Date(exp.getFullYear(), exp.getMonth(), exp.getDate(), 0, 0, 0);
+      var hrs = Math.round((exp - midnight) / 3600000);
+      hrsEl.value = hrs > 0 ? hrs : 24;
     } else {
-      document.getElementById('el-expires-at').value = '';
+      dateEl.value = new Date().toISOString().slice(0,10);
+      hrsEl.value  = 24;
     }
   } else {
-    document.getElementById('el-expires-at').value = '';
+    dateEl.value = new Date().toISOString().slice(0,10);
+    hrsEl.value  = 24;
   }
+  updateEditPreview();
   document.getElementById('edit-link-modal').classList.add('open');
 }
 
@@ -1129,4 +1225,5 @@ showTab(INITIAL_TAB);
 </script>
 </body>
 </html>
+
 
