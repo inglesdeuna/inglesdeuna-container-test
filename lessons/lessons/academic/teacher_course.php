@@ -1519,7 +1519,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     <?php endif; ?>
 
      <?php if ($selectedUnitId !== '' || $topWorksheetDownloadUrl !== ''): ?>
-     <div class="side-doc-actions">
+
       <?php if ($topWorksheetDownloadUrl !== ''): ?>
       <a class="side-btn"
         style="background:linear-gradient(180deg,#84cc16,#65a30d);"
@@ -1528,13 +1528,20 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
       <?php endif; ?>
 
       <?php if ($selectedUnitId !== ''): ?>
-      <a class="side-btn"
-        style="background:linear-gradient(180deg,#0ea5e9,#0284c7);"
-        href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>"
-        target="_blank"
-        rel="noopener noreferrer">📄 Export PDF</a>
+      <div class="side-doc-actions">
+        <a class="side-btn"
+          style="background:linear-gradient(180deg,#F97316,#ea6a08);"
+          href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>&mode=student"
+          target="_blank"
+          rel="noopener noreferrer">📄 Student</a>
+        <a class="side-btn"
+          style="background:linear-gradient(180deg,#7F77DD,#6c64cc);"
+          href="unit_pdf.php?unit=<?php echo urlencode($selectedUnitId); ?>&assignment=<?php echo urlencode($assignmentId); ?>&mode=key"
+          target="_blank"
+          rel="noopener noreferrer">🔑 Answer Key</a>
+      </div>
       <?php endif; ?>
-     </div>
+
      <?php endif; ?>
 
     <a class="side-btn red" href="/lessons/lessons/academic/logout.php">🚪 Sign out</a>
@@ -1812,3 +1819,4 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 </script>
 </body>
 </html>
+
