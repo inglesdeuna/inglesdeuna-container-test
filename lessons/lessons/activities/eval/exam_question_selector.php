@@ -92,25 +92,17 @@ function _phase1_random_selection(
     ?int $examId,
     array $unitIds
 ): array {
-    $seed = md5('ones_exam_v1_' . $studentId . '_attempt_' . $attempt);
+    // Use qz_build() — IDENTICAL to quiz/viewer.php
+    // Max 6 per question TYPE (not per skill quota), same seed mechanism
+    $all = _load_all_questions($pdo, $examId, $unitIds);
+    if (empty($all)) return [];
 
-    // Cargar preguntas de la BD agrupadas por skill
-    $bySkill = _load_questions_by_skill($pdo, $examId, $unitIds, $skills);
+    // qz_build needs unit_id and assignment as integers for seed
+    $unitId     = !empty($unitIds) ? (int) reset($unitIds) : 0;
+    $assignment = trim((string) ($examConfig['assignment_id'] ?? $examConfig['exam_id'] ?? '0'));
 
-    // Calcular cuotas exactas con distribución del residuo al skill dominante
-    $quotaCount = _calculate_quotas($totalQuestions, $quotas, $skills);
-
-    $selected = [];
-    foreach ($quotaCount as $skill => $count) {
-        $pool = $bySkill[$skill] ?? [];
-        $pool = _seeded_shuffle($pool, $seed . $skill);
-        $selected = array_merge($selected, array_slice($pool, 0, $count));
-    }
-
-    // Mezclar el resultado final
-    $selected = _seeded_shuffle($selected, $seed . '_final');
-
-    return _assign_points($selected, 100);
+    $built = qz_build($all, $unitId, $assignment, $attempt);
+    return _assign_points($built, 100);
 }
 
 // ─── Fase 2: Claude ranking ───────────────────────────────────────────────────
@@ -224,7 +216,108 @@ function _phase2_claude_selection(
 
 // ─── Carga de preguntas desde BD ─────────────────────────────────────────────
 
+/**
+ * Load ALL questions as a flat array — same as quiz/viewer.php line:
+ *   foreach($activities as $act) foreach(qz_normalize_activity($act) as $q) $all[] = $q;
+ * Used by _phase1_random_selection → qz_build().
+ */
+function _load_all_questions(PDO $pdo, ?int $examId, array $unitIds): array
+{
+    $all = [];
+
+    // 1. Manual eval_questions (specific to this exam)
+    if ($examId !== null) {
+        $stmt = $pdo->prepare(
+            "SELECT eq.*, ea.answer_text, ea.is_correct, ea.order_index
+             FROM eval_questions eq
+             LEFT JOIN eval_answers ea ON ea.question_id = eq.id
+             WHERE eq.exam_id = ?
+             ORDER BY eq.position, eq.id, ea.order_index"
+        );
+        $stmt->execute([$examId]);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $grouped = [];
+        foreach ($rows as $row) {
+            $qid = $row['id'];
+            if (!isset($grouped[$qid])) {
+                $grouped[$qid] = [
+                    'source'  => 'eval_questions',
+                    'id'      => 'eq_' . $qid,
+                    'type'    => $row['type'],
+                    'skill'   => $row['skill'] ?? 'grammar',
+                    'text'    => $row['question_text'],
+                    'question'=> $row['question_text'],
+                    'audio'   => $row['audio_url'],
+                    'image'   => $row['image_url'],
+                    'points'  => (float) ($row['points'] ?? 1),
+                    'options' => [],
+                    'correct' => null,
+                    'pairs'   => [],
+                    'data'    => is_string($row['data'] ?? null) ? json_decode($row['data'], true) : ($row['data'] ?? []),
+                ];
+            }
+            if ($row['answer_text'] !== null) {
+                $grouped[$qid]['options'][] = $row['answer_text'];
+                if ($row['is_correct']) {
+                    $grouped[$qid]['correct'] = $row['answer_text'];
+                }
+            }
+        }
+
+        foreach ($grouped as $q) {
+            $all[] = $q;
+        }
+
+        // If manual questions exist, use ONLY them (no mixing with activity questions)
+        if (!empty($all)) {
+            return $all;
+        }
+    }
+
+    // 2. Activity-based questions (unit_id) — IDENTICAL to quiz/viewer.php
+    if (!empty($unitIds)) {
+        $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
+        $stmt = $pdo->prepare(
+            "SELECT * FROM activities WHERE unit_id IN ({$placeholders}) ORDER BY id ASC"
+        );
+        $stmt->execute(array_values($unitIds));
+        $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($activities as $act) {
+            $normalized = qz_normalize_activity($act);
+            foreach ($normalized as $q) {
+                $q['source']      = 'activities';
+                $q['activity_id'] = (int) $act['id'];
+                $all[]            = $q;
+            }
+        }
+    }
+
+    return $all;
+}
+
+/**
+ * Original skill-bucketed loader — kept for phase2 Claude ranking
+ */
 function _load_questions_by_skill(PDO $pdo, ?int $examId, array $unitIds, array $skills): array
+{
+    // Reuse _load_all_questions then bucket by skill
+    $all     = _load_all_questions($pdo, $examId, $unitIds);
+    $bySkill = array_fill_keys($skills, []);
+    foreach ($all as $q) {
+        $skill = $q['skill'] ?? (SKILL_MAP[$q['type'] ?? ''] ?? 'grammar');
+        if (isset($bySkill[$skill])) {
+            $bySkill[$skill][] = $q;
+        }
+    }
+    return $bySkill;
+}
+
+/**
+ * LEGACY — kept for load_exam_questions_from_selection only
+ */
+function _load_questions_by_skill_UNUSED(PDO $pdo, ?int $examId, array $unitIds, array $skills): array
 {
     $bySkill = array_fill_keys($skills, []);
 
