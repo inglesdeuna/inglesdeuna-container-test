@@ -716,8 +716,18 @@ tr:hover td{background:#f7fcf8;}
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <h3 style="margin:0;">Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary" onclick="window.print()">Exportar PDF</button>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <?php if ($currentExamId && in_array('printed', json_decode($currentExam['modalities'] ?? '[]', true) ?: [])): ?>
+            <a class="btn btn-secondary"
+               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=student"
+               target="_blank" rel="noopener noreferrer"
+               title="Abrir versión imprimible para estudiante">&#128196; Quiz imprimible</a>
+            <a class="btn btn-secondary"
+               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=key"
+               target="_blank" rel="noopener noreferrer"
+               title="Abrir clave de respuestas"
+               style="background:#7F77DD;color:#fff;border-color:#7F77DD;">&#128273; Clave</a>
+            <?php endif; ?>
             <button class="btn btn-primary" onclick="openPrintedModal()">+ Nota impresa</button>
           </div>
         </div>
@@ -999,3 +1009,4 @@ showTab(INITIAL_TAB);
 </script>
 </body>
 </html>
+
