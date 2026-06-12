@@ -20,7 +20,7 @@ if ($examId <= 0) die('Exam ID required.');
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/exam_question_selector.php';
-require_once __DIR__ . '/../quiz/_quiz_lib.php';
+require_once __DIR__ . '/../quiz/_quiz_lib.php'; // verified path
 if (!isset($pdo) || !($pdo instanceof PDO)) die('DB unavailable.');
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
