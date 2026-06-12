@@ -201,17 +201,14 @@ try {
     ");
 
     // Agregar unit_id a eval_exams si no existe (migración).
-    // Se agrega la columna primero sin FK para evitar que un error de tipo (units.id INTEGER en DBs antiguas)
-    // deje la transacción de PostgreSQL en estado abortado. Luego se intenta agregar la FK con un SAVEPOINT
-    // para que un fallo no afecte el resto de la transacción.
     $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT");
-    try {
-        $pdo->exec("SAVEPOINT before_unit_fk");
-        $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
-        $pdo->exec("RELEASE SAVEPOINT before_unit_fk");
-    } catch (Exception $e) {
-        $pdo->exec("ROLLBACK TO SAVEPOINT before_unit_fk");
-        // FK no pudo agregarse (tipo incompatible o ya existe) — se continúa sin FK
+    $fkExists = $pdo->query("SELECT 1 FROM pg_constraint WHERE conname = 'eval_exams_unit_id_fkey' LIMIT 1")->fetchColumn();
+    if (!$fkExists) {
+        try {
+            $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
+        } catch (Exception $e) {
+            // FK no pudo agregarse (tipo incompatible) — se continúa sin FK
+        }
     }
 
     /* ===============================
