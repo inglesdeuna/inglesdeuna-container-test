@@ -270,7 +270,22 @@ function _load_questions_by_skill(PDO $pdo, ?int $examId, array $unitIds, array 
                 $bySkill[$skill][] = $q;
             }
         }
-        return $bySkill;
+
+        // If eval_questions are defined, use them exclusively
+        $totalFound = array_sum(array_map('count', $bySkill));
+        if ($totalFound > 0) {
+            return $bySkill;
+        }
+        // No eval_questions yet — fall through to activity-based questions below
+        // (use the exam's associated unit_id if available)
+        try {
+            $unitStmt = $pdo->prepare("SELECT unit_id FROM eval_exams WHERE id=? LIMIT 1");
+            $unitStmt->execute([$examId]);
+            $unitRow  = $unitStmt->fetch(PDO::FETCH_ASSOC);
+            if ($unitRow && $unitRow['unit_id']) {
+                $unitIds = [$unitRow['unit_id']];
+            }
+        } catch (Throwable $_e) {}
     }
 
     // 2. Preguntas de actividades existentes (activities table)
@@ -568,3 +583,4 @@ function load_exam_questions_from_selection(PDO $pdo, string $serialized): array
 
     return $questions;
 }
+
