@@ -9,6 +9,18 @@ $unitId       = trim((string) ($_GET['unit']       ?? ''));
 $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 if ($unitId === '') die('Unit not specified.');
 
+/* mode=student -> force student worksheet (no answers), even for teachers
+   mode=key     -> force answer key (teacher only)
+   default      -> student gets worksheet, teacher gets answer key */
+$modeParam = trim((string) ($_GET['mode'] ?? ''));
+if ($modeParam === 'student') {
+    $isKey = false;
+} elseif ($modeParam === 'key' && $isTeacher) {
+    $isKey = true;
+} else {
+    $isKey = $isTeacher;
+}
+
 $dbFile = __DIR__ . '/../config/db.php';
 if (!file_exists($dbFile)) die('Database configuration not found.');
 require $dbFile;
@@ -647,22 +659,22 @@ foreach ($activities as $act) {
     $data = ws_decode($act['data'] ?? null);
     $actN++;
     switch ($type) {
-        case 'flashcards':           $html = ws_flashcards($data, $actN, $isTeacher); break;
-        case 'quiz':                 $html = ws_quiz($data, $actN, $isTeacher);        break;
-        case 'multiple_choice':      $html = ws_mc($data, $actN, $isTeacher);          break;
-        case 'drag_drop':            $html = ws_dragdrop($data, $actN, $isTeacher);    break;
-        case 'writing_practice':     $html = ws_writing($data, $actN, $isTeacher);     break;
-        case 'match':                $html = ws_match($data, $actN, $isTeacher);       break;
-        case 'matching_lines':       $html = ws_matching_lines($data, $actN, $isTeacher); break;
-        case 'order_sentences':      $html = ws_order($data, $actN, $isTeacher);       break;
-        case 'listen_order':         $html = ws_listenorder($data, $actN, $isTeacher); break;
-        case 'memory_cards':         $html = ws_memory($data, $actN, $isTeacher);      break;
-        case 'video_comprehension':  $html = ws_video($data, $actN, $isTeacher);       break;
-        case 'dictation':            $html = ws_dictation($data, $actN, $isTeacher);   break;
-        case 'pronunciation':        $html = ws_pronunciation($data, $actN, $isTeacher); break;
-        case 'powerpoint':           $html = ws_notes($data, $actN, 'Presentation', $isTeacher); break;
-        case 'external':             $html = ws_notes($data, $actN, 'External Resource', $isTeacher); break;
-        case 'reading_comprehension':$html = ws_reading($data, $actN, $isTeacher);    break;
+        case 'flashcards':           $html = ws_flashcards($data, $actN, $isKey); break;
+        case 'quiz':                 $html = ws_quiz($data, $actN, $isKey);        break;
+        case 'multiple_choice':      $html = ws_mc($data, $actN, $isKey);          break;
+        case 'drag_drop':            $html = ws_dragdrop($data, $actN, $isKey);    break;
+        case 'writing_practice':     $html = ws_writing($data, $actN, $isKey);     break;
+        case 'match':                $html = ws_match($data, $actN, $isKey);       break;
+        case 'matching_lines':       $html = ws_matching_lines($data, $actN, $isKey); break;
+        case 'order_sentences':      $html = ws_order($data, $actN, $isKey);       break;
+        case 'listen_order':         $html = ws_listenorder($data, $actN, $isKey); break;
+        case 'memory_cards':         $html = ws_memory($data, $actN, $isKey);      break;
+        case 'video_comprehension':  $html = ws_video($data, $actN, $isKey);       break;
+        case 'dictation':            $html = ws_dictation($data, $actN, $isKey);   break;
+        case 'pronunciation':        $html = ws_pronunciation($data, $actN, $isKey); break;
+        case 'powerpoint':           $html = ws_notes($data, $actN, 'Presentation', $isKey); break;
+        case 'external':             $html = ws_notes($data, $actN, 'External Resource', $isKey); break;
+        case 'reading_comprehension':$html = ws_reading($data, $actN, $isKey);    break;
         default:
             /* skip non-printable silently — hangman/crossword/coloring/dot_to_dot/tracing
                already excluded by SQL, but catch any extras */
@@ -671,9 +683,9 @@ foreach ($activities as $act) {
     $sections[] = ['type' => $type, 'html' => $html];
 }
 
-$today   = date('F j, Y');
-$isKey   = $isTeacher;
+$today    = date('F j, Y');
 $actCount = count($sections);
+// $isKey already set above via mode param
 ?><!DOCTYPE html>
 <html lang="en">
 <head>
