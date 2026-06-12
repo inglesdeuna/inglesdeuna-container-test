@@ -355,9 +355,8 @@ $cefrColors = ['A1'=>'#6c757d','A2'=>'#17a2b8','B1'=>'#28a745','B2'=>'#007bff','
 $skillLabels = ['grammar'=>'Grammar','vocabulary'=>'Vocabulary','listening'=>'Listening','reading'=>'Reading','writing'=>'Writing','speaking'=>'Speaking'];
 $activityTypes = array_keys(SKILL_MAP);
 
-// Build full absolute URL so WhatsApp/email links work correctly
-$_host   = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
-           . '://' . ($_SERVER['HTTP_HOST'] ?? 'inglesdeuna-container-test.onrender.com');
+// Always use https — Render runs behind a proxy so $_SERVER['HTTPS'] is not reliable
+$_host   = 'https://' . ($_SERVER['HTTP_HOST'] ?? 'inglesdeuna-container-test.onrender.com');
 $baseUrl = $_host . '/lessons/lessons/activities/eval/eval_viewer.php?t=';
 ?>
 <!DOCTYPE html>
