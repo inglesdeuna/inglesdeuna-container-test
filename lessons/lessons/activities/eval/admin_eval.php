@@ -189,6 +189,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $tab = 'cefr';
     }
 
+    if ($action === 'delete_exam') {
+        $examId = (int) ($_POST['exam_id'] ?? 0);
+        if ($examId > 0) {
+            // CASCADE deletes eval_questions, eval_answers, eval_links, eval_results via FK
+            $pdo->prepare("DELETE FROM eval_exams WHERE id=?")->execute([$examId]);
+            $msg = 'Examen eliminado.';
+            $tab = 'exams';
+            $currentExamId = 0; // clear selection
+        }
+    }
+
+    if ($action === 'delete_link') {
+        $linkId = (int) ($_POST['link_id'] ?? 0);
+        $examId = (int) ($_POST['exam_id'] ?? 0);
+        if ($linkId > 0) {
+            $pdo->prepare("DELETE FROM eval_links WHERE id=?")->execute([$linkId]);
+            $msg = 'Link eliminado.';
+            $tab = 'links';
+        }
+    }
+
+    if ($action === 'edit_link') {
+        $linkId    = (int)   ($_POST['link_id']    ?? 0);
+        $examId    = (int)   ($_POST['exam_id']    ?? 0);
+        $expiresAt = trim(   ($_POST['expires_at'] ?? ''));
+        $maxUses   = (int)   ($_POST['max_uses']   ?? 999);
+        if ($linkId > 0) {
+            $pdo->prepare(
+                "UPDATE eval_links SET expires_at=?, max_uses=? WHERE id=?"
+            )->execute([$expiresAt ?: null, $maxUses, $linkId]);
+            $msg = 'Link actualizado.';
+            $tab = 'links';
+        }
+    }
+
     if ($action === 'register_printed') {
         $examId = (int) ($_POST['exam_id'] ?? 0);
         $name   = trim($_POST['student_name'] ?? '');
@@ -489,6 +524,12 @@ tr:hover td{background:#f7fcf8;}
               <a class="btn btn-primary btn-sm" href="?tab=links&exam_id=<?= $ex['id'] ?>">Enviar</a>
               <a class="btn btn-secondary btn-sm" href="?tab=editor&exam_id=<?= $ex['id'] ?>">Editar</a>
               <a class="btn btn-secondary btn-sm" href="eval_results.php?exam_id=<?= $ex['id'] ?>">Resultados</a>
+              <form method="POST" style="display:inline"
+                    onsubmit="return confirm('¿Eliminar el examen «<?= h(addslashes($ex['title'])) ?>» y todos sus links y resultados? Esta acción no se puede deshacer.')">
+                <input type="hidden" name="action"   value="delete_exam">
+                <input type="hidden" name="exam_id"  value="<?= $ex['id'] ?>">
+                <button type="submit" class="btn btn-danger btn-sm">🗑 Eliminar</button>
+              </form>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -720,10 +761,20 @@ tr:hover td{background:#f7fcf8;}
             <td><?= h($lnk['student_name'] ?? '-') ?><?php if ($lnk['student_email']): ?><br><small style="color:var(--muted)"><?= h($lnk['student_email']) ?></small><?php endif; ?></td>
             <td><?= $lnk['expires_at'] ? h(date('d/m/Y H:i', strtotime($lnk['expires_at']))) : '∞' ?></td>
             <td><?= (int)$lnk['submissions'] ?> / <?= (int)$lnk['max_uses'] ?></td>
-            <td style="white-space:nowrap;">
+            <td style="white-space:nowrap;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
               <button class="btn btn-secondary btn-sm" onclick="copyLink('<?= h($linkUrl) ?>')">Copiar</button>
               <a class="btn btn-primary btn-sm" href="https://wa.me/<?= $lnk['student_phone'] ? h(preg_replace('/\D/','',$lnk['student_phone'])) : '' ?>?text=<?= $waMsg ?>" target="_blank" title="Enviar por WhatsApp">📱 WA</a>
               <a class="btn btn-secondary btn-sm" href="mailto:<?= h($lnk['student_email'] ?? '') ?>?subject=<?= $emailSubj ?>&body=<?= $emailBody ?>" title="Enviar por correo">✉️ Email</a>
+              <button class="btn btn-secondary btn-sm" style="background:#F97316;color:#fff;border-color:#F97316;"
+                      onclick="openEditLink(<?= $lnk['id'] ?>, '<?= $currentExamId ?>', '<?= h($lnk['expires_at'] ?? '') ?>', <?= (int)$lnk['max_uses'] ?>)"
+                      title="Editar fecha/hora y usos">✏️ Editar</button>
+              <form method="POST" style="display:inline"
+                    onsubmit="return confirm('¿Eliminar este link? Los resultados ya registrados se conservan.')">
+                <input type="hidden" name="action"   value="delete_link">
+                <input type="hidden" name="link_id"  value="<?= $lnk['id'] ?>">
+                <input type="hidden" name="exam_id"  value="<?= $currentExamId ?>">
+                <button type="submit" class="btn btn-danger btn-sm" title="Eliminar link">🗑</button>
+              </form>
             </td>
           </tr>
           <?php endforeach; ?>
@@ -923,6 +974,39 @@ tr:hover td{background:#f7fcf8;}
   </div>
 </div>
 
+<!-- ── Modal: editar link ── -->
+<div class="modal-bg" id="edit-link-modal">
+  <div class="modal" style="max-width:420px;">
+    <h3 style="margin-bottom:16px;">✏️ Editar link</h3>
+    <form method="POST" id="edit-link-form">
+      <input type="hidden" name="action"  value="edit_link">
+      <input type="hidden" name="link_id" id="el-link-id">
+      <input type="hidden" name="exam_id" id="el-exam-id">
+      <div class="form-group">
+        <label>Fecha y hora de expiración</label>
+        <input type="datetime-local" name="expires_at" id="el-expires-at"
+               style="width:100%;padding:8px 10px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;">
+        <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
+          Deja vacío para que nunca expire.
+        </small>
+      </div>
+      <div class="form-group">
+        <label>Usos máximos</label>
+        <input type="number" name="max_uses" id="el-max-uses" min="1" max="9999"
+               style="width:100%;padding:8px 10px;border:1.5px solid #dee2e6;border-radius:8px;font-size:14px;">
+        <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
+          Número de estudiantes que pueden usar este link.
+        </small>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:18px;">
+        <button type="submit" class="btn btn-primary" style="flex:1;">💾 Guardar cambios</button>
+        <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('edit-link-modal').classList.remove('open')">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const INITIAL_TAB = <?= json_encode($tab) ?>;
 
@@ -1004,6 +1088,28 @@ function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => alert('¡Link copiado!')).catch(() => {
     prompt('Copia este link:', url);
   });
+}
+
+function openEditLink(linkId, examId, expiresAt, maxUses) {
+  document.getElementById('el-link-id').value  = linkId;
+  document.getElementById('el-exam-id').value  = examId;
+  document.getElementById('el-max-uses').value = maxUses;
+  // Convert DB timestamp to datetime-local format (YYYY-MM-DDTHH:MM)
+  if (expiresAt && expiresAt !== '') {
+    // expiresAt comes as "YYYY-MM-DD HH:MM:SS" or similar
+    var d = new Date(expiresAt);
+    if (!isNaN(d.getTime())) {
+      var pad = n => String(n).padStart(2,'0');
+      var local = d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate())
+                + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+      document.getElementById('el-expires-at').value = local;
+    } else {
+      document.getElementById('el-expires-at').value = '';
+    }
+  } else {
+    document.getElementById('el-expires-at').value = '';
+  }
+  document.getElementById('edit-link-modal').classList.add('open');
 }
 
 function openPrintedModal() {
