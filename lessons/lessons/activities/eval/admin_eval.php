@@ -301,7 +301,10 @@ $cefrColors = ['A1'=>'#6c757d','A2'=>'#17a2b8','B1'=>'#28a745','B2'=>'#007bff','
 $skillLabels = ['grammar'=>'Grammar','vocabulary'=>'Vocabulary','listening'=>'Listening','reading'=>'Reading','writing'=>'Writing','speaking'=>'Speaking'];
 $activityTypes = array_keys(SKILL_MAP);
 
-$baseUrl = '/lessons/lessons/activities/eval/eval_viewer.php?t=';
+// Build full absolute URL so WhatsApp/email links work correctly
+$_host   = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
+           . '://' . ($_SERVER['HTTP_HOST'] ?? 'inglesdeuna-container-test.onrender.com');
+$baseUrl = $_host . '/lessons/lessons/activities/eval/eval_viewer.php?t=';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -680,7 +683,26 @@ tr:hover td{background:#f7fcf8;}
 
       <?php if (!empty($examLinks)): ?>
       <div class="card">
-        <h3>Links activos — <?= h($currentExam['title'] ?? '') ?><?php if (!empty($currentExam['unit_name'])): ?> <span class="badge badge-online" style="font-size:12px;">📚 <?= h($currentExam['unit_name']) ?></span><?php endif; ?></h3>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
+          <h3 style="margin:0;">Links activos — <?= h($currentExam['title'] ?? '') ?><?php if (!empty($currentExam['unit_name'])): ?> <span class="badge badge-online" style="font-size:12px;">📚 <?= h($currentExam['unit_name']) ?></span><?php endif; ?></h3>
+          <?php
+            $_mods = json_decode($currentExam['modalities'] ?? '[]', true) ?: [];
+            if ($currentExamId && in_array('printed', $_mods)):
+          ?>
+          <div style="display:flex;gap:7px;">
+            <a class="btn btn-secondary btn-sm"
+               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=student"
+               target="_blank" rel="noopener noreferrer"
+               title="Abrir versión imprimible para estudiante"
+               style="background:#F97316;color:#fff;border-color:#F97316;">&#128196; Quiz imprimible</a>
+            <a class="btn btn-secondary btn-sm"
+               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=key"
+               target="_blank" rel="noopener noreferrer"
+               title="Abrir clave de respuestas"
+               style="background:#7F77DD;color:#fff;border-color:#7F77DD;">&#128273; Clave</a>
+          </div>
+          <?php endif; ?>
+        </div>
         <table>
           <thead><tr><th>Token</th><th>Tipo</th><th>Estudiante</th><th>Expira</th><th>Usos</th><th>Compartir</th></tr></thead>
           <tbody>
@@ -717,17 +739,6 @@ tr:hover td{background:#f7fcf8;}
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
           <h3 style="margin:0;">Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <?php if ($currentExamId && in_array('printed', json_decode($currentExam['modalities'] ?? '[]', true) ?: [])): ?>
-            <a class="btn btn-secondary"
-               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=student"
-               target="_blank" rel="noopener noreferrer"
-               title="Abrir versión imprimible para estudiante">&#128196; Quiz imprimible</a>
-            <a class="btn btn-secondary"
-               href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=key"
-               target="_blank" rel="noopener noreferrer"
-               title="Abrir clave de respuestas"
-               style="background:#7F77DD;color:#fff;border-color:#7F77DD;">&#128273; Clave</a>
-            <?php endif; ?>
             <button class="btn btn-primary" onclick="openPrintedModal()">+ Nota impresa</button>
           </div>
         </div>
