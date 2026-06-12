@@ -14,6 +14,9 @@ function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
 
 $tab = $_GET['tab'] ?? 'list';
 $msg = '';
+// Flash message from PRG redirect
+if (($_GET['msg'] ?? '') === 'saved') $msg = 'Examen guardado.';
+if (($_GET['msg'] ?? '') === 'deleted') $msg = 'Examen eliminado.';
 
 // ─── POST: Crear / Editar examen ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
@@ -49,9 +52,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
             $examId = $row['id'];
         }
-        $msg = 'Examen guardado.';
-        $tab = 'editor';
-        $_GET['exam_id'] = $examId;
+        // PRG (Post-Redirect-Get) — prevents stale POST and shows exam in list immediately
+        $redirectTab = 'editor';
+        header('Location: admin_eval.php?tab=' . $redirectTab . '&exam_id=' . $examId . '&msg=saved');
+        exit;
     }
 
     if ($action === 'save_question') {
@@ -194,9 +198,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($examId > 0) {
             // CASCADE deletes eval_questions, eval_answers, eval_links, eval_results via FK
             $pdo->prepare("DELETE FROM eval_exams WHERE id=?")->execute([$examId]);
-            $msg = 'Examen eliminado.';
-            $tab = 'exams';
-            $currentExamId = 0; // clear selection
+            header('Location: admin_eval.php?tab=list&msg=deleted');
+            exit;
         }
     }
 
