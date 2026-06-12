@@ -111,8 +111,9 @@ function sec_color(int $n): string {
     return ($n % 2 === 1) ? 'ora' : 'lila';
 }
 
-function ws_head(int $n, string $kicker, string $title, string $instr, bool $isKey): string {
+function ws_head(int $n, string $kicker, string $title, string $instr, bool $isKey, string $cardClass = ''): string {
     $c   = sec_color($n);
+    $cls = 'card-box' . ($cardClass !== '' ? ' '.$cardClass : '');
     $out = '<div class="ws-sec">';
     $out .= '<div class="sec-head"><div class="snum '.$c.'">'.$n.'</div>';
     $out .= '<div class="sec-meta"><div class="sec-kicker">'.h($kicker);
@@ -120,7 +121,7 @@ function ws_head(int $n, string $kicker, string $title, string $instr, bool $isK
     $out .= '</div>';
     if ($title !== '') $out .= '<div class="sec-title">'.h($title).'</div>';
     $out .= '</div></div>';
-    $out .= '<div class="card-box">';
+    $out .= '<div class="'.$cls.'">';
     if ($instr !== '') {
         $out .= '<div class="ibox">'
              .  '<span class="ilbl">Instructions</span>'
@@ -273,7 +274,7 @@ function ws_dragdrop(array $d, int $n, bool $k): string {
     shuffle($bank);
     $out = ws_head($n, 'Fill in the Blanks', trim((string)($d['title'] ?? '')),
                    $k ? 'Sentences with correct answers shown.'
-                      : 'Fill in the blanks using the word bank below.', $k);
+                      : 'Fill in the blanks using the word bank below.', $k, 'card-open');
     if (!empty($bank) && !$k) {
         $out .= '<div class="ws-bank"><span class="ws-blbl">Word Bank:</span>';
         foreach ($bank as $w) $out .= '<span class="ws-chip">'.h($w).'</span>';
@@ -348,12 +349,18 @@ function ws_writing(array $d, int $n, bool $k): string {
     $qs   = is_array($d['questions'] ?? null) ? $d['questions'] : [];
     $desc = trim((string)($d['description'] ?? ''));
     $out  = ws_head($n, 'Writing Practice', trim((string)($d['title'] ?? '')),
-                    $desc ?: 'Write your answers in complete sentences.', $k);
+                    $desc ?: 'Write your answers in complete sentences.', $k, 'card-open');
     foreach ($qs as $qi => $q) {
         $qt   = trim((string)($q['question']    ?? ''));
         $in   = trim((string)($q['instruction'] ?? ''));
         $an   = is_array($q['correct_answers'] ?? null) ? $q['correct_answers'] : [];
         $type = trim((string)($q['type'] ?? 'writing'));
+        /* Estimate number of write lines from instruction or default */
+        $numLines = 3;
+        if ($in !== '') {
+            /* more lines if instruction implies paragraph */
+            $numLines = (stripos($in,'paragraph')!==false||stripos($in,'describe')!==false) ? 5 : 3;
+        }
         $out .= '<div class="ws-wb">';
         if ($type === 'fill_sentence' || $type === 'fill_paragraph' || $type === 'listen_write') {
             $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'
@@ -361,6 +368,8 @@ function ws_writing(array $d, int $n, bool $k): string {
                  .  '</div>';
             if ($in !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
             $out .= ws_render_blanks($qt, $an, $type);
+            /* open lines below fill-in for extended writing */
+            $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', 2).'</div>';
         } else {
             $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt).'</div>';
             if ($in !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
@@ -372,7 +381,7 @@ function ws_writing(array $d, int $n, bool $k): string {
                 }
                 $out .= '</div>';
             } else {
-                $out .= '<div class="ws-lines">'.str_repeat('<div class="ws-line"></div>', 4).'</div>';
+                $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', $numLines).'</div>';
             }
         }
         $out .= '</div>';
@@ -540,7 +549,7 @@ function ws_video(array $d, int $n, bool $k): string {
 function ws_dictation(array $d, int $n, bool $k): string {
     $items = is_array($d['items'] ?? null) ? $d['items'] : [];
     $out   = ws_head($n, 'Dictation', trim((string)($d['title'] ?? '')),
-                     'Listen to each item and write what you hear.', $k);
+                     'Listen to each item and write what you hear.', $k, 'card-open');
     if (empty($items)) {
         $out .= '<div class="notes-box"></div>';
         return $out.ws_foot();
@@ -558,8 +567,8 @@ function ws_dictation(array $d, int $n, bool $k): string {
         $out .= '<div class="dt-write">';
         if ($img !== '') $out .= '<div class="dt-img"><img src="'.h($img).'" alt="item '.($i+1).'" loading="eager"></div>';
         if ($k && $en !== '') $out .= '<div class="ws-ans dt-ans">'.h($en).'</div>';
-        $out .= '<div class="dt-lines">';
-        for ($l = 0; $l < $lines; $l++) $out .= '<div class="ws-line"></div>';
+        $out .= '<div class="ws-open-lines">';
+        for ($l = 0; $l < $lines; $l++) $out .= '<div class="ws-open-line"></div>';
         $out .= '</div></div></div>';
     }
     return $out.ws_foot();
@@ -829,11 +838,17 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 
 /* ── Card ── */
 .card-box { border: 1.5px solid var(--lila2); border-radius: 13px; padding: 13px 16px; }
+/* Writing/fill/dictation use open layout — no enclosing rectangle */
+.card-open { padding: 0; }
 .ibox { display: flex; align-items: flex-start; gap: 7px; background: var(--lila2);
         border-radius: 8px; padding: 7px 10px; margin-bottom: 11px; }
 .ilbl { font-size: 8px; font-weight: 800; text-transform: uppercase;
         letter-spacing: .1em; color: var(--lila); white-space: nowrap; margin-top: 1px; }
 .itxt { font-size: 10px; color: var(--ink); line-height: 1.5; }
+/* In open-layout sections the instruction is a plain line, no background box */
+.card-open .ibox { background: transparent; border-radius: 0; padding: 0 0 10px;
+                    border-bottom: 1.5px solid var(--lila2); margin-bottom: 16px; }
+.card-open .ilbl { color: var(--ora); }
 
 /* ── Tables ── */
 table.ws-tbl { width: 100%; border-collapse: collapse; font-size: 11px;
@@ -875,35 +890,44 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .ws-ans { color: var(--lila); font-weight: 700; }
 
 /* ── Word bank ── */
-.ws-bank { display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-           padding: 10px 13px; border: 1.5px dashed var(--lila2); border-radius: 12px;
-           margin-bottom: 13px; }
+.ws-bank { display: flex; flex-wrap: wrap; align-items: center; gap: 7px;
+           padding: 10px 0 14px; border-bottom: 1.5px solid var(--lila2);
+           margin-bottom: 16px; }
 .ws-blbl { font-size: 9px; font-weight: 800; text-transform: uppercase;
-           letter-spacing: .1em; color: var(--ora); margin-right: 4px; }
-.ws-chip { padding: 5px 12px; border-radius: 999px; border: 1.5px solid var(--lila2);
-           color: var(--ink); font-weight: 600; font-size: 11.5px; }
-.ws-fr   { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px;
-           font-size: 12px; line-height: 1.7; break-inside: avoid; }
-.ws-fn   { font-size: 10.5px; font-weight: 800; color: var(--lila3); min-width: 20px; }
+           letter-spacing: .1em; color: var(--ora); margin-right: 6px; }
+.ws-chip { padding: 5px 13px; border-radius: 999px; border: 1.5px solid var(--lila2);
+           color: var(--ink); font-weight: 600; font-size: 12px; }
+.ws-fr   { display: flex; align-items: baseline; gap: 10px; padding-bottom: 14px;
+           border-bottom: 1.5px solid var(--lila2); font-size: 13px;
+           line-height: 1.6; break-inside: avoid; }
+.ws-fr:last-child { border-bottom: none; padding-bottom: 0; }
+.ws-fn   { font-size: 11px; font-weight: 800; color: var(--lila3); min-width: 22px; }
 .ws-fb   { flex: 1; }
 
 /* ── Fill-in blanks ── */
-.ws-fill-prompt { margin-left: 30px; border: 1.5px solid var(--lila2); border-radius: 10px;
-                  padding: 10px 13px; font-size: 12px; line-height: 2.1;
-                  word-break: break-word; }
+.ws-fill-prompt { margin-left: 30px; font-size: 12.5px; line-height: 2.2;
+                  word-break: break-word; color: var(--ink); }
 .ws-inline-blank { display: inline-block;
-                   min-width: calc(var(--bl, 10) * 0.62ch);
-                   height: 1.15em; border-bottom: 2px solid var(--lila3);
-                   vertical-align: baseline; margin: 0 3px; }
+                   min-width: calc(var(--bl, 10) * 0.65ch);
+                   height: 1.2em; border-bottom: 2px solid var(--ora);
+                   vertical-align: baseline; margin: 0 4px; }
 
 /* ── Writing practice ── */
-.ws-wb   { margin-bottom: 16px; break-inside: avoid; }
+.ws-wb   { margin-bottom: 22px; break-inside: avoid; }
 .ws-wb:last-child { margin-bottom: 0; }
-.ws-wi   { font-size: 10.5px; color: var(--muted); font-style: italic; margin: 3px 0 6px 30px; }
-.ws-lines { display: flex; flex-direction: column; gap: 20px; margin-top: 10px; }
-.ws-line  { border-bottom: 1.5px solid var(--lila2); }
-.ws-ab   { border: 1.5px solid var(--lila2); border-radius: 10px; padding: 8px 11px; margin-left: 30px; }
-.ws-ma   { font-size: 11.5px; color: var(--lila); font-weight: 700; margin-bottom: 2px; }
+.ws-wi   { font-size: 10.5px; color: var(--muted); font-style: italic; margin: 4px 0 10px 30px; }
+
+/* Open writing lines — no enclosing box */
+.ws-open-lines { display: flex; flex-direction: column; gap: 28px;
+                 margin-top: 12px; padding: 0 4px; }
+.ws-open-line  { position: relative; border-bottom: 1.5px solid var(--lila2); height: 32px; }
+.ws-open-line::before { content: ''; position: absolute; left: 0; right: 0;
+                         bottom: -16px; border-bottom: 1px dotted #EDE9FA; }
+
+.ws-lines { display: flex; flex-direction: column; gap: 28px; margin-top: 12px; padding: 0 4px; }
+.ws-line  { border-bottom: 1.5px solid var(--lila2); height: 32px; }
+.ws-ab   { border-left: 3px solid var(--lila); padding: 6px 11px; margin-left: 30px; }
+.ws-ma   { font-size: 11.5px; color: var(--lila); font-weight: 700; margin-bottom: 4px; }
 .ws-ma:last-child { margin-bottom: 0; }
 
 /* ── Match ── */
@@ -953,7 +977,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .dt-img img { width: 100%; height: 100%; object-fit: contain; }
 .dt-ans  { border: 1.5px solid var(--lila2); border-radius: 8px; padding: 5px 10px;
            font-size: 11.5px; }
-.dt-lines { display: flex; flex-direction: column; gap: 14px; padding-top: 4px; }
+.dt-lines { display: flex; flex-direction: column; gap: 28px; padding-top: 8px; }
 
 /* ── Pronunciation ── */
 .pr-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -1061,6 +1085,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   /* Card */
   .card-box { padding: 7px 9px; border-radius: 8px; }
   .ibox { padding: 5px 8px; margin-bottom: 7px; border-radius: 6px; }
+  .card-open .ibox { padding: 0 0 7px; border-radius: 0; margin-bottom: 10px; }
   .ilbl { font-size: 7px; }
   .itxt { font-size: 8.5px; }
 
@@ -1080,20 +1105,23 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .ws-expl { font-size: 8px; padding: 3px 6px; margin-left: 23px; }
 
   /* Word bank */
-  .ws-bank { padding: 5px 9px; gap: 3px 5px; margin-bottom: 7px; }
+  .ws-bank { padding: 5px 0 10px; gap: 3px 5px; margin-bottom: 10px; }
   .ws-blbl { font-size: 7.5px; }
-  .ws-chip { padding: 2px 8px; font-size: 8.5px; }
-  .ws-fr   { font-size: 9px; margin-bottom: 5px; }
+  .ws-chip { padding: 2px 9px; font-size: 8.5px; }
+  .ws-fr   { font-size: 9px; padding-bottom: 10px; }
   .ws-fn   { font-size: 8.5px; }
-  .ws-fill-prompt { margin-left: 23px; padding: 6px 9px; font-size: 8.5px; line-height: 1.95; }
-  .ws-inline-blank { min-width: calc(var(--bl, 10) * 0.58ch); border-bottom-width: 1.5px; }
+  .ws-fill-prompt { margin-left: 23px; font-size: 9px; line-height: 2.0; }
+  .ws-inline-blank { min-width: calc(var(--bl, 10) * 0.60ch); border-bottom-width: 1.8px; }
 
   /* Writing */
-  .ws-wb  { margin-bottom: 8px; }
-  .ws-wi  { font-size: 8px; margin: 2px 0 4px 23px; }
-  .ws-lines { gap: 18px; margin-top: 6px; }
-  .ws-line  { border-bottom-width: 1.2px; }
-  .ws-ab  { padding: 5px 8px; margin-left: 23px; border-radius: 6px; }
+  .ws-wb  { margin-bottom: 10px; }
+  .ws-wi  { font-size: 8px; margin: 2px 0 5px 23px; }
+  .ws-open-lines { gap: 22px; margin-top: 8px; }
+  .ws-open-line  { height: 24px; }
+  .ws-open-line::before { bottom: -11px; }
+  .ws-lines { gap: 22px; margin-top: 8px; }
+  .ws-line  { height: 24px; border-bottom-width: 1.2px; }
+  .ws-ab  { padding: 4px 8px; margin-left: 23px; }
   .ws-ma  { font-size: 9px; }
 
   /* Match */
@@ -1127,7 +1155,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   /* Dictation */
   .dt-item { padding: 6px 0; gap: 8px; }
   .dt-num  { font-size: 10px; min-width: 20px; }
-  .dt-lines { gap: 12px; }
+  .dt-lines { gap: 20px; }
   .dt-img  { width: 50px; height: 38px; border-radius: 6px; }
 
   /* Notes box */
