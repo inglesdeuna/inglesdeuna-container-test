@@ -81,24 +81,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
     }
 
     // Insert new unit
+    $newUnitId = uniqid('unit_');
     if ($moduleId !== null) {
         $ins = $pdo->prepare("
-            INSERT INTO units (course_id, module_id, name, created_at)
-            VALUES (:cid, :mid, :name, NOW())
+            INSERT INTO units (id, course_id, module_id, name, created_at)
+            VALUES (:id, :cid, :mid, :name, NOW())
         ");
-        $ins->execute(["cid" => $courseId, "mid" => $moduleId, "name" => $unitName]);
+        $ins->execute(["id" => $newUnitId, "cid" => $courseId, "mid" => $moduleId, "name" => $unitName]);
     } else {
         $ins = $pdo->prepare("
-            INSERT INTO units (course_id, name, created_at)
-            VALUES (:cid, :name, NOW())
+            INSERT INTO units (id, course_id, name, created_at)
+            VALUES (:id, :cid, :name, NOW())
         ");
-        $ins->execute(["cid" => $courseId, "name" => $unitName]);
-    }
-
-    $newUnitId = $pdo->lastInsertId();
-    if (!$newUnitId) {
-        // PostgreSQL fallback
-        $newUnitId = $pdo->query("SELECT lastval()")->fetchColumn();
+        $ins->execute(["id" => $newUnitId, "cid" => $courseId, "name" => $unitName]);
     }
 
     header("Location: ../activities/hub/index.php?unit=" . urlencode($newUnitId));
@@ -108,8 +103,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
 /* ════════════════════════════════════════
    DELETE UNIT
    ════════════════════════════════════════ */
-if (isset($_GET["delete_unit"]) && ctype_digit((string) $_GET["delete_unit"])) {
-    $delId = (int) $_GET["delete_unit"];
+if (isset($_GET["delete_unit"]) && trim((string) $_GET["delete_unit"]) !== '') {
+    $delId = trim((string) $_GET["delete_unit"]);
 
     // Only delete if no activities
     $cnt = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE unit_id = :id");
@@ -130,9 +125,9 @@ if (isset($_GET["delete_unit"]) && ctype_digit((string) $_GET["delete_unit"])) {
    ════════════════════════════════════════ */
 if ($_SERVER["REQUEST_METHOD"] === "POST"
     && isset($_POST["action"]) && $_POST["action"] === "rename_unit"
-    && ctype_digit((string) ($_POST["rename_id"] ?? ''))
+    && trim((string) ($_POST["rename_id"] ?? '')) !== ''
     && trim((string) ($_POST["rename_name"] ?? '')) !== '') {
-    $renameId   = (int) $_POST["rename_id"];
+    $renameId   = trim((string) $_POST["rename_id"]);
     $renameName = mb_strtoupper(trim((string) $_POST["rename_name"]), "UTF-8");
 
     // Update canonical name in units table

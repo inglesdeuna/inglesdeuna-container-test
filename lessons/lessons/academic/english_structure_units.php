@@ -42,13 +42,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])
         exit;
     }
 
+    $newUnitId = uniqid('unit_');
     $ins = $pdo->prepare("
-        INSERT INTO units (name, phase_id, created_at, active, position)
-        VALUES (:name, :phase_id, NOW(), true, 0)
-        RETURNING id
+        INSERT INTO units (id, name, phase_id, created_at, active, position)
+        VALUES (:id, :name, :phase_id, NOW(), true, 0)
     ");
-    $ins->execute(["name" => $unitName, "phase_id" => $phaseId]);
-    $newUnitId = $ins->fetchColumn();
+    $ins->execute(["id" => $newUnitId, "name" => $unitName, "phase_id" => $phaseId]);
 
     header("Location: ../activities/hub/index_english.php?unit=" . urlencode($newUnitId));
     exit;
@@ -59,9 +58,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])
 =============================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST"
     && isset($_POST["action"]) && $_POST["action"] === "rename_unit"
-    && ctype_digit((string) ($_POST["rename_id"] ?? ''))
+    && trim((string) ($_POST["rename_id"] ?? '')) !== ''
     && trim((string) ($_POST["rename_name"] ?? '')) !== '') {
-    $renameId   = (int) $_POST["rename_id"];
+    $renameId   = trim((string) $_POST["rename_id"]);
     $renameName = mb_strtoupper(trim((string) $_POST["rename_name"]), "UTF-8");
     $pdo->prepare("UPDATE units SET name = :name WHERE id = :id")
         ->execute(["name" => $renameName, "id" => $renameId]);
@@ -77,8 +76,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST"
 /* ===============================
    ELIMINAR UNIT (solo si sin actividades)
 =============================== */
-if (isset($_GET["delete_unit"]) && ctype_digit((string) $_GET["delete_unit"])) {
-    $delId = (int) $_GET["delete_unit"];
+if (isset($_GET["delete_unit"]) && trim((string) $_GET["delete_unit"]) !== '') {
+    $delId = trim((string) $_GET["delete_unit"]);
     $cnt = $pdo->prepare("SELECT COUNT(*) FROM activities WHERE unit_id = :id");
     $cnt->execute(["id" => $delId]);
     if ((int) $cnt->fetchColumn() === 0) {

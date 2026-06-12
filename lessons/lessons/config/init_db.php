@@ -200,6 +200,26 @@ try {
     );
     ");
 
+    // Migrar units.id de INTEGER/SERIAL a TEXT si la base fue creada con el esquema antiguo.
+    $unitsIdType = $pdo->query(
+        "SELECT data_type FROM information_schema.columns
+         WHERE table_name='units' AND column_name='id' AND table_schema='public'"
+    )->fetchColumn();
+    if ($unitsIdType && strtolower($unitsIdType) !== 'text' && strtolower($unitsIdType) !== 'character varying') {
+        // Eliminar FK dependientes antes de cambiar el tipo de la columna referenciada
+        $pdo->exec("ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_unit_id_fkey");
+        $pdo->exec("ALTER TABLE eval_exams  DROP CONSTRAINT IF EXISTS eval_exams_unit_id_fkey");
+        // Quitar el DEFAULT de secuencia y convertir id a TEXT
+        $pdo->exec("ALTER TABLE units ALTER COLUMN id DROP DEFAULT");
+        $pdo->exec("ALTER TABLE units ALTER COLUMN id TYPE TEXT USING id::text");
+        // Restaurar FK de activities
+        $pdo->exec("ALTER TABLE activities ADD CONSTRAINT activities_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE");
+        // Restaurar FK de eval_exams
+        try {
+            $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
+        } catch (Exception $e) {}
+    }
+
     // Agregar unit_id a eval_exams si no existe (migración).
     $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT");
     $fkExists = $pdo->query("SELECT 1 FROM pg_constraint WHERE conname = 'eval_exams_unit_id_fkey' LIMIT 1")->fetchColumn();
@@ -207,7 +227,7 @@ try {
         try {
             $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
         } catch (Exception $e) {
-            // FK no pudo agregarse (tipo incompatible) — se continúa sin FK
+            // FK no pudo agregarse — se continúa sin FK
         }
     }
 
