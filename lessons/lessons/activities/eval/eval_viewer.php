@@ -8,6 +8,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/init_db.php';
 require_once __DIR__ . '/exam_question_selector.php';
+require_once __DIR__ . '/../quiz/_quiz_lib.php';
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
 
@@ -122,15 +123,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $re
         $answersLog  = [];
 
         foreach ($questions as $i => $q) {
-            $given   = trim((string) ($answers[$i] ?? ''));
-            $correct = trim((string) ($q['correct'] ?? ''));
+            $qType   = $q['type'] ?? 'multiple_choice';
             $pts     = (float) ($q['points'] ?? 1);
             $skill   = $q['skill'] ?? 'grammar';
+            $rawAns  = $answers[$i] ?? null;
 
-            $isCorrect = ($given !== '' && $correct !== '' &&
-                mb_strtolower($given) === mb_strtolower($correct));
+            // Parse answer based on type (match/drag_drop come as arrays)
+            if (in_array($qType, ['match', 'drag_drop', 'drag_drop_kids'], true)) {
+                $given = is_array($rawAns) ? $rawAns : (is_string($rawAns) ? json_decode($rawAns, true) ?? $rawAns : null);
+            } else {
+                $given = is_string($rawAns) ? trim($rawAns) : (string)($rawAns ?? '');
+            }
 
-            $earned = $isCorrect ? $pts : 0.0;
+            // Use qz_answer_score — same scoring engine as quiz/viewer.php
+            // Handles multi-blank |, word-by-word, pronunciation, match pairs, drag_drop arrays
+            $scoreResult = qz_answer_score($q, $given);
+            $earned      = min($pts, ($scoreResult['earned'] / max(1, $scoreResult['possible'])) * $pts);
+            $isCorrect   = $scoreResult['correct'];
+            $givenStr    = is_array($given) ? json_encode($given) : (string)($given ?? '');
+            $correctStr  = is_array($q['correct'] ?? null) ? json_encode($q['correct']) : (string)($q['correct'] ?? '');
 
             $skillScores[$skill] = $skillScores[$skill] ?? ['score' => 0, 'total' => 0];
             $skillScores[$skill]['score'] += $earned;
@@ -140,9 +151,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $re
             $maxScore   += $pts;
 
             $answersLog[] = [
-                'q' => $i, 'type' => $q['type'], 'skill' => $skill,
-                'given' => $given, 'correct' => $correct,
-                'is_correct' => $isCorrect, 'pts_earned' => $earned, 'pts_max' => $pts,
+                'q'          => $i,
+                'type'       => $qType,
+                'skill'      => $skill,
+                'given'      => $givenStr,
+                'correct'    => $correctStr,
+                'is_correct' => $isCorrect,
+                'pts_earned' => $earned,
+                'pts_max'    => $pts,
             ];
         }
 
@@ -173,6 +189,77 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $re
             $totalScore, $maxScore, $pct, $cefr,
             json_encode($answersLog), json_encode($skillScores), $resultId,
         ]);
+
+        // ── Sync to student_quiz_state + student_unit_results ─────────────
+        // So the result appears in teacher_course.php dashboard and student_quiz.php
+        // exactly like a regular unit quiz result.
+        $unitIdForSync = (int) ($exam['unit_id'] ?? 0);
+        if ($unitIdForSync > 0) {
+            // Resolve student_id — use doc as surrogate when no session
+            $syncStudentId = trim((string) ($_SESSION['student_id'] ?? ''));
+            if ($syncStudentId === '') {
+                // For external (tokenised) access: use doc or name as stable ID
+                $syncStudentId = trim((string) ($result['student_doc']  ?? ''));
+                if ($syncStudentId === '') {
+                    $syncStudentId = trim((string) ($result['student_name'] ?? ''));
+                }
+            }
+
+            // Resolve assignment_id — use link token as surrogate
+            $syncAssignment = trim((string) ($link['id'] ?? '0'));
+
+            if ($syncStudentId !== '') {
+                // Ensure table exists
+                qz_ensure_quiz_state_table($pdo);
+
+                // Build minimal answers array for qz_save_db_state
+                $qzAnswers = [];
+                foreach ($questions as $qi => $q) {
+                    $log = $answersLog[$qi] ?? [];
+                    $qzAnswers[$qi] = [
+                        'answer'   => $log['given']      ?? null,
+                        'correct'  => $log['is_correct'] ?? false,
+                        'earned'   => $log['pts_earned'] ?? 0.0,
+                        'possible' => $log['pts_max']    ?? 1.0,
+                        'skipped'  => ($log['given'] ?? '') === '',
+                    ];
+                }
+
+                $qzTotal   = (int) round($maxScore);
+                $qzCorrect = (int) round($totalScore);
+                $qzWrong   = max(0, $qzTotal - $qzCorrect);
+                $qzSkip    = 0;
+                $qzPct     = (int) round($pct);
+
+                // Save attempt — attempt 1 (external exams don't track multi-attempt)
+                qz_save_db_state(
+                    $pdo,
+                    $syncStudentId,
+                    $unitIdForSync,
+                    $syncAssignment,
+                    1,            // attempt
+                    $questions,
+                    $qzAnswers,
+                    true,         // completed
+                    $qzPct,
+                    $qzCorrect,
+                    $qzWrong,
+                    $qzSkip,
+                    $qzTotal
+                );
+
+                // Save quiz_score_percent to student_unit_results
+                // (teacher dashboard reads: Activities 60% + Quiz 40%)
+                qz_save_quiz_unit_score(
+                    $pdo,
+                    $syncStudentId,
+                    $unitIdForSync,
+                    $syncAssignment,
+                    $qzPct
+                );
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────
 
         header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=result&rid=' . $resultId);
         exit;
@@ -707,3 +794,4 @@ const timerInterval = setInterval(() => {
 </script>
 </body>
 </html>
+
