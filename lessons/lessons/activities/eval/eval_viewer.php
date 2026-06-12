@@ -13,7 +13,7 @@ require_once __DIR__ . '/../quiz/_quiz_lib.php';
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
 
 $token     = trim($_GET['t'] ?? '');
-$step      = $_GET['step'] ?? 'welcome';   // welcome | exam | result
+$step      = $_GET['step'] ?? 'welcome';   // welcome | quiz | result
 $resultId  = (int) ($_GET['rid'] ?? 0);
 
 // ─── Validar token ────────────────────────────────────────────────────────────
@@ -74,8 +74,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['start_exam'])) {
             $errorMsg = 'Ya alcanzaste el número máximo de intentos para este examen.';
         } else {
             $attempt     = count($history) + 1;
+            // Add unit_ids so selector can pull activity questions
+            // Add assignment_id so qz_build() uses same seed as quiz/viewer
+            $examUnitIds = [];
+            if (!empty($exam['unit_id'])) {
+                $examUnitIds = [(int) $exam['unit_id']];
+            }
             $examConfig  = [
                 'exam_id'         => $examId,
+                'unit_ids'        => $examUnitIds,
+                'assignment_id'   => (string) $link['id'],
                 'total_questions' => 20,
                 'quotas'          => DEFAULT_QUOTAS,
                 'skills'          => array_keys(DEFAULT_QUOTAS),
@@ -101,13 +109,72 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['start_exam'])) {
                 ->execute([$link['id']]);
 
             // Guardar preguntas en sesión temporal (via URL)
-            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=exam&rid=' . $newResultId);
+            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=quiz&rid=' . $newResultId . '&q=0');
             exit;
         }
     }
 }
 
 // ─── POST: Enviar respuestas ──────────────────────────────────────────────────
+// ─── POST: Navigate question by question (quiz/viewer style) ─────────────────
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eval_answer']) && $resultId > 0) {
+    $qIndex   = (int) ($_POST['q_index'] ?? 0);
+    $total    = (int) ($_POST['q_total'] ?? 0);
+    $sessKey  = 'eval_answers_' . $resultId;
+    if (!isset($_SESSION[$sessKey])) $_SESSION[$sessKey] = [];
+
+    $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
+    $resStmt->execute([$resultId]);
+    $qResult = $resStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($qResult) {
+        $questions = load_exam_questions_from_selection($pdo, $qResult['selection_json'] ?? '');
+        $q         = $questions[$qIndex] ?? null;
+
+        if ($q) {
+            $qType = $q['type'] ?? 'multiple_choice';
+            if (in_array($qType, ['match', 'drag_drop', 'drag_drop_kids', 'unscramble'], true)) {
+                $rawAns = isset($_POST['answer']) && is_array($_POST['answer'])
+                    ? $_POST['answer']
+                    : (isset($_POST['answer']) ? $_POST['answer'] : null);
+            } else {
+                $rawAns = trim((string) ($_POST['answer'] ?? ''));
+            }
+
+            if (isset($_POST['skip'])) {
+                $rawAns = null;
+            }
+
+            $_SESSION[$sessKey][$qIndex] = $rawAns;
+        }
+
+        $next = $qIndex + 1;
+        if ($next >= $total) {
+            // All answered — submit
+            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=submit&rid=' . $resultId);
+        } else {
+            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=quiz&rid=' . $resultId . '&q=' . $next);
+        }
+        exit;
+    }
+}
+
+// ─── GET: Auto-submit when all questions answered ─────────────────────────────
+if ($step === 'submit' && $resultId > 0) {
+    $sessKey   = 'eval_answers_' . $resultId;
+    $sessAns   = $_SESSION[$sessKey] ?? [];
+    $resStmt   = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
+    $resStmt->execute([$resultId]);
+    $subResult = $resStmt->fetch(PDO::FETCH_ASSOC);
+
+    if ($subResult) {
+        // Fake a POST submit_exam with session answers
+        $_POST['submit_exam'] = '1';
+        $_POST['answers']     = $sessAns;
+        unset($_SESSION[$sessKey]);
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $resultId > 0) {
     $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
     $resStmt->execute([$resultId]);
@@ -271,7 +338,7 @@ $questions  = [];
 $result     = null;
 $skillScores = [];
 
-if ($step === 'exam' && $resultId > 0) {
+if (in_array($step, ['exam', 'quiz'], true) && $resultId > 0) {
     $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? LIMIT 1");
     $resStmt->execute([$resultId]);
     $result = $resStmt->fetch(PDO::FETCH_ASSOC);
@@ -311,6 +378,7 @@ $timeLimitMin = (int) ($link['time_limit_min'] ?? 50);
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($link['exam_title']) ?> — ONES Evaluación</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
 :root{
@@ -440,6 +508,53 @@ body{font-family:'Nunito',Arial,sans-serif;background:var(--bg);color:var(--text
 .error-msg{background:#fff3f3;border:1px solid #f5c6cb;color:#842029;border-radius:12px;
   padding:12px 16px;margin-bottom:14px;font-size:14px;font-weight:700;}
 
+/* ── Quiz/viewer question UI ── */
+.tag{display:inline-flex;gap:8px;align-items:center;background:#f0ecff;color:var(--purple);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:900;text-transform:uppercase;margin-bottom:16px;}
+.progress-head{display:flex;justify-content:space-between;color:var(--purple);font-size:14px;font-weight:900;}
+.track{height:9px;background:#eeeafa;border-radius:999px;overflow:hidden;margin:10px 0 24px;}
+.bar{height:100%;background:linear-gradient(90deg,var(--orange),var(--purple));}
+.question{font-weight:900;line-height:1.4;margin-bottom:22px;font-size:22px;}
+.option{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;display:flex;gap:14px;font-weight:800;font-size:17px;cursor:pointer;}
+.option input{display:none;}
+.letter{background:#eeeafa;color:var(--purple);border-radius:999px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;}
+.option:hover,.option:has(input:checked){border-color:var(--purple);background:#f8f6ff;}
+.input,.select{width:100%;border:1px solid var(--line);border-radius:13px;padding:16px;font:800 17px Nunito;margin-bottom:12px;}
+.match-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.match-left{padding:15px;border:1px solid var(--purple);border-radius:12px;text-align:center;font-weight:900;background:#fbfaff;font-size:16px;}
+.btn{border:0;border-radius:13px;padding:16px 20px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:16px;}
+.btn-primary{background:var(--orange);color:white;}
+.btn-purple{background:var(--purple);color:white;}
+.btn-light{background:white;color:var(--purple);border:1px solid var(--line);}
+.btn-green{background:#16a34a;color:white;}
+.w100{width:100%;}
+.actions{display:flex;gap:12px;margin-top:18px;}
+.pron-card{min-height:400px;border:1px solid #EDE9FA;border-radius:30px;background:#fff;padding:18px;text-align:center;}
+.pron-listen-cue{display:inline-flex;margin-bottom:12px;padding:6px 13px;border-radius:999px;background:#EEEDFE;color:#534AB7;font-size:12px;font-weight:900;}
+.pron-image{width:100%;height:280px;margin-bottom:14px;border-radius:24px;background:#fff;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px;}
+.pron-image img{width:100%;height:100%;object-fit:contain;border-radius:18px;}
+.pron-word{font-size:28px;font-weight:900;color:#534AB7;}
+.pron-box{width:100%;margin-top:8px;border-radius:12px;padding:9px 12px;font-size:13px;font-weight:800;text-align:center;}
+.pron-captured{border:1px solid #EDE9FA;background:#fff;color:#534AB7;}
+.pron-actions{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #F0EEF8;}
+.pron-btn{border:0;border-radius:10px;min-width:130px;padding:13px 20px;color:#fff;font-size:13px;font-weight:900;cursor:pointer;}
+.pron-purple{background:#7F77DD;}
+.pron-orange{background:#F97316;}
+.qz-dd-instruction{font-size:17px;font-weight:900;line-height:2.2;margin-bottom:14px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fbfaff;}
+.qz-dd-slot{display:inline-flex;align-items:center;justify-content:center;min-width:90px;height:38px;border:2px dashed var(--purple);border-radius:10px;margin:0 6px;padding:0 10px;background:#f8f6ff;vertical-align:middle;}
+.qz-dd-placeholder{color:#c4b9e8;font-size:13px;font-style:italic;}
+.qz-dd-filled{border-style:solid;background:#eeedfe;}
+.qz-drag-over{background:#e8e5ff!important;border-color:var(--orange)!important;}
+.qz-word-bank{display:flex;flex-wrap:wrap;gap:10px;min-height:60px;border:1px solid var(--line);border-radius:18px;padding:14px;background:#fbfaff;margin-bottom:12px;}
+.qz-chip{padding:12px 16px;border-radius:16px;background:white;border:1px solid #EDE9FA;box-shadow:0 4px 14px rgba(127,119,221,.13);font-weight:900;color:#534AB7;cursor:grab;user-select:none;}
+.qz-built-chip{background:#eeedfe;border-color:#7F77DD;}
+.qz-fill-inline{font-size:20px;font-weight:900;line-height:2.5;margin-bottom:16px;}
+.qz-fill-blank{border:none;border-bottom:3px solid var(--purple);width:120px;font-size:20px;font-weight:900;color:var(--purple);background:transparent;text-align:center;outline:none;padding:0 4px;margin:0 4px;}
+.qz-fill-input-lite{width:100%;border:1px solid var(--line);border-radius:13px;padding:16px;font:800 17px Nunito;margin-bottom:12px;}
+.us-chip{padding:12px 16px;border-radius:16px;background:white;border:1px solid #EDE9FA;box-shadow:0 4px 14px rgba(127,119,221,.13);font-weight:900;color:#534AB7;cursor:grab;user-select:none;}
+.btn-back{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;background:#f0ecff;color:var(--purple);font-size:13px;font-weight:900;text-decoration:none;border:1px solid var(--line);}
+/* Also load tabler icons for tag */
+
+
 .nav-btns{display:flex;gap:12px;justify-content:space-between;margin-top:20px;}
 
 @media(max-width:600px){
@@ -458,7 +573,7 @@ body{font-family:'Nunito',Arial,sans-serif;background:var(--bg);color:var(--text
     <h1><?= h($link['exam_title']) ?></h1>
     <p>Evaluación de inglés<?= $link['exam_cefr'] ? ' — Nivel ' . h($link['exam_cefr']) : '' ?></p>
   </div>
-  <?php if ($step === 'exam' && $timeLimitMin > 0): ?>
+  <?php if (in_array($step, ['exam','quiz'], true) && $timeLimitMin > 0): ?>
   <div class="timer" id="timer">⏱ <?= $timeLimitMin ?>:00</div>
   <?php endif; ?>
 </header>
@@ -515,140 +630,320 @@ if ($step === 'welcome'): ?>
     </form>
   </div>
 
-<?php // ─── Paso 2: Examen ───────────────────────────────────────────────────
-elseif ($step === 'exam' && $result && !empty($questions)): ?>
-  <form method="POST" id="exam-form">
-    <input type="hidden" name="submit_exam" value="1">
+<?php // ─── Paso 2: Quiz — pregunta por pregunta (idéntico a quiz/viewer.php) ───
+elseif ($step === 'quiz' && $result && !empty($questions)):
+    $qIndex  = max(0, min((int)($_GET['q'] ?? 0), count($questions) - 1));
+    $q       = $questions[$qIndex];
+    $total   = count($questions);
+    $qNum    = $qIndex + 1;
+    $pctDone = round($qNum / $total * 100);
+    $qType   = $q['type'] ?? 'multiple_choice';
+    $bt      = $q['block_type'] ?? $qType;
+    $labels  = ['dictation'=>['Dictation','Listen and type what you hear','ti-keyboard'],
+                'pronunciation'=>['Pronunciation','Say the phrase','ti-microphone'],
+                'multiple_choice'=>['Multiple choice','Pick the correct answer','ti-checks'],
+                'fill'=>['Fill in the blank','Complete the sentence','ti-pencil'],
+                'writing_practice'=>['Writing practice','Write your answer','ti-writing'],
+                'match'=>['Match','Connect each word to its pair','ti-arrows-shuffle'],
+                'drag_drop'=>['Drag and drop','Arrange or match items','ti-hand-move'],
+                'unscramble'=>['Unscramble','Put the words in order','ti-sort-ascending']];
+    $inf = $labels[$bt] ?? [$bt, '', 'ti-circle'];
+    // Seed-based shuffle for drag_drop/unscramble (use result id as seed)
+    $qzShuffleSeed = (int)$result['id'] + $qIndex + 991;
+?>
+<div class="card" style="max-width:720px;margin:auto;padding:36px;">
+  <div class="progress-head"><span>PROGRESS</span><span><?= $qNum ?> / <?= $total ?></span></div>
+  <div class="track"><div class="bar" style="width:<?= $pctDone ?>%"></div></div>
+  <div class="tag"><i class="ti <?= h($inf[2]) ?>"></i><?= h($inf[0]) ?></div>
 
-    <?php foreach ($questions as $i => $q):
-      $qNum     = $i + 1;
-      $total    = count($questions);
-      $pctDone  = round($qNum / $total * 100);
-      $qType    = $q['type'] ?? 'multiple_choice';
-      $letters  = ['A','B','C','D','E'];
-    ?>
-    <div class="card q-card" id="q-card-<?= $i ?>" style="<?= $i > 0 ? 'display:none' : '' ?>">
-      <!-- Progress -->
-      <div class="progress-label">
-        <span>Pregunta <?= $qNum ?> de <?= $total ?></span>
-        <span><?= h(ucfirst($q['skill'] ?? 'grammar')) ?></span>
-      </div>
-      <div class="progress-wrap"><div class="progress-bar" style="width:<?= $pctDone ?>%"></div></div>
-
-      <div class="q-number">Pregunta <?= $qNum ?> · <?= h(strtoupper($q['type'] ?? '')) ?></div>
-      <div class="q-text"><?= nl2br(h($q['text'] ?? '')) ?></div>
-
-      <?php if ($q['audio']): ?>
-      <div class="q-audio">
-        <audio controls src="<?= h($q['audio']) ?>">Tu navegador no soporta audio.</audio>
-      </div>
+  <?php if ($qType === 'pronunciation'): ?>
+  <div class="pron-card">
+    <div class="pron-listen-cue">Listen first</div>
+    <div class="pron-image">
+      <?php if (!empty($q['image'])): ?>
+        <img src="<?= h($q['image']) ?>" alt="<?= h($q['correct'] ?? '') ?>">
+      <?php else: ?>
+        <div class="pron-word"><?= h($q['correct'] ?? '') ?></div>
       <?php endif; ?>
-
-      <?php if ($q['image']): ?>
-      <div style="margin-bottom:14px;text-align:center;">
-        <img src="<?= h($q['image']) ?>" alt="Imagen" style="max-width:100%;border-radius:14px;max-height:240px;">
-      </div>
-      <?php endif; ?>
-
-      <?php
-      // ─── Render según tipo ───────────────────────────────────────────
-      if (in_array($qType, ['multiple_choice'], true) && !empty($q['options'])):
-      ?>
-      <div class="options-list" id="opts-<?= $i ?>">
-        <?php foreach ($q['options'] as $oi => $opt): ?>
-        <label class="option-label" onclick="selectOption(this, <?= $i ?>, <?= json_encode((string)$opt) ?>)">
-          <input type="radio" name="answers[<?= $i ?>]" value="<?= h($opt) ?>">
-          <span class="opt-letter"><?= $letters[$oi] ?? $oi + 1 ?></span>
-          <span><?= h($opt) ?></span>
-        </label>
-        <?php endforeach; ?>
-      </div>
-
-      <?php elseif (in_array($qType, ['fill_in_blank','dictation','question_answer'], true)): ?>
-      <input type="text" name="answers[<?= $i ?>]" class="fill-input"
-        placeholder="Escribe tu respuesta aquí..." autocomplete="off">
-
-      <?php elseif (in_array($qType, ['unscramble','build_sentence','order_sentences'], true)): ?>
-      <?php
-        $words = [];
-        if (!empty($q['data']['words'])) $words = $q['data']['words'];
-        elseif (!empty($q['correct'])) $words = explode(' ', $q['correct']);
-        shuffle($words);
-      ?>
-      <p style="font-size:13px;color:var(--muted);margin-bottom:8px;">Arrastra las palabras en el orden correcto:</p>
-      <div class="chips-answer" id="answer-area-<?= $i ?>" ondrop="dropChip(event,<?= $i ?>)" ondragover="event.preventDefault()"></div>
-      <div class="chips-pool" id="pool-<?= $i ?>">
-        <?php foreach ($words as $wi => $wd): ?>
-        <div class="chip" draggable="true" id="chip-<?= $i ?>-<?= $wi ?>"
-          ondragstart="dragChip(event,'chip-<?= $i ?>-<?= $wi ?>')">
-          <?= h($wd) ?>
-        </div>
-        <?php endforeach; ?>
-      </div>
-      <input type="hidden" name="answers[<?= $i ?>]" id="answer-input-<?= $i ?>">
-
-      <?php elseif (in_array($qType, ['match','matching_lines'], true) && !empty($q['options'])): ?>
-      <?php
-        $leftItems   = [$q['text'] ?? ''];
-        $rightItems  = $q['options'];
-        shuffle($rightItems);
-      ?>
-      <div>
-        <?php foreach ($leftItems as $li => $left): ?>
-        <div class="match-row">
-          <span class="left"><?= h($left) ?></span>
-          <select name="answers[<?= $i ?>]">
-            <option value="">Seleccionar...</option>
-            <?php foreach ($rightItems as $right): ?>
-            <option value="<?= h($right) ?>"><?= h($right) ?></option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-        <?php endforeach; ?>
-      </div>
-
-      <?php elseif (in_array($qType, ['flashcards','memory_cards'], true)): ?>
-      <div class="flip-card" id="flip-<?= $i ?>" onclick="this.classList.toggle('flipped')">
-        <div class="flip-inner">
-          <div class="flip-front"><?= h($q['text'] ?? '') ?></div>
-          <div class="flip-back"><?= h($q['correct'] ?? '') ?></div>
-        </div>
-      </div>
-      <p style="font-size:13px;color:var(--muted);text-align:center;margin-bottom:10px;">Haz clic en la tarjeta para ver la respuesta</p>
-      <div class="options-list" id="opts-fc-<?= $i ?>">
-        <label class="option-label" onclick="selectFlipAnswer(<?= $i ?>, 'si')">
-          <input type="radio" name="answers[<?= $i ?>]" value="<?= h($q['correct'] ?? '') ?>">
-          <span class="opt-letter" style="background:#28a745;color:#fff;">✓</span>
-          <span>La sabía</span>
-        </label>
-        <label class="option-label" onclick="selectFlipAnswer(<?= $i ?>, 'no')">
-          <input type="radio" name="answers[<?= $i ?>]" value="_skip_">
-          <span class="opt-letter" style="background:#dc3545;color:#fff;">✗</span>
-          <span>No la sabía</span>
-        </label>
-      </div>
-
-      <?php else: // Tipo genérico (writing, speaking, etc.) ?>
-      <textarea name="answers[<?= $i ?>]" style="width:100%;min-height:100px;padding:12px 16px;
-        border:2px solid var(--line);border-radius:14px;font-size:15px;font-family:'Nunito',Arial,sans-serif;
-        resize:vertical;" placeholder="Escribe tu respuesta..."></textarea>
-      <?php endif; ?>
-
-      <!-- Navegación -->
-      <div class="nav-btns">
-        <?php if ($i > 0): ?>
-        <button type="button" class="btn btn-purple" onclick="goTo(<?= $i - 1 ?>)">← Anterior</button>
-        <?php else: ?><span></span><?php endif; ?>
-
-        <?php if ($i < $total - 1): ?>
-        <button type="button" class="btn btn-primary" onclick="goTo(<?= $i + 1 ?>)">Siguiente →</button>
-        <?php else: ?>
-        <button type="button" class="btn btn-green" onclick="confirmSubmit()">✅ Finalizar examen</button>
-        <?php endif; ?>
-      </div>
     </div>
-    <?php endforeach; ?>
+    <div class="pron-box pron-captured" id="pron-captured"></div>
+  </div>
+  <form method="post">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <input type="hidden" name="answer" id="pron-answer" value="">
+    <div class="pron-actions">
+      <button type="button" class="pron-btn pron-purple" id="pron-listen">Listen</button>
+      <button type="button" class="pron-btn pron-purple" id="pron-speak">Speak</button>
+      <button type="submit" class="pron-btn pron-purple" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
   </form>
+  <script>(function(){
+    var expected=<?= json_encode((string)($q['correct'] ?? '')) ?>;
+    var audio=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    var cap=document.getElementById('pron-captured'),answer=document.getElementById('pron-answer'),submitted=false;
+    var form=answer.closest('form');
+    function norm(t){return String(t||'').toLowerCase().trim().replace(/[.,!?;:'"\-]/g,'').replace(/\s+/g,' ');}
+    function overlap(a,b){var wa=a.split(' ').filter(Boolean),wb=b.split(' ').filter(Boolean);if(!wa.length||!wb.length)return 0;return wa.filter(function(w){return wb.indexOf(w)!==-1;}).length/Math.max(wa.length,wb.length);}
+    function isMatch(a,b){return a===b||overlap(a,b)>=.8;}
+    function submit(ok){if(submitted)return;submitted=true;answer.value=ok?'1':'';setTimeout(function(){form.submit();},250);}
+    function listen(){if(audio){var a=new Audio(audio);a.play().catch(function(){});return;}if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(expected);u.lang='en-US';u.rate=.82;window.speechSynthesis.speak(u);}
+    function speak(){var C=window.SpeechRecognition||window.webkitSpeechRecognition;if(!C){submit(false);return;}var r=new C();r.lang='en-US';r.interimResults=false;r.maxAlternatives=1;var heard=false;r.onresult=function(e){heard=true;var said=String(e.results&&e.results[0]&&e.results[0][0]?e.results[0][0].transcript:'');submit(isMatch(norm(said),norm(expected)));};r.onerror=function(){heard=true;submit(false);};r.onend=function(){if(!heard)submit(false);};r.start();}
+    document.getElementById('pron-listen').onclick=listen;
+    document.getElementById('pron-speak').onclick=speak;
+  })();</script>
+
+  <?php elseif ($qType === 'dictation'): ?>
+  <div class="pron-card">
+    <div class="pron-listen-cue">Listen and type what you hear</div>
+    <div class="pron-image" style="min-height:140px;">
+      <?php if (!empty($q['image'])): ?>
+        <img src="<?= h($q['image']) ?>" alt="">
+      <?php else: ?><span style="font-size:64px;">🎧</span><?php endif; ?>
+    </div>
+  </div>
+  <form method="post" id="dict-form">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <input type="hidden" name="answer" id="dict-answer" value="">
+    <input class="input" id="dict-input" autocomplete="off" placeholder="Type what you heard…">
+    <div class="pron-actions">
+      <button type="button" class="pron-btn pron-purple" id="dict-listen">Listen</button>
+      <button type="button" class="pron-btn pron-orange" id="dict-next">Next</button>
+      <button type="submit" class="pron-btn pron-purple" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+  <script>(function(){
+    var audio=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    var expected=<?= json_encode((string)($q['correct'] ?? '')) ?>;
+    var input=document.getElementById('dict-input'),answer=document.getElementById('dict-answer'),submitted=false;
+    var form=document.getElementById('dict-form');
+    function listen(){if(audio){var a=new Audio(audio);a.play().catch(function(){});return;}if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(expected);u.lang='en-US';u.rate=.82;window.speechSynthesis.speak(u);}
+    document.getElementById('dict-listen').onclick=listen;
+    document.getElementById('dict-next').onclick=function(){if(submitted)return;submitted=true;answer.value=input.value.trim();form.submit();};
+    input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();if(!submitted){submitted=true;answer.value=input.value.trim();form.submit();}}});
+    setTimeout(listen,150);
+  })();</script>
+
+  <?php elseif ($qType === 'multiple_choice'): ?>
+  <?php $qzMcListen = ($q['question_type'] ?? 'text') === 'listen'; $qzMcImg = ($q['option_type'] ?? 'text') === 'image'; ?>
+  <form method="post" id="mc-form">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <?php if ($qzMcListen): ?>
+      <div style="margin-bottom:12px;"><button type="button" class="btn btn-light" id="qz-mc-listen">🔊 Listen</button></div>
+    <?php else: ?>
+      <div class="question"><?= h($q['question'] ?? $q['text'] ?? '') ?></div>
+    <?php endif; ?>
+    <?php if (!empty($q['image'])): ?>
+      <div style="margin-bottom:14px;"><img src="<?= h($q['image']) ?>" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#fff;"></div>
+    <?php endif; ?>
+    <?php foreach ($q['options'] as $oi => $op): ?>
+    <label class="option"><input type="radio" name="answer" value="<?= $oi ?>"
+      onchange="setTimeout(function(){document.getElementById('mc-form').submit();},180)">
+      <span class="letter"><?= chr(65 + $oi) ?></span>
+      <?php if ($qzMcImg): ?>
+        <img src="<?= h($op) ?>" alt="" style="max-width:100%;max-height:120px;object-fit:contain;border-radius:10px;">
+      <?php else: ?><?= h($op) ?><?php endif; ?>
+    </label>
+    <?php endforeach; ?>
+    <div class="actions"><button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div>
+  </form>
+  <?php if ($qzMcListen): ?><script>(function(){
+    var b=document.getElementById('qz-mc-listen');if(!b)return;
+    var text=<?= json_encode((string)($q['question'] ?? $q['text'] ?? '')) ?>;
+    var audioUrl=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    function speak(){if(audioUrl){var a=new Audio(audioUrl);a.play().catch(function(){});return;}if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);}
+    b.addEventListener('click',speak);setTimeout(speak,150);
+  })();</script><?php endif; ?>
+
+  <?php elseif ($qType === 'drag_drop'): ?>
+  <?php
+    $qzDdWords = $q['options'] ?? [];
+    $qzDdShuffled = $qzDdWords;
+    qz_shuffle($qzDdShuffled, $qzShuffleSeed + 577);
+    $qzDdParts = preg_split('/(___)/u', $q['instruction'] ?? '', -1, PREG_SPLIT_DELIM_CAPTURE);
+    $qzDdSlotCount = count($q['correct_words'] ?? []);
+  ?>
+  <form method="post" id="qz-dd-form">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <?php if (!empty($q['listen_enabled'])): ?>
+      <div style="margin-bottom:12px;"><button type="button" class="btn btn-light" id="qz-dd-listen">🔊 Listen</button></div>
+    <?php endif; ?>
+    <?php if (!empty($q['image'])): ?>
+      <div style="margin-bottom:14px;"><img src="<?= h($q['image']) ?>" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;border:1px solid var(--line);"></div>
+    <?php endif; ?>
+    <div class="question"><?= h($q['question'] ?? 'Drag the words into the correct blanks.') ?></div>
+    <div class="qz-dd-instruction"><?php
+      $rSlots = 0;
+      foreach ($qzDdParts as $p) {
+        if ($p === '___' && $rSlots < $qzDdSlotCount) {
+          echo '<div class="qz-dd-slot" data-slot-index="' . $rSlots . '"><span class="qz-dd-placeholder">Drop here</span></div>';
+          $rSlots++;
+        } elseif ($p !== '') {
+          echo '<span class="qz-dd-text">' . h($p) . '</span>';
+        }
+      }
+    ?></div>
+    <div id="qz-dd-bank" class="qz-word-bank"><?php foreach ($qzDdShuffled as $w): ?>
+      <span class="qz-chip qz-bank-chip" draggable="true" data-word="<?= h($w) ?>"><?= h($w) ?></span>
+    <?php endforeach; ?></div>
+    <div id="qz-dd-inputs"></div>
+    <div class="actions">
+      <button type="button" class="btn btn-purple" id="qz-dd-next">Next</button>
+      <button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+  <script>(function(){
+    var form=document.getElementById('qz-dd-form'),bank=document.getElementById('qz-dd-bank'),inputs=document.getElementById('qz-dd-inputs');
+    var slots=Array.from(document.querySelectorAll('.qz-dd-slot')),nextBtn=document.getElementById('qz-dd-next'),dragged=null,submitted=false;
+    var listenText=<?= json_encode((string)($q['listen_text'] ?? $q['correct'] ?? '')) ?>,listenAudio=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    function clearSlot(slot){var chip=slot.querySelector('.qz-built-chip');if(chip){bank.appendChild(createBankChip(chip.dataset.word||chip.textContent.trim()));chip.remove();}slot.classList.remove('qz-dd-filled');slot.innerHTML='<span class="qz-dd-placeholder">Drop here</span>';}
+    function fillSlot(slot,word){clearSlot(slot);var chip=createBuiltChip(word);slot.innerHTML='';slot.appendChild(chip);slot.classList.add('qz-dd-filled');}
+    function createBankChip(word){var c=document.createElement('span');c.className='qz-chip qz-bank-chip';c.draggable=true;c.dataset.word=word;c.textContent=word;c.addEventListener('dragstart',function(e){dragged=c;c.dataset.src='bank';});c.addEventListener('click',function(){var empty=slots.find(function(s){return !s.classList.contains('qz-dd-filled');});if(!empty)return;fillSlot(empty,word);c.remove();syncInputs();});return c;}
+    function createBuiltChip(word){var c=document.createElement('span');c.className='qz-chip qz-built-chip';c.draggable=true;c.dataset.word=word;c.textContent=word;c.addEventListener('dragstart',function(e){dragged=c;c.dataset.src='slot';c.dataset.from=c.parentElement&&c.parentElement.dataset.slotIndex?c.parentElement.dataset.slotIndex:'';});c.addEventListener('click',function(){var slot=c.parentElement;if(slot)clearSlot(slot);syncInputs();});return c;}
+    function syncInputs(){inputs.innerHTML='';slots.forEach(function(slot,index){var chip=slot.querySelector('.qz-built-chip');if(!chip)return;var inp=document.createElement('input');inp.type='hidden';inp.name='answer['+index+']';inp.value=chip.dataset.word||chip.textContent.trim();inputs.appendChild(inp);});}
+    slots.forEach(function(slot){slot.addEventListener('dragover',function(e){e.preventDefault();slot.classList.add('qz-drag-over');});slot.addEventListener('dragleave',function(){slot.classList.remove('qz-drag-over');});slot.addEventListener('drop',function(e){e.preventDefault();slot.classList.remove('qz-drag-over');if(!dragged)return;var word=dragged.dataset.word||dragged.textContent.trim();if(dragged.dataset.src==='slot'&&dragged.parentElement===slot){dragged=null;return;}if(dragged.dataset.src==='slot'&&dragged.parentElement)clearSlot(dragged.parentElement);fillSlot(slot,word);if(dragged.dataset.src==='bank')dragged.remove();dragged=null;syncInputs();});slot.addEventListener('click',function(){if(!slot.classList.contains('qz-dd-filled'))return;clearSlot(slot);syncInputs();});});
+    bank.addEventListener('dragover',function(e){e.preventDefault();});bank.addEventListener('drop',function(e){e.preventDefault();if(!dragged||dragged.dataset.src!=='slot')return;if(dragged.parentElement)clearSlot(dragged.parentElement);dragged=null;syncInputs();});
+    Array.from(bank.querySelectorAll('.qz-bank-chip')).forEach(function(c){c.addEventListener('dragstart',function(e){dragged=c;c.dataset.src='bank';});c.addEventListener('click',function(){var empty=slots.find(function(s){return !s.classList.contains('qz-dd-filled');});if(!empty)return;fillSlot(empty,c.dataset.word||c.textContent.trim());c.remove();syncInputs();});});
+    var listenBtn=document.getElementById('qz-dd-listen');
+    if(listenBtn){listenBtn.addEventListener('click',function(){if(listenAudio){var a=new Audio(listenAudio);a.play().catch(function(){});return;}if(!listenText||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(listenText);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);});setTimeout(function(){listenBtn.click();},150);}
+    nextBtn.addEventListener('click',function(){if(submitted)return;submitted=true;syncInputs();form.submit();});
+  })();</script>
+
+  <?php elseif ($qType === 'unscramble'): ?>
+  <?php
+    $qzTokens = $q['options'] ?? [];
+    $qzShuf   = $qzTokens;
+    qz_shuffle($qzShuf, $qzShuffleSeed + 991);
+  ?>
+  <form method="post" id="us-form">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <?php if (!empty($q['listen_enabled'])): ?>
+      <div style="margin-bottom:12px;"><button type="button" class="btn btn-light" id="us-listen">🔊 Listen</button></div>
+    <?php endif; ?>
+    <div class="question">Drag the words to build the sentence:</div>
+    <div class="us-list" id="us-build" style="min-height:60px;border:2px dashed var(--line);border-radius:16px;padding:12px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:8px;"></div>
+    <div class="us-list" id="us-bank" style="min-height:60px;"><?php foreach ($qzShuf as $w): ?>
+      <span class="us-chip" draggable="true" data-word="<?= h($w) ?>"><?= h($w) ?></span>
+    <?php endforeach; ?></div>
+    <input type="hidden" name="answer" id="us-answer">
+    <div class="actions">
+      <button type="button" class="btn btn-purple" id="us-next">Next</button>
+      <button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+  <script>(function(){
+    var build=document.getElementById('us-build'),bank=document.getElementById('us-bank'),answer=document.getElementById('us-answer'),form=document.getElementById('us-form'),submitted=false,dragged=null;
+    var listenText=<?= json_encode((string)($q['correct'] ?? '')) ?>,listenAudio=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    function makeChip(word,src){var c=document.createElement('span');c.className='us-chip';c.draggable=true;c.dataset.word=word;c.textContent=word;c.addEventListener('dragstart',function(e){dragged={c:c,src:src};});c.addEventListener('click',function(){if(src==='bank'){build.appendChild(makeChip(word,'build'));c.remove();}else{bank.appendChild(makeChip(word,'bank'));c.remove();}});return c;}
+    Array.from(bank.querySelectorAll('.us-chip')).forEach(function(c){c.addEventListener('dragstart',function(){dragged={c:c,src:'bank'};});c.addEventListener('click',function(){build.appendChild(makeChip(c.dataset.word,'build'));c.remove();});});
+    [build,bank].forEach(function(zone){zone.addEventListener('dragover',function(e){e.preventDefault();});zone.addEventListener('drop',function(e){e.preventDefault();if(!dragged)return;var word=dragged.c.dataset.word;if(zone===build){build.appendChild(makeChip(word,'build'));dragged.c.remove();}else{bank.appendChild(makeChip(word,'bank'));dragged.c.remove();}dragged=null;});});
+    var listenBtn=document.getElementById('us-listen');
+    if(listenBtn){listenBtn.addEventListener('click',function(){if(listenAudio){var a=new Audio(listenAudio);a.play().catch(function(){});return;}if(!listenText||!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(listenText);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);});setTimeout(function(){listenBtn.click();},150);}
+    document.getElementById('us-next').addEventListener('click',function(){if(submitted)return;submitted=true;answer.value=Array.from(build.querySelectorAll('.us-chip')).map(function(c){return c.dataset.word;}).join(' ');form.submit();});
+  })();</script>
+
+  <?php elseif ($qType === 'match' && !empty($q['pairs'])): ?>
+  <?php $rights = array_column($q['pairs'], 'right'); shuffle($rights); ?>
+  <form method="post">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <div class="question"><?= h($q['question'] ?? 'Match each item with the correct option.') ?></div>
+    <div class="match-grid"><?php foreach ($q['pairs'] as $pi => $p): ?>
+      <div class="match-left"><?= h($p['left'] ?? '') ?></div>
+      <select class="select" name="answer[<?= $pi ?>]" required>
+        <option value="">Choose</option>
+        <?php foreach ($rights as $r): ?><option value="<?= h($r) ?>"><?= h($r) ?></option><?php endforeach; ?>
+      </select>
+    <?php endforeach; ?></div>
+    <div class="actions">
+      <button class="btn btn-purple" type="submit">Next</button>
+      <button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+
+  <?php elseif (in_array($qType, ['fill', 'writing_practice'], true)): ?>
+  <?php
+    $qzIsFill = $qType === 'fill';
+    $qzQText  = (string)($q['question'] ?? $q['text'] ?? '');
+    $qzHasBlanks = $qzIsFill && preg_match('/_{3,}/', $qzQText);
+    $qzExpected  = array_values(array_filter(array_map('trim', preg_split('/\s*[|,]\s*/', (string)($q['correct'] ?? ''))), fn($v) => $v !== ''));
+  ?>
+  <form method="post" id="fill-form">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <?php if (!empty($q['audio'])): ?>
+      <div style="margin-bottom:12px;"><button type="button" class="btn btn-light" id="fill-listen">🔊 Listen</button></div>
+    <?php endif; ?>
+    <?php if (!empty($q['image'])): ?>
+      <div style="margin-bottom:14px;"><img src="<?= h($q['image']) ?>" alt="" style="width:100%;max-height:220px;object-fit:contain;border-radius:14px;border:1px solid var(--line);"></div>
+    <?php endif; ?>
+    <?php if ($qzHasBlanks): ?>
+      <div class="question qz-fill-inline">
+        <?php $parts = preg_split('/_{3,}/', $qzQText); foreach ($parts as $pi => $part): ?>
+          <span><?= h($part) ?></span>
+          <?php if ($pi < count($parts) - 1): ?>
+            <input class="qz-fill-blank" data-blank="<?= $pi ?>" type="text" autocomplete="off" placeholder="...">
+          <?php endif; ?>
+        <?php endforeach; ?>
+      </div>
+      <input type="hidden" name="answer" id="fill-combined">
+    <?php else: ?>
+      <div class="question"><?= h($qzQText) ?></div>
+      <?php if ($qzIsFill): ?>
+        <input class="qz-fill-input-lite" name="answer" autocomplete="off" placeholder="Type your answer">
+      <?php else: ?>
+        <textarea class="input" name="answer" required autocomplete="off" placeholder="Write your answer"></textarea>
+      <?php endif; ?>
+    <?php endif; ?>
+    <div class="actions">
+      <?php if (!$qzIsFill): ?>
+        <button class="btn btn-purple" type="submit">Next</button>
+      <?php endif; ?>
+      <button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+  <?php if (!empty($q['audio'])): ?><script>(function(){
+    var b=document.getElementById('fill-listen');if(!b)return;
+    var au=<?= json_encode((string)($q['audio'] ?? '')) ?>;
+    b.addEventListener('click',function(){if(au){var a=new Audio(au);a.play().catch(function(){});return;}if(!window.speechSynthesis)return;var u=new SpeechSynthesisUtterance(<?= json_encode($qzQText) ?>);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);});
+  })();</script><?php endif; ?>
+  <?php if ($qzIsFill): ?><script>(function(){
+    var form=document.getElementById('fill-form'),expected=<?= json_encode($qzExpected) ?>,combined=document.getElementById('fill-combined');
+    var blanks=Array.from(form.querySelectorAll('.qz-fill-blank')),single=form.querySelector('input[name="answer"]'),submitted=false;
+    function norm(v){return String(v||'').toLowerCase().trim().replace(/\s+/g,' ');}
+    function values(){if(blanks.length)return blanks.map(function(i){return String(i.value||'').trim();});return[single?String(single.value||'').trim():''];}
+    function sync(){if(combined)combined.value=values().join(' | ');}
+    function isCorrect(){var cur=values();if(!cur.length||!expected.length)return false;for(var i=0;i<Math.max(cur.length,expected.length);i++)if(norm(cur[i]||'')!==norm(expected[i]||''))return false;return true;}
+    function submitNow(){if(submitted)return;submitted=true;sync();form.submit();}
+    if(blanks.length){blanks.forEach(function(inp){inp.addEventListener('input',function(){sync();if(isCorrect())submitNow();});inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();submitNow();}});});setTimeout(function(){try{blanks[0].focus();}catch(e){}},80);}else if(single){single.addEventListener('input',function(){sync();if(isCorrect())submitNow();});single.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();submitNow();}});setTimeout(function(){try{single.focus();single.select();}catch(e){}},80);}
+    form.addEventListener('submit',sync);
+  })();</script><?php endif; ?>
+
+  <?php else: // Generic fallback ?>
+  <form method="post">
+    <input type="hidden" name="eval_answer" value="1">
+    <input type="hidden" name="q_index" value="<?= $qIndex ?>">
+    <input type="hidden" name="q_total" value="<?= $total ?>">
+    <div class="question"><?= h($q['question'] ?? $q['text'] ?? '') ?></div>
+    <input class="input" name="answer" required autocomplete="off" placeholder="Type your answer">
+    <div class="actions">
+      <button class="btn btn-purple" type="submit">Next</button>
+      <button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button>
+    </div>
+  </form>
+  <?php endif; ?>
+</div><!-- /card -->
 
 <?php // ─── Paso 3: Resultado ────────────────────────────────────────────────
 elseif ($step === 'result' && $result): ?>
@@ -774,7 +1069,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-<?php if ($step === 'exam' && $timeLimitMin > 0): ?>
+<?php if (in_array($step, ['exam','quiz'], true) && $timeLimitMin > 0): ?>
 // Timer
 let timeLeft = <?= $timeLimitMin * 60 ?>;
 const timerEl = document.getElementById('timer');
