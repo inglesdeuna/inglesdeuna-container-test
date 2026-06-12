@@ -200,32 +200,123 @@ try {
     );
     ");
 
-    // Migrar units.id de INTEGER/SERIAL a TEXT si la base fue creada con el esquema antiguo.
-    $unitsIdType = $pdo->query(
-        "SELECT data_type FROM information_schema.columns
-         WHERE table_name='units' AND column_name='id' AND table_schema='public'"
-    )->fetchColumn();
-    if ($unitsIdType && strtolower($unitsIdType) !== 'text' && strtolower($unitsIdType) !== 'character varying') {
-        // Eliminar FK dependientes antes de cambiar el tipo de la columna referenciada
-        $pdo->exec("ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_unit_id_fkey");
-        $pdo->exec("ALTER TABLE eval_exams  DROP CONSTRAINT IF EXISTS eval_exams_unit_id_fkey");
-        // Quitar el DEFAULT de secuencia y convertir id a TEXT
-        $pdo->exec("ALTER TABLE units ALTER COLUMN id DROP DEFAULT");
-        $pdo->exec("ALTER TABLE units ALTER COLUMN id TYPE TEXT USING id::text");
-        // Restaurar FK de activities
-        $pdo->exec("ALTER TABLE activities ADD CONSTRAINT activities_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE");
-        // Restaurar FK de eval_exams
+    /* =========================================================
+       MIGRACIÓN DE TIPOS: units.id y activities.unit_id deben
+       ser TEXT. Las bases creadas con el esquema antiguo usaban
+       INTEGER (units.id SERIAL, activities.unit_id INT), lo que
+       hace fallar la FK con SQLSTATE 42804 (tipos incompatibles).
+       La migración es idempotente y atómica (transacción).
+       ========================================================= */
+    $textTypes = ['text', 'character varying'];
+
+    $colTypeStmt = $pdo->prepare("
+        SELECT data_type FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = :tbl AND column_name = :col
+    ");
+
+    $colTypeStmt->execute([':tbl' => 'units', ':col' => 'id']);
+    $unitsIdType = strtolower((string)$colTypeStmt->fetchColumn());
+
+    $colTypeStmt->execute([':tbl' => 'activities', ':col' => 'unit_id']);
+    $activitiesUnitIdType = strtolower((string)$colTypeStmt->fetchColumn());
+
+    $colTypeStmt->execute([':tbl' => 'eval_exams', ':col' => 'unit_id']);
+    $evalExamsUnitIdType = strtolower((string)$colTypeStmt->fetchColumn());
+
+    $needsTypeMigration =
+        !in_array($unitsIdType, $textTypes, true)
+        || !in_array($activitiesUnitIdType, $textTypes, true)
+        || ($evalExamsUnitIdType !== '' && !in_array($evalExamsUnitIdType, $textTypes, true));
+
+    if ($needsTypeMigration) {
+        $pdo->beginTransaction();
         try {
-            $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
-        } catch (Exception $e) {}
+            /* Eliminar TODAS las FK que referencian a units, sin importar
+               su nombre (activities_unit_id_fkey, fk_activities_unit,
+               eval_exams_unit_id_fkey, etc.). Si quedara alguna, ALTER
+               COLUMN TYPE intentaría reconstruirla y fallaría con 42804. */
+            $dropFkStmts = $pdo->query("
+                SELECT format('ALTER TABLE %I.%I DROP CONSTRAINT %I',
+                              nsp.nspname, rel.relname, con.conname)
+                FROM pg_constraint con
+                JOIN pg_class rel ON rel.oid = con.conrelid
+                JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+                WHERE con.contype = 'f'
+                  AND con.confrelid = 'public.units'::regclass
+            ")->fetchAll(PDO::FETCH_COLUMN);
+            foreach ($dropFkStmts as $dropFkStmt) {
+                $pdo->exec($dropFkStmt);
+            }
+
+            /* Convertir las columnas para que todas queden en TEXT. */
+            if (!in_array($unitsIdType, $textTypes, true)) {
+                $pdo->exec("ALTER TABLE units ALTER COLUMN id DROP DEFAULT");
+                $pdo->exec("ALTER TABLE units ALTER COLUMN id TYPE TEXT USING id::text");
+            }
+            if (!in_array($activitiesUnitIdType, $textTypes, true)) {
+                $pdo->exec("ALTER TABLE activities ALTER COLUMN unit_id DROP DEFAULT");
+                $pdo->exec("ALTER TABLE activities ALTER COLUMN unit_id TYPE TEXT USING unit_id::text");
+            }
+            if ($evalExamsUnitIdType !== '' && !in_array($evalExamsUnitIdType, $textTypes, true)) {
+                $pdo->exec("ALTER TABLE eval_exams ALTER COLUMN unit_id DROP DEFAULT");
+                $pdo->exec("ALTER TABLE eval_exams ALTER COLUMN unit_id TYPE TEXT USING unit_id::text");
+            }
+
+            $pdo->commit();
+        } catch (Exception $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
     }
 
     // Agregar unit_id a eval_exams si no existe (migración).
     $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS unit_id TEXT");
-    $fkExists = $pdo->query("SELECT 1 FROM pg_constraint WHERE conname = 'eval_exams_unit_id_fkey' LIMIT 1")->fetchColumn();
-    if (!$fkExists) {
+
+    /* Restaurar la FK activities.unit_id -> units.id si falta
+       (ahora ambas columnas son TEXT, por lo que es válida). */
+    $fkActivitiesExists = $pdo->query("
+        SELECT 1 FROM pg_constraint
+        WHERE contype = 'f'
+          AND conrelid  = 'public.activities'::regclass
+          AND confrelid = 'public.units'::regclass
+        LIMIT 1
+    ")->fetchColumn();
+    if (!$fkActivitiesExists) {
+        /* Eliminar huérfanos que impedirían validar la FK
+           (equivale al ON DELETE CASCADE que estuvo ausente). */
+        $pdo->exec("
+            DELETE FROM activities a
+            WHERE a.unit_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM units u WHERE u.id = a.unit_id)
+        ");
+        $pdo->exec("
+            ALTER TABLE activities
+            ADD CONSTRAINT activities_unit_id_fkey
+            FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE CASCADE
+        ");
+    }
+
+    /* Restaurar la FK eval_exams.unit_id -> units.id si falta. */
+    $fkEvalExamsExists = $pdo->query("
+        SELECT 1 FROM pg_constraint
+        WHERE contype = 'f'
+          AND conrelid  = 'public.eval_exams'::regclass
+          AND confrelid = 'public.units'::regclass
+        LIMIT 1
+    ")->fetchColumn();
+    if (!$fkEvalExamsExists) {
+        $pdo->exec("
+            UPDATE eval_exams e
+            SET unit_id = NULL
+            WHERE e.unit_id IS NOT NULL
+              AND NOT EXISTS (SELECT 1 FROM units u WHERE u.id = e.unit_id)
+        ");
         try {
-            $pdo->exec("ALTER TABLE eval_exams ADD CONSTRAINT eval_exams_unit_id_fkey FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL");
+            $pdo->exec("
+                ALTER TABLE eval_exams
+                ADD CONSTRAINT eval_exams_unit_id_fkey
+                FOREIGN KEY (unit_id) REFERENCES units(id) ON DELETE SET NULL
+            ");
         } catch (Exception $e) {
             // FK no pudo agregarse — se continúa sin FK
         }
