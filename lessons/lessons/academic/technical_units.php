@@ -65,17 +65,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($_POST["unit_name"])) {
     }
 
     // Insertar nueva unidad
+    $newUnitId = uniqid('unit_');
     $stmtInsert = $pdo->prepare("
-        INSERT INTO units (course_id, name, created_at)
-        VALUES (:course_id, :name, NOW())
+        INSERT INTO units (id, course_id, name, created_at)
+        VALUES (:id, :course_id, :name, NOW())
     ");
 
     $stmtInsert->execute([
+        "id"        => $newUnitId,
         "course_id" => $courseId,
         "name"      => $unitName
     ]);
-
-    $newUnitId = $pdo->lastInsertId();
 
     // 🔥 REDIRIGE AL HUB (CHECKLIST)
     header("Location: ../activities/hub/index.php?unit=" . urlencode($newUnitId));
