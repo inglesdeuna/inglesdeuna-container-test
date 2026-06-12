@@ -2,7 +2,10 @@
 /**
  * exam_question_selector.php
  * Selecciona y normaliza preguntas para exámenes de evaluación.
+ * Uses qz_normalize_activity() from _quiz_lib.php for identical
+ * question extraction as quiz/viewer.php (same scoreable types).
  */
+require_once __DIR__ . '/../quiz/_quiz_lib.php';
 
 // ─── Mapeo activity_type → skill ────────────────────────────────────────────
 const SKILL_MAP = [
@@ -289,23 +292,35 @@ function _load_questions_by_skill(PDO $pdo, ?int $examId, array $unitIds, array 
     }
 
     // 2. Preguntas de actividades existentes (activities table)
+    // Uses qz_normalize_activity() — same function as quiz/viewer.php
+    // This guarantees identical scoreable types and extraction logic
     if (!empty($unitIds)) {
         $placeholders = implode(',', array_fill(0, count($unitIds), '?'));
         $stmt = $pdo->prepare(
             "SELECT id, type, data FROM activities WHERE unit_id IN ({$placeholders})"
         );
-        $stmt->execute($unitIds);
+        $stmt->execute(array_values($unitIds));
         $activities = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         foreach ($activities as $act) {
-            $type  = $act['type'];
-            $skill = SKILL_MAP[$type] ?? null;
-            if ($skill === null || !isset($bySkill[$skill])) {
+            $type = strtolower(trim((string)($act['type'] ?? '')));
+            // Use same scoreable check as quiz/viewer
+            if (!qz_is_scoreable_type($type)) {
                 continue;
             }
-            $data = is_string($act['data']) ? json_decode($act['data'], true) : ($act['data'] ?? []);
-            $questions = _extract_questions_from_activity($act['id'], $type, $skill, $data);
-            $bySkill[$skill] = array_merge($bySkill[$skill], $questions);
+            // Map type to skill via SKILL_MAP
+            $skill = SKILL_MAP[$type] ?? 'grammar';
+            if (!isset($bySkill[$skill])) {
+                $bySkill[$skill] = [];
+            }
+            // Use qz_normalize_activity — identical to quiz/viewer.php
+            $normalized = qz_normalize_activity($act);
+            foreach ($normalized as $q) {
+                $q['source']      = 'activities';
+                $q['activity_id'] = (int) $act['id'];
+                $q['skill']       = $skill;
+                $bySkill[$skill][] = $q;
+            }
         }
     }
 
@@ -568,12 +583,15 @@ function load_exam_questions_from_selection(PDO $pdo, string $serialized): array
                 continue;
             }
 
-            $data = is_string($act['data']) ? json_decode($act['data'], true) : ($act['data'] ?? []);
-            $skill = SKILL_MAP[$act['type']] ?? ($m['skill'] ?? 'grammar');
-            $extracted = _extract_questions_from_activity($act['id'], $act['type'], $skill, $data);
+            // Use qz_normalize_activity — same as quiz/viewer.php
+            $skill     = SKILL_MAP[strtolower(trim((string)($act['type'] ?? '')))] ?? ($m['skill'] ?? 'grammar');
+            $extracted = qz_normalize_activity($act);
 
             foreach ($extracted as &$eq) {
-                $eq['points'] = $points;
+                $eq['source']      = 'activities';
+                $eq['activity_id'] = (int) $act['id'];
+                $eq['skill']       = $skill;
+                $eq['points']      = $points;
             }
             unset($eq);
 
@@ -583,4 +601,5 @@ function load_exam_questions_from_selection(PDO $pdo, string $serialized): array
 
     return $questions;
 }
+
 
