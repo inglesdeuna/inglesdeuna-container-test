@@ -445,6 +445,41 @@ try {
     WHERE NOT EXISTS (SELECT 1 FROM eval_cefr_ranges WHERE is_global=TRUE AND cefr_level='C1' LIMIT 1);
     ");
 
+    /* ===============================
+       QUIZ_SHARE_LINKS
+       Enlaces únicos para compartir un quiz existente (por unidad)
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS quiz_share_links (
+        id SERIAL PRIMARY KEY,
+        unit_id TEXT NOT NULL,
+        token VARCHAR(32) UNIQUE NOT NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
+    /* ===============================
+       QUIZ_SHARE_RESPONSES
+       Respuestas de estudiantes a quizzes compartidos por enlace
+       =============================== */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS quiz_share_responses (
+        id SERIAL PRIMARY KEY,
+        link_id INT REFERENCES quiz_share_links(id) ON DELETE CASCADE,
+        unit_id TEXT NOT NULL,
+        student_name TEXT NOT NULL,
+        quiz_set_json TEXT NOT NULL DEFAULT '[]',
+        answers_json TEXT NOT NULL DEFAULT '[]',
+        score_percent INT NOT NULL DEFAULT 0,
+        correct_count INT NOT NULL DEFAULT 0,
+        wrong_count INT NOT NULL DEFAULT 0,
+        total_count INT NOT NULL DEFAULT 0,
+        submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+
 } catch (Exception $e) {
     die("DB INIT ERROR: " . $e->getMessage());
 }
