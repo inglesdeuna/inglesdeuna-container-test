@@ -19,6 +19,8 @@ $isKey   = ($mode === 'key');
 if ($examId <= 0) die('Exam ID required.');
 
 require_once __DIR__ . '/../../config/db.php';
+require_once __DIR__ . '/exam_question_selector.php';
+require_once __DIR__ . '/../_quiz_lib.php';
 if (!isset($pdo) || !($pdo instanceof PDO)) die('DB unavailable.');
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
@@ -36,7 +38,24 @@ $stmt->execute([$examId]);
 $exam = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$exam) die('Exam not found.');
 
-/* ── Load questions + answers ──────────────────────────────── */
+/* ── pg array helper ───────────────────────────────────────── */
+function pg_array(string $raw): array {
+    $raw = trim($raw, '{}');
+    if ($raw === '') return [];
+    $items = []; $current = ''; $inQuote = false;
+    for ($i = 0; $i < strlen($raw); $i++) {
+        $c = $raw[$i];
+        if ($c === '"') { $inQuote = !$inQuote; continue; }
+        if ($c === ',' && !$inQuote) { $items[] = $current; $current = ''; continue; }
+        $current .= $c;
+    }
+    $items[] = $current;
+    return array_map('trim', $items);
+}
+
+/* ── Load questions: eval_questions first, fallback to unit activities ──── */
+$questions = [];
+
 $stmt = $pdo->prepare(
     "SELECT eq.*,
             array_agg(ea.answer_text  ORDER BY ea.order_index)
@@ -50,34 +69,46 @@ $stmt = $pdo->prepare(
      ORDER BY eq.position, eq.id"
 );
 $stmt->execute([$examId]);
-$questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
+$evalRows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-/* ── Parse pg arrays ───────────────────────────────────────── */
-function pg_array(string $raw): array {
-    $raw = trim($raw, '{}');
-    if ($raw === '') return [];
-    // Handle quoted strings with commas inside
-    $items = [];
-    $current = '';
-    $inQuote = false;
-    for ($i = 0; $i < strlen($raw); $i++) {
-        $c = $raw[$i];
-        if ($c === '"') { $inQuote = !$inQuote; continue; }
-        if ($c === ',' && !$inQuote) { $items[] = $current; $current = ''; continue; }
-        $current .= $c;
+if (!empty($evalRows)) {
+    foreach ($evalRows as &$q) {
+        $q['answers'] = is_string($q['answer_texts'])
+            ? pg_array($q['answer_texts']) : ($q['answer_texts'] ?? []);
+        $raw_c = $q['answer_corrects'] ?? '';
+        $corr  = is_string($raw_c) ? pg_array($raw_c) : ($raw_c ?? []);
+        $q['correct_flags'] = array_map(fn($v) => in_array(strtolower(trim($v)), ['t','true','1'], true), $corr);
     }
-    $items[] = $current;
-    return array_map('trim', $items);
-}
+    unset($q);
+    $questions = $evalRows;
 
-foreach ($questions as &$q) {
-    $q['answers'] = is_string($q['answer_texts'])
-        ? pg_array($q['answer_texts']) : ($q['answer_texts'] ?? []);
-    $raw_c = $q['answer_corrects'] ?? '';
-    $corr  = is_string($raw_c) ? pg_array($raw_c) : ($raw_c ?? []);
-    $q['correct_flags'] = array_map(fn($v) => in_array(strtolower(trim($v)), ['t','true','1'], true), $corr);
+} elseif (!empty($exam['unit_id'])) {
+    /* No manual questions — pull from unit activities */
+    $examConfig = [
+        'exam_id'         => $examId,
+        'unit_ids'        => [(int)$exam['unit_id']],
+        'total_questions' => 20,
+        'quotas'          => DEFAULT_QUOTAS,
+        'skills'          => array_keys(DEFAULT_QUOTAS),
+    ];
+    $rawQs = select_exam_questions($pdo, $examConfig, 'print_preview', 1, []);
+    foreach ($rawQs as $rq) {
+        $opts  = is_array($rq['options'] ?? null) ? array_values($rq['options']) : [];
+        $corr  = $rq['correct'] ?? null;
+        $flags = array_map(fn($o) => (string)$o === (string)$corr, $opts);
+        $questions[] = [
+            'id'            => $rq['id']    ?? uniqid('q'),
+            'type'          => $rq['type']  ?? 'multiple_choice',
+            'skill'         => $rq['skill'] ?? 'grammar',
+            'question_text' => $rq['text']  ?? ($rq['question'] ?? ''),
+            'audio_url'     => $rq['audio'] ?? null,
+            'image_url'     => $rq['image'] ?? null,
+            'points'        => (float)($rq['points'] ?? 1),
+            'answers'       => $opts,
+            'correct_flags' => $flags,
+        ];
+    }
 }
-unset($q);
 
 /* ── Helpers ───────────────────────────────────────────────── */
 $LTRS = ['A','B','C','D','E'];
