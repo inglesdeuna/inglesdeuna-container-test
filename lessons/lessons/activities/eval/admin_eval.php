@@ -382,9 +382,9 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
   display:flex;align-items:center;gap:11px;
   padding:0 20px;border-right:1.5px solid #EDE9FA;
 }
-.eval-topbar-brand img{
-  width:38px;height:38px;border-radius:11px;object-fit:cover;
-  box-shadow:0 2px 8px rgba(249,115,22,.2);
+.eval-topbar-brand svg{
+  width:38px;height:38px;flex-shrink:0;
+  filter:drop-shadow(0 2px 6px rgba(249,115,22,.22));
 }
 .tb-wordmark{display:flex;flex-direction:column;line-height:1;}
 .tb-ones{font-family:'Fredoka One',sans-serif;font-size:21px;color:#F97316;line-height:1;}
@@ -655,7 +655,14 @@ tr:hover td{background:#FAFAFE;}
 
 <div class="eval-topbar">
   <div class="eval-topbar-brand">
-    <img src="data:image/jpeg;base64,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" alt="ONES">
+    <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="38" height="38" rx="11" fill="#FFF0E6"/>
+    <circle cx="17" cy="16" r="10" fill="#F97316"/>
+    <polygon points="13,25 8,33 22,29" fill="#F97316"/>
+    <circle cx="17" cy="16" r="5.5" fill="#FFF0E6"/>
+    <circle cx="27" cy="9" r="4" fill="#7F77DD"/>
+    <circle cx="27" cy="9" r="2" fill="#ffffff"/>
+  </svg>
     <div class="tb-wordmark">
       <span class="tb-ones">ONES</span>
       <span class="tb-tagline">Online English Solution</span>
