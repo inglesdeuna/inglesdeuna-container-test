@@ -920,7 +920,7 @@ tr:hover td{background:#FAFAFE;}
       <div class="card" style="margin-top:19px;">
         <div class="card-head">
           <h3>Preguntas del examen</h3>
-          <button class="btn btn-primary" onclick="openQuestionModal(0)">+ Agregar pregunta</button>
+          <button class="btn btn-primary" onclick="openQuestionModal(0);selectQType('multiple_choice');">+ Agregar pregunta</button>
         </div>
         <table>
           <thead>
@@ -1229,23 +1229,42 @@ tr:hover td{background:#FAFAFE;}
 </div><!-- /eval-shell -->
 
 <!-- Modal: Agregar/Editar pregunta -->
-<div class="modal-bg" id="question-modal">
-  <div class="modal">
-    <h3 id="q-modal-title">Agregar pregunta</h3>
+<!-- ── Modal: Agregar/Editar pregunta — 5 tipos ── -->
+<div class="modal-bg" id="question-modal" style="align-items:flex-start;padding:20px 0;overflow-y:auto;">
+  <div class="modal" style="max-width:680px;width:95%;margin:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <h3 id="q-modal-title" style="margin:0;">Agregar pregunta</h3>
+      <button type="button" onclick="closeQuestionModal()" style="background:none;border:none;font-size:22px;color:#9B8FCC;cursor:pointer;line-height:1;">×</button>
+    </div>
     <form method="POST" id="q-form">
       <input type="hidden" name="action" value="save_question">
       <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">
       <input type="hidden" name="question_id" id="q-id" value="0">
-      <div class="form-row">
-        <div class="form-group">
-          <label>Tipo de actividad</label>
-          <select name="type" id="q-type">
-            <?php foreach ($activityTypes as $at): ?>
-            <option value="<?= h($at) ?>"><?= h($at) ?></option>
-            <?php endforeach; ?>
-          </select>
+      <input type="hidden" name="type" id="q-type-hidden" value="multiple_choice">
+
+      <!-- Type picker -->
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:18px;">
+        <?php
+        $qtypes = [
+          'multiple_choice' => ['ti-list-check','MC','#1D4ED8','#EFF6FF'],
+          'fill_blank'      => ['ti-text-size','Fill','#C2410C','#FFF0E6'],
+          'reading_comprehension'=>['ti-book-2','Reading','#065F46','#ECFDF5'],
+          'writing_practice'=> ['ti-writing','Writing','#534AB7','#F5F3FF'],
+          'dictation'       => ['ti-microphone','Dictation','#854D0E','#FEFCE8'],
+        ];
+        foreach ($qtypes as $qtVal => [$qtIcon, $qtLabel, $qtColor, $qtBg]): ?>
+        <div class="qtype-card" data-type="<?= $qtVal ?>"
+             onclick="selectQType('<?= $qtVal ?>')"
+             style="border:2px solid #EDE9FA;border-radius:10px;padding:10px 6px;cursor:pointer;text-align:center;transition:all .15s;background:#fff;">
+          <i class="ti <?= $qtIcon ?>" style="font-size:20px;color:#9B8FCC;display:block;margin-bottom:5px;" aria-hidden="true"></i>
+          <div style="font-size:10px;font-weight:800;color:#6B7280;text-transform:uppercase;letter-spacing:.05em;line-height:1.2;"><?= $qtLabel ?></div>
         </div>
-        <div class="form-group">
+        <?php endforeach; ?>
+      </div>
+
+      <!-- Common fields -->
+      <div class="form-row" style="margin-bottom:12px;">
+        <div class="form-group" style="margin-bottom:0;">
           <label>Skill</label>
           <select name="skill" id="q-skill">
             <?php foreach ($skillLabels as $sv => $sl): ?>
@@ -1253,39 +1272,99 @@ tr:hover td{background:#FAFAFE;}
             <?php endforeach; ?>
           </select>
         </div>
-      </div>
-      <div class="form-group">
-        <label>Texto de la pregunta</label>
-        <textarea name="question_text" id="q-text" required></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label>URL de audio (opcional)</label>
-          <input type="url" name="audio_url" id="q-audio">
-        </div>
-        <div class="form-group">
-          <label>URL de imagen (opcional)</label>
-          <input type="url" name="image_url" id="q-image">
-        </div>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:0;">
           <label>Puntos</label>
           <input type="number" name="points" id="q-points" value="1" step="0.5" min="0.5">
         </div>
+      </div>
+
+      <!-- ── MULTIPLE CHOICE fields ── -->
+      <div id="qf-multiple_choice" class="qtype-fields">
         <div class="form-group">
-          <label>Posición</label>
-          <input type="number" name="position" id="q-pos" value="0" min="0">
+          <label>Tipo de pregunta</label>
+          <select name="question_type" id="q-qtype">
+            <option value="text">Texto</option>
+            <option value="listen">Audio (Listen)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Pregunta</label>
+          <textarea name="question_text" id="q-text-mc" required placeholder="Ej: What do you say when you want to get off a bus?"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>URL de audio</label><input type="url" name="audio_url" id="q-audio-mc" placeholder="https://...mp3"></div>
+          <div class="form-group"><label>URL de imagen</label><input type="url" name="image_url" id="q-image-mc" placeholder="https://...jpg"></div>
+        </div>
+        <div class="form-group">
+          <label>Opciones — marca ✓ la correcta</label>
+          <div id="mc-answers-container" style="display:flex;flex-direction:column;gap:6px;"></div>
+          <button type="button" onclick="addMCAnswer()" class="btn btn-secondary btn-sm" style="margin-top:8px;">+ Opción</button>
         </div>
       </div>
-      <!-- Respuestas -->
-      <div class="form-group">
-        <label>Respuestas (marca ✓ la correcta)</label>
-        <div id="answers-container"></div>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="addAnswerRow()" style="margin-top:8px;">+ Respuesta</button>
+
+      <!-- ── FILL IN THE BLANK fields ── -->
+      <div id="qf-fill_blank" class="qtype-fields" style="display:none;">
+        <div class="form-group">
+          <label>Oración (usa ___ para cada espacio en blanco)</label>
+          <textarea name="question_text" id="q-text-fill" placeholder="Ej: You need a ___ to board the plane." oninput="updateFillPreview()"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Vista previa</label>
+          <div id="fill-preview" style="background:#F5F3FF;border:1.5px solid #EDE9FA;border-radius:9px;padding:11px 13px;font-size:13px;line-height:2.2;min-height:44px;color:#1a1a2e;"></div>
+        </div>
+        <div class="form-group">
+          <label>Respuestas correctas en orden (separadas por |)</label>
+          <input type="text" name="answer_text[]" id="q-fill-answers" placeholder="Ej: boarding pass | runway | layover"
+                 oninput="updateFillPreview()">
+          <input type="hidden" name="answer_correct[]" value="1">
+        </div>
+        <div class="form-group"><label>URL de audio</label><input type="url" name="audio_url" id="q-audio-fill" placeholder="https://...mp3"></div>
       </div>
-      <div style="display:flex;gap:10px;margin-top:4px;">
-        <button type="submit" class="btn btn-primary">Guardar</button>
+
+      <!-- ── READING COMPREHENSION fields ── -->
+      <div id="qf-reading_comprehension" class="qtype-fields" style="display:none;">
+        <div class="form-group">
+          <label>Texto de lectura</label>
+          <textarea name="question_text" id="q-text-rc" style="min-height:90px;" placeholder="Pega el texto de lectura aquí..."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Preguntas de comprensión (una por línea; separa opciones con | y marca la correcta con *)</label>
+          <div id="rc-questions-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button type="button" onclick="addRCQuestion()" class="btn btn-secondary btn-sm" style="margin-top:8px;">+ Pregunta</button>
+        </div>
+      </div>
+
+      <!-- ── WRITING PRACTICE fields ── -->
+      <div id="qf-writing_practice" class="qtype-fields" style="display:none;">
+        <div class="form-group">
+          <label>Instrucción / Pregunta</label>
+          <textarea name="question_text" id="q-text-wr" placeholder="Ej: Describe a time you used public transportation. Write at least 3 sentences."></textarea>
+        </div>
+        <div class="form-group"><label>Respuesta modelo (para Answer Key)</label>
+          <input type="text" name="answer_text[]" id="q-wr-model" placeholder="Ej: I usually take the bus...">
+          <input type="hidden" name="answer_correct[]" value="1">
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Número de líneas</label><input type="number" name="data[lines]" value="3" min="1" max="10"></div>
+          <div class="form-group"><label>Imagen (opcional)</label><input type="url" name="image_url" id="q-image-wr" placeholder="https://...jpg"></div>
+        </div>
+      </div>
+
+      <!-- ── DICTATION fields ── -->
+      <div id="qf-dictation" class="qtype-fields" style="display:none;">
+        <div class="form-group">
+          <label>Frases de dictado</label>
+          <div id="dict-items-container" style="display:flex;flex-direction:column;gap:8px;"></div>
+          <button type="button" onclick="addDictItem()" class="btn btn-secondary btn-sm" style="margin-top:8px;">+ Frase</button>
+        </div>
+        <div class="form-group">
+          <label>Texto general / instrucción (opcional)</label>
+          <textarea name="question_text" id="q-text-dict" placeholder="Listen and write what you hear." style="min-height:48px;">Listen and write what you hear.</textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:18px;padding-top:14px;border-top:1.5px solid #EDE9FA;">
+        <button type="submit" class="btn btn-primary">Guardar pregunta</button>
         <button type="button" class="btn btn-secondary" onclick="closeQuestionModal()">Cancelar</button>
       </div>
     </form>
@@ -1377,35 +1456,96 @@ function filterExams() {
   });
 }
 
+/* ── Question editor: 5 types ── */
+var _qTypeColors = {
+  multiple_choice:       ['#1D4ED8','#EFF6FF'],
+  fill_blank:            ['#C2410C','#FFF0E6'],
+  reading_comprehension: ['#065F46','#ECFDF5'],
+  writing_practice:      ['#534AB7','#F5F3FF'],
+  dictation:             ['#854D0E','#FEFCE8']
+};
+var _mcLetters = ['A','B','C','D','E','F'];
+var _rcQCount  = 0;
+var _dictCount = 0;
+
+function selectQType(type) {
+  document.getElementById('q-type-hidden').value = type;
+  // Style cards
+  document.querySelectorAll('.qtype-card').forEach(c => {
+    var isActive = c.dataset.type === type;
+    c.style.borderColor = isActive ? (_qTypeColors[type] ? _qTypeColors[type][0] : '#7F77DD') : '#EDE9FA';
+    c.style.background  = isActive ? (_qTypeColors[type] ? _qTypeColors[type][1] : '#F5F3FF') : '#fff';
+    c.querySelectorAll('i').forEach(i => i.style.color = isActive ? (_qTypeColors[type] ? _qTypeColors[type][0] : '#7F77DD') : '#9B8FCC');
+    c.querySelectorAll('div').forEach(d => d.style.color = isActive ? (_qTypeColors[type] ? _qTypeColors[type][0] : '#534AB7') : '#6B7280');
+  });
+  // Show/hide panels
+  document.querySelectorAll('.qtype-fields').forEach(f => f.style.display = 'none');
+  var panel = document.getElementById('qf-' + type);
+  if (panel) panel.style.display = 'block';
+}
+
 function openQuestionModal(id, data) {
   document.getElementById('q-id').value = id || 0;
   document.getElementById('q-modal-title').textContent = id ? 'Editar pregunta' : 'Agregar pregunta';
-  document.getElementById('q-text').value = data ? (data.question_text || '') : '';
-  document.getElementById('q-audio').value = data ? (data.audio_url || '') : '';
-  document.getElementById('q-image').value = data ? (data.image_url || '') : '';
   document.getElementById('q-points').value = data ? (data.points || 1) : 1;
-  document.getElementById('q-pos').value = data ? (data.position || 0) : 0;
-  if (data && data.type) {
-    const sel = document.getElementById('q-type');
-    for (let i = 0; i < sel.options.length; i++) {
-      if (sel.options[i].value === data.type) { sel.selectedIndex = i; break; }
-    }
-  }
+  // Skill
   if (data && data.skill) {
-    const sel = document.getElementById('q-skill');
-    for (let i = 0; i < sel.options.length; i++) {
-      if (sel.options[i].value === data.skill) { sel.selectedIndex = i; break; }
+    var sk = document.getElementById('q-skill');
+    for (var i = 0; i < sk.options.length; i++) {
+      if (sk.options[i].value === data.skill) { sk.selectedIndex = i; break; }
     }
   }
-  // Cargar respuestas
-  const container = document.getElementById('answers-container');
-  container.innerHTML = '';
-  const texts = data && data.answer_texts ? data.answer_texts : [];
-  const corrects = data && data.answer_corrects ? data.answer_corrects : [];
-  if (Array.isArray(texts) && texts.length) {
-    texts.forEach((t, i) => addAnswerRow(t, corrects[i] === true || corrects[i] === 't'));
-  } else {
-    addAnswerRow(); addAnswerRow();
+  var type = (data && data.type) ? data.type : 'multiple_choice';
+  // Map old type names
+  if (type === 'writing') type = 'writing_practice';
+  if (type === 'fill' || type === 'fill_in_blank') type = 'fill_blank';
+  selectQType(type);
+  // Populate per type
+  var texts    = (data && data.answer_texts)    ? (Array.isArray(data.answer_texts)    ? data.answer_texts    : [data.answer_texts])    : [];
+  var corrects = (data && data.answer_corrects) ? (Array.isArray(data.answer_corrects) ? data.answer_corrects : [data.answer_corrects]) : [];
+  if (type === 'multiple_choice') {
+    var qtext = document.getElementById('q-text-mc');
+    var qaudio= document.getElementById('q-audio-mc');
+    var qimage= document.getElementById('q-image-mc');
+    if (qtext)  qtext.value  = data ? (data.question_text || '') : '';
+    if (qaudio) qaudio.value = data ? (data.audio_url  || '') : '';
+    if (qimage) qimage.value = data ? (data.image_url  || '') : '';
+    var c = document.getElementById('mc-answers-container');
+    c.innerHTML = '';
+    if (texts.length) {
+      texts.forEach(function(t,i) { addMCAnswer(t, corrects[i] === true || corrects[i] === 't' || corrects[i] === 1); });
+    } else {
+      addMCAnswer('',false); addMCAnswer('',false); addMCAnswer('',false); addMCAnswer('',false);
+    }
+  } else if (type === 'fill_blank') {
+    var ft = document.getElementById('q-text-fill');
+    var fa = document.getElementById('q-fill-answers');
+    var fau= document.getElementById('q-audio-fill');
+    if (ft)  ft.value  = data ? (data.question_text || '') : '';
+    if (fa)  fa.value  = texts.length ? texts.join(' | ') : '';
+    if (fau) fau.value = data ? (data.audio_url || '') : '';
+    updateFillPreview();
+  } else if (type === 'reading_comprehension') {
+    var rt = document.getElementById('q-text-rc');
+    if (rt) rt.value = data ? (data.question_text || '') : '';
+    var rc = document.getElementById('rc-questions-container');
+    rc.innerHTML = ''; _rcQCount = 0;
+    if (texts.length) { texts.forEach(function(t,i){ addRCQuestion(t, corrects[i]); }); }
+    else { addRCQuestion(); }
+  } else if (type === 'writing_practice') {
+    var wt = document.getElementById('q-text-wr');
+    var wm = document.getElementById('q-wr-model');
+    var wi = document.getElementById('q-image-wr');
+    if (wt) wt.value = data ? (data.question_text || '') : '';
+    if (wm) wm.value = texts.length ? texts[0] : '';
+    if (wi) wi.value = data ? (data.image_url || '') : '';
+  } else if (type === 'dictation') {
+    var dt  = document.getElementById('q-text-dict');
+    var dic = document.getElementById('dict-items-container');
+    if (dt) dt.value = data ? (data.question_text || 'Listen and write what you hear.') : 'Listen and write what you hear.';
+    dic.innerHTML = ''; _dictCount = 0;
+    if (texts.length) { texts.forEach(function(t){ addDictItem(t); }); }
+    else { addDictItem(); addDictItem(); }
   }
   document.getElementById('question-modal').classList.add('open');
 }
@@ -1414,24 +1554,115 @@ function closeQuestionModal() {
   document.getElementById('question-modal').classList.remove('open');
 }
 
-function addAnswerRow(text, correct) {
-  const container = document.getElementById('answers-container');
-  const div = document.createElement('div');
-  div.style.cssText = 'display:flex;gap:8px;margin-bottom:6px;align-items:center;';
-  div.innerHTML = `
-    <input type="text" name="answer_text[]" value="${text ? escHtml(text) : ''}"
-      style="flex:1;padding:7px 10px;border:1px solid #d8e8dc;border-radius:8px;">
-    <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;white-space:nowrap;">
-      <input type="checkbox" name="answer_correct[]" value="1" ${correct ? 'checked' : ''}> Correcta
-    </label>
-    <button type="button" onclick="this.parentElement.remove()" style="background:#e55353;color:#fff;border:none;border-radius:8px;padding:5px 10px;cursor:pointer;">✕</button>
-  `;
-  container.appendChild(div);
+/* Multiple Choice */
+function addMCAnswer(text, correct) {
+  var c = document.getElementById('mc-answers-container');
+  var idx = c.children.length;
+  var letter = _mcLetters[idx] || String.fromCharCode(65 + idx);
+  var d = document.createElement('div');
+  d.className = 'mc-answer-row';
+  d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 10px;border:1.5px solid '+(correct?'#10B981':'#EDE9FA')+';border-radius:9px;background:'+(correct?'#F0FDF4':'#FAFAFE')+';margin-bottom:0;';
+  d.innerHTML =
+    '<span style="width:26px;height:26px;border-radius:7px;background:'+(correct?'#10B981':'#EEEDFE')+';color:'+(correct?'#fff':'#534AB7')+';font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+letter+'</span>'+
+    '<input type="text" name="answer_text[]" value="'+escHtml(text||'')+'" placeholder="Opción '+letter+'" style="flex:1;border:none;background:transparent;font-family:Nunito,sans-serif;font-size:13px;outline:none;">'+
+    '<input type="hidden" name="answer_correct[]" value="'+(correct?'1':'0')+'" class="mc-correct-flag">'+
+    '<button type="button" onclick="toggleMCCorrect(this)" style="padding:4px 9px;border-radius:6px;border:1.5px solid '+(correct?'#10B981':'#EDE9FA')+';background:'+(correct?'#10B981':'#fff')+';color:'+(correct?'#fff':'#6B7280')+';font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;">'+(correct?'✓ Correcta':'Marcar')+'</button>'+
+    '<button type="button" onclick="this.parentElement.remove();reindexMC()" style="width:24px;height:24px;border-radius:6px;border:none;background:#FEE2E2;color:#DC2626;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>';
+  c.appendChild(d);
+}
+
+function toggleMCCorrect(btn) {
+  var row = btn.parentElement;
+  var flag = row.querySelector('.mc-correct-flag');
+  var isNowCorrect = flag.value !== '1';
+  // Reset all
+  document.querySelectorAll('#mc-answers-container .mc-answer-row').forEach(function(r) {
+    r.querySelector('.mc-correct-flag').value = '0';
+    r.style.borderColor = '#EDE9FA'; r.style.background = '#FAFAFE';
+    var sp = r.querySelector('span'); sp.style.background = '#EEEDFE'; sp.style.color = '#534AB7';
+    var b = r.querySelector('button:not(:last-child)');
+    b.style.borderColor = '#EDE9FA'; b.style.background = '#fff'; b.style.color = '#6B7280'; b.textContent = 'Marcar';
+  });
+  if (isNowCorrect) {
+    flag.value = '1';
+    row.style.borderColor = '#10B981'; row.style.background = '#F0FDF4';
+    var sp = row.querySelector('span'); sp.style.background = '#10B981'; sp.style.color = '#fff';
+    btn.style.borderColor = '#10B981'; btn.style.background = '#10B981'; btn.style.color = '#fff'; btn.textContent = '✓ Correcta';
+  }
+}
+
+function reindexMC() {
+  var rows = document.querySelectorAll('#mc-answers-container .mc-answer-row');
+  rows.forEach(function(r, i) { r.querySelector('span').textContent = _mcLetters[i] || String.fromCharCode(65+i); });
+}
+
+/* Fill in Blank preview */
+function updateFillPreview() {
+  var text = (document.getElementById('q-text-fill') || {value:''}).value;
+  var prev = document.getElementById('fill-preview');
+  if (!prev) return;
+  if (!text) { prev.innerHTML = '<span style="color:#C4B9E8;font-style:italic;">La vista previa aparecerá aquí…</span>'; return; }
+  var html = text.replace(/___/g, '<span style="display:inline-block;min-width:70px;border-bottom:2px solid #F97316;margin:0 4px;vertical-align:baseline;height:1.2em;"></span>');
+  prev.innerHTML = html;
+}
+
+/* Reading Comprehension */
+function addRCQuestion(text, correct) {
+  _rcQCount++;
+  var c = document.getElementById('rc-questions-container');
+  var qn = _rcQCount;
+  var d = document.createElement('div');
+  d.style.cssText = 'background:#F5F3FF;border-radius:9px;padding:11px 13px;';
+  d.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'+
+    '<span style="font-size:12px;font-weight:800;color:#534AB7;">Pregunta '+qn+'</span>'+
+    '<button type="button" onclick="this.closest(\'div\').parentElement.remove()" style="margin-left:auto;background:none;border:none;color:#DC2626;cursor:pointer;font-size:14px;">×</button>'+
+    '</div>'+
+    '<input type="text" name="rc_question_text[]" value="'+escHtml(text||'')+'" placeholder="Escribe la pregunta…" style="width:100%;margin-bottom:8px;padding:7px 10px;border:1.5px solid #EDE9FA;border-radius:8px;font-family:Nunito,sans-serif;font-size:13px;">'+
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">'+
+    ['A','B','C','D'].map(function(l,i){
+      return '<div style="flex:1;min-width:140px;display:flex;align-items:center;gap:5px;padding:6px 9px;border:1.5px solid #EDE9FA;border-radius:7px;background:#fff;cursor:pointer;" onclick="toggleRCOpt(this)">'+
+        '<span style="width:20px;height:20px;border-radius:5px;background:#EEEDFE;color:#534AB7;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'+l+'</span>'+
+        '<input type="text" name="rc_option_'+qn+'[]" placeholder="Opción '+l+'" style="border:none;background:transparent;font-family:Nunito,sans-serif;font-size:12px;flex:1;outline:none;">'+
+        '<input type="hidden" name="rc_correct_'+qn+'[]" value="0" class="rc-flag">'+
+        '</div>';
+    }).join('')+
+    '</div>';
+  c.appendChild(d);
+}
+
+function toggleRCOpt(div) {
+  var siblings = div.parentElement.querySelectorAll('div[onclick]');
+  siblings.forEach(function(s) {
+    s.style.borderColor='#EDE9FA'; s.style.background='#fff';
+    s.querySelector('.rc-flag').value='0';
+    var sp=s.querySelector('span'); sp.style.background='#EEEDFE'; sp.style.color='#534AB7';
+  });
+  div.style.borderColor='#10B981'; div.style.background='#F0FDF4';
+  div.querySelector('.rc-flag').value='1';
+  var sp=div.querySelector('span'); sp.style.background='#10B981'; sp.style.color='#fff';
+}
+
+/* Dictation */
+function addDictItem(text) {
+  _dictCount++;
+  var c = document.getElementById('dict-items-container');
+  var d = document.createElement('div');
+  d.style.cssText = 'display:flex;align-items:center;gap:8px;padding:9px 11px;border:1.5px solid #EDE9FA;border-radius:9px;background:#FAFAFE;';
+  d.innerHTML =
+    '<input type="text" name="answer_text[]" value="'+escHtml(text||'')+'" placeholder="Frase de dictado…" style="flex:1;border:none;background:transparent;font-family:Nunito,sans-serif;font-size:13px;outline:none;">'+
+    '<input type="hidden" name="answer_correct[]" value="1">'+
+    '<input type="url" name="dict_audio_'+_dictCount+'[]" placeholder="URL audio" style="width:180px;padding:5px 9px;border:1.5px solid #EDE9FA;border-radius:7px;font-size:11px;font-family:Nunito,sans-serif;">'+
+    '<button type="button" onclick="this.parentElement.remove()" style="width:24px;height:24px;border-radius:6px;border:none;background:#FEE2E2;color:#DC2626;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>';
+  c.appendChild(d);
 }
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
+
+/* ── Legacy addAnswerRow (kept for compatibility) ── */
+function addAnswerRow(text, correct) { addMCAnswer(text, correct); }
 
 function copyLink(url) {
   navigator.clipboard.writeText(url).then(() => alert('¡Link copiado!')).catch(() => {
