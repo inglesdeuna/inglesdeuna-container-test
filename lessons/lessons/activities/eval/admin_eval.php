@@ -283,48 +283,65 @@ $exams = $pdo->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 // Unidades agrupadas por curso para el selector
-// Build Level → Phase → Units (same structure as english_courses_created.php)
-$unitsTree = []; // [level_name => [phase_name => [[id, unit_name], ...]]]
+// ── Units grouped by program: English (Level→Phase→Unit) + Técnico (Semestre→Módulo→Unit)
+// Structure: $unitsTree['program_label']['group_label'][] = ['id', 'unit_name']
+$unitsTree    = [];
+$unitsByCourse = []; // fallback
+
 try {
-    // Try english_levels / english_phases structure first
-    $uRows = $pdo->query(
+    // ── 1. English program: Level → Phase → Units ──────────────────────────
+    $englishRows = $pdo->query(
         "SELECT
             COALESCE(l.name, 'English')   AS level_name,
             COALESCE(p.name, 'Sin fase')  AS phase_name,
-            p.id                           AS phase_id,
             u.id,
-            u.name                         AS unit_name
+            u.name AS unit_name
          FROM units u
-         LEFT JOIN english_phases p  ON p.id  = u.phase_id
-         LEFT JOIN english_levels l  ON l.id  = p.level_id
-         ORDER BY l.id ASC, p.id ASC, u.position ASC, u.name ASC"
+         INNER JOIN english_phases p ON p.id = u.phase_id
+         INNER JOIN english_levels l ON l.id = p.level_id
+         ORDER BY l.id ASC, p.id ASC, u.position ASC NULLS LAST, u.name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
 
-    foreach ($uRows as $ur) {
-        $lName = trim((string)($ur['level_name'] ?? 'English'));
-        $pName = trim((string)($ur['phase_name'] ?? 'Sin fase'));
-        $unitsTree[$lName][$pName][] = [
-            'id'        => $ur['id'],
-            'unit_name' => $ur['unit_name'],
-        ];
+    foreach ($englishRows as $ur) {
+        $prog  = '📚 English — ' . trim((string)($ur['level_name'] ?? 'English'));
+        $group = trim((string)($ur['phase_name'] ?? 'Sin fase'));
+        $unitsTree[$prog][$group][] = ['id' => $ur['id'], 'unit_name' => $ur['unit_name']];
     }
-} catch (Exception $e) {}
+} catch (Throwable $e) {}
 
-// Fallback: course-based grouping if phase tables don't exist
-$unitsByCourse = [];
+try {
+    // ── 2. Technical program: Semestre (course) → Módulo → Units ──────────
+    $techRows = $pdo->query(
+        "SELECT
+            c.name AS semester_name,
+            m.name AS module_name,
+            u.id,
+            u.name AS unit_name
+         FROM units u
+         INNER JOIN technical_modules m ON m.id = u.module_id
+         INNER JOIN courses           c ON c.id = m.course_id
+         ORDER BY c.id ASC, m.id ASC, u.id ASC"
+    )->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($techRows as $ur) {
+        $prog  = '🔧 Técnico — ' . trim((string)($ur['semester_name'] ?? 'Semestre'));
+        $group = trim((string)($ur['module_name'] ?? 'Módulo'));
+        $unitsTree[$prog][$group][] = ['id' => $ur['id'], 'unit_name' => $ur['unit_name']];
+    }
+} catch (Throwable $e) {}
+
+// ── Fallback: course-based if neither program structure exists ─────────────
 if (empty($unitsTree)) {
     try {
         $uRows = $pdo->query(
             "SELECT u.id, u.name AS unit_name, c.name AS course_name
-             FROM units u
-             LEFT JOIN courses c ON c.id = u.course_id
+             FROM units u LEFT JOIN courses c ON c.id = u.course_id
              ORDER BY c.name, u.name"
         )->fetchAll(PDO::FETCH_ASSOC);
         foreach ($uRows as $ur) {
-            $cName = $ur['course_name'] ?? 'Sin curso';
-            $unitsByCourse[$cName][] = $ur;
+            $unitsByCourse[$ur['course_name'] ?? 'Sin curso'][] = $ur;
         }
-    } catch (Exception $e) {}
+    } catch (Throwable $e) {}
 }
 
 $currentExam = null;
@@ -833,9 +850,9 @@ tr:hover td{background:#FAFAFE;}
             <select name="unit_id" style="font-size:13px;">
               <option value="">— Sin unidad —</option>
               <?php if (!empty($unitsTree)): ?>
-                <?php foreach ($unitsTree as $levelName => $phases): ?>
-                  <?php foreach ($phases as $phaseName => $punits): ?>
-                  <optgroup label="<?= h($levelName . ' · ' . $phaseName) ?>">
+                <?php foreach ($unitsTree as $progLabel => $groups): ?>
+                  <?php foreach ($groups as $groupLabel => $punits): ?>
+                  <optgroup label="<?= h($progLabel . ' · ' . $groupLabel) ?>">
                     <?php foreach ($punits as $u): ?>
                     <option value="<?= h($u['id']) ?>"
                       <?= ((string)($currentExam['unit_id'] ?? '')) === (string)$u['id'] ? 'selected' : '' ?>>
