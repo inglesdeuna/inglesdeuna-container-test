@@ -16,9 +16,38 @@ $token     = trim($_GET['t'] ?? '');
 $step      = $_GET['step'] ?? 'welcome';   // welcome | quiz | result
 $resultId  = (int) ($_GET['rid'] ?? 0);
 
+// ─── Preview mode (admin/teacher only, no token needed) ──────────────────────
+$isPreview = isset($_GET['preview']) && $_GET['preview'] === '1';
+if ($isPreview) {
+    session_start();
+    $isAdmin   = !empty($_SESSION['admin_logged']);
+    $isTeacher = !empty($_SESSION['academic_logged']);
+    if (!$isAdmin && !$isTeacher) {
+        http_response_code(403);
+        die('Acceso denegado. Solo administradores pueden previsualizar.');
+    }
+    $previewExamId = (int) ($_GET['exam_id'] ?? 0);
+    if ($previewExamId <= 0) die('exam_id requerido para preview.');
+    // Build a fake $link array from the exam
+    $stmt = $pdo->prepare(
+        "SELECT e.id AS exam_id, e.title AS exam_title, e.time_limit_min,
+                1 AS max_attempts, '' AS instructions, e.cefr_level AS exam_cefr,
+                e.status AS exam_status, e.modalities,
+                'group' AS link_type, '' AS student_name, '' AS student_doc,
+                '' AS student_phone, '' AS student_email,
+                9999 AS max_uses, 0 AS uses_count, NULL AS expires_at
+         FROM eval_exams e WHERE e.id=? LIMIT 1"
+    );
+    $stmt->execute([$previewExamId]);
+    $link = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$link) die('Examen no encontrado.');
+    $link['id'] = 0; // no real link_id
+    $token = 'PREVIEW_' . $previewExamId;
+}
+
 // ─── Validar token ────────────────────────────────────────────────────────────
-$link = null;
-if ($token !== '') {
+$link = $link ?? null;
+if (!$isPreview && $token !== '') {
     $stmt = $pdo->prepare(
         "SELECT l.*, e.title AS exam_title, e.time_limit_min, e.max_attempts,
                 e.instructions, e.cefr_level AS exam_cefr, e.status AS exam_status,
@@ -34,7 +63,7 @@ if ($token !== '') {
     $link = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
-if (!$link) {
+if (!$link && !$isPreview) {
     http_response_code(404);
     ?><!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Link inválido</title>
     <style>body{font-family:Arial,sans-serif;text-align:center;padding:60px;background:#fef3cd;color:#664d03;}
@@ -582,6 +611,13 @@ body{font-family:'Nunito',Arial,sans-serif;background:var(--bg);color:var(--text
 
 <?php // ─── Paso 1: Bienvenida / Datos del estudiante ──────────────────────────
 if ($step === 'welcome'): ?>
+  <?php if ($isPreview): ?>
+  <div style="background:#EEEDFE;border:1.5px solid #C4B9E8;border-radius:12px;padding:12px 16px;margin-bottom:14px;font-size:13px;font-weight:700;color:#534AB7;display:flex;align-items:center;gap:8px;">
+    <i class="ti ti-eye" style="font-size:18px"></i>
+    Modo previsualización — vista del estudiante. Las respuestas no se guardarán.
+    <a href="javascript:history.back()" style="margin-left:auto;color:#F97316;text-decoration:none;font-size:12px;">← Volver al editor</a>
+  </div>
+  <?php endif; ?>
   <div class="card">
     <div class="card-title">👋 ¡Bienvenido!</div>
     <p class="card-sub">
@@ -1089,4 +1125,5 @@ const timerInterval = setInterval(() => {
 </script>
 </body>
 </html>
+
 
