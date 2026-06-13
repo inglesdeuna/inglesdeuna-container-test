@@ -822,9 +822,25 @@ tr:hover td{background:#FAFAFE;}
 
     <!-- TAB: Editor de preguntas -->
     <div id="tab-editor" class="tab-panel">
+
+      <!-- Shortcut to full quiz creator -->
+      <?php if (!$currentExam): ?>
+      <div style="background:linear-gradient(135deg,#FFF8F5,#FFF0E6);border:1.5px solid #FDDCB5;border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:16px;margin-bottom:19px;">
+        <i class="ti ti-pencil-plus" style="font-size:36px;color:#F97316;flex-shrink:0" aria-hidden="true"></i>
+        <div style="flex:1">
+          <div style="font-family:'Fredoka One',sans-serif;font-size:16px;color:#1a1a2e;margin-bottom:4px">Crear quiz completo desde cero</div>
+          <div style="font-size:12px;font-weight:600;color:#9B8FCC;line-height:1.5">Editor completo con los 5 tipos de pregunta: Multiple Choice, Fill in Blank, Reading Comprehension, Writing Practice y Dictation.</div>
+        </div>
+        <a href="quiz_creator.php" class="btn btn-primary" style="flex-shrink:0;font-size:13px;padding:10px 18px;">
+          <i class="ti ti-external-link" aria-hidden="true"></i>Abrir editor completo
+        </a>
+      </div>
+      <?php endif; ?>
+
       <div class="card">
         <div class="card-head">
-          <h3><?= $currentExam ? 'Editar examen: ' . h($currentExam['title']) : 'Crear examen' ?></h3>
+          <h3><?= $currentExam ? 'Editar examen: ' . h($currentExam['title']) : 'Configuración rápida' ?></h3>
+          <span style="font-size:11px;font-weight:600;color:#9B8FCC;">Datos básicos del examen</span>
         </div>
         <div class="card-body">
         <form method="POST">
