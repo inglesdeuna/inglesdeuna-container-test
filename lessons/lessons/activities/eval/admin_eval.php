@@ -489,13 +489,26 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
 }
 .card h3{
   font-family:'Fredoka One',sans-serif;font-size:17px;
-  color:#1a1a2e;letter-spacing:.2px;margin:0;
+  color:#1a1a2e;letter-spacing:.2px;margin:0 0 19px;
 }
 .card-head{
   display:flex;align-items:center;justify-content:space-between;
   padding:13px 19px;border-bottom:1.5px solid #EDE9FA;
 }
 .card-sub-text{font-size:11px;font-weight:600;color:#9B8FCC;margin-top:3px;}
+/* Content sections inside cards that are NOT table or card-head */
+.card > form,
+.card > .card-body,
+.card > p,
+.card > .form-row,
+.card > .form-row-3,
+.card > .form-group,
+.card > h3 {
+  padding-left:19px;padding-right:19px;
+}
+.card > h3:first-child { padding-top:19px; }
+.card > form { padding-top:19px; padding-bottom:19px; }
+.card-body { padding:19px; }
 
 /* ── Table ── */
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'Nunito',sans-serif;}
@@ -711,10 +724,7 @@ tr:hover td{background:#FAFAFE;}
       </div>
 
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <h3 style="margin:0;">Exámenes</h3>
-          <button class="btn btn-primary" onclick="showTab('editor')">+ Crear examen</button>
-        </div>
+        <div class="card-head"><h3>Exámenes</h3><button class="btn btn-primary" onclick="showTab('editor')">+ Crear examen</button></div>
         <div class="filter-row">
           <input type="text" id="search-exam" placeholder="Buscar..." oninput="filterExams()">
           <select id="filter-level" onchange="filterExams()">
@@ -761,7 +771,10 @@ tr:hover td{background:#FAFAFE;}
     <!-- TAB: Editor de preguntas -->
     <div id="tab-editor" class="tab-panel">
       <div class="card">
-        <h3><?= $currentExam ? 'Editar examen: ' . h($currentExam['title']) : 'Crear examen' ?></h3>
+        <div class="card-head">
+          <h3><?= $currentExam ? 'Editar examen: ' . h($currentExam['title']) : 'Crear examen' ?></h3>
+        </div>
+        <div class="card-body">
         <form method="POST">
           <input type="hidden" name="action" value="save_exam">
           <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">
@@ -831,13 +844,14 @@ tr:hover td{background:#FAFAFE;}
           </div>
           <button type="submit" class="btn btn-primary">Guardar examen</button>
         </form>
+        </div><!-- /card-body -->
       </div>
 
       <?php if ($currentExamId > 0): ?>
       <!-- Lista de preguntas -->
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <h3 style="margin:0;">Preguntas del examen</h3>
+      <div class="card" style="margin-top:19px;">
+        <div class="card-head">
+          <h3>Preguntas del examen</h3>
           <button class="btn btn-primary" onclick="openQuestionModal(0)">+ Agregar pregunta</button>
         </div>
         <table>
@@ -1045,8 +1059,8 @@ tr:hover td{background:#FAFAFE;}
     <!-- TAB: Resultados -->
     <div id="tab-results" class="tab-panel">
       <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-          <h3 style="margin:0;">Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
+        <div class="card-head">
+          <h3>Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="openPrintedModal()">+ Nota impresa</button>
           </div>
