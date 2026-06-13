@@ -551,16 +551,16 @@ tr:hover td{background:#FAFAFE;}
 }
 .btn i{font-size:14px;}
 .btn:hover{background:#F5F3FF;border-color:#C4B9E8;color:#534AB7;}
-.btn-primary{background:#F97316;border-color:#F97316;color:#fff;}
-.btn-primary:hover{background:#E8650A;border-color:#E8650A;color:#fff;}
+.btn-primary{background:#16A34A;border-color:#16A34A;color:#fff;}
+.btn-primary:hover{background:#15803D;border-color:#15803D;color:#fff;}
 .btn-secondary{background:#fff;border-color:#EDE9FA;color:#374151;}
 .btn-secondary:hover{background:#F5F3FF;border-color:#C4B9E8;color:#534AB7;}
 .btn-purple{background:#7F77DD;border-color:#7F77DD;color:#fff;}
 .btn-purple:hover{background:#6B63CC;border-color:#6B63CC;color:#fff;}
 .btn-green{background:#25D366;border-color:#25D366;color:#fff;}
 .btn-green:hover{background:#1EBF5A;border-color:#1EBF5A;color:#fff;}
-.btn-danger{background:#fff;border-color:#FCA5A5;color:#DC2626;}
-.btn-danger:hover{background:#FFF5F5;border-color:#F87171;}
+.btn-danger{background:#DC2626;border-color:#DC2626;color:#fff;}
+.btn-danger:hover{background:#B91C1C;border-color:#B91C1C;color:#fff;}
 .btn-sm{padding:6px 11px;font-size:11.5px;border-radius:8px;}
 .btn-sm i{font-size:13px;}
 
