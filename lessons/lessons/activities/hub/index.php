@@ -306,6 +306,16 @@ body{
     <section class="intro">
         <h1>Escoger Actividades</h1>
         <p>Selecciona las actividades que quieres crear para esta unidad usando la misma configuración visual del panel administrativo.</p>
+        <a href="../eval/quiz_creator.php?unit=<?= htmlspecialchars((string)$unit_id) ?>"
+           style="display:inline-flex;align-items:center;gap:8px;margin-top:14px;
+                  padding:10px 20px;border-radius:10px;
+                  background:#F97316;color:#fff;font-family:Nunito,sans-serif;
+                  font-size:14px;font-weight:800;text-decoration:none;
+                  border:none;cursor:pointer;transition:background .15s;"
+           onmouseover="this.style.background='#E8650A'"
+           onmouseout="this.style.background='#F97316'">
+          ✏️ Crear nuevo quiz desde cero →
+        </a>
     </section>
 
     <div class="card">
@@ -355,3 +365,4 @@ document.querySelectorAll('.type-cb').forEach(function(cb) {
 </script>
 </body>
 </html>
+
