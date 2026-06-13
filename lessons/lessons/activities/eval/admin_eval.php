@@ -410,7 +410,7 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
 /* ── Sidebar ── */
 .eval-sidebar{
   background:#fff;border-right:1.5px solid #EDE9FA;
-  padding:18px 12px 0;
+  padding:19px 12px 0;
   display:flex;flex-direction:column;gap:2px;
   overflow-y:auto;overflow-x:hidden;
 }
@@ -460,16 +460,16 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
 
 /* ── Main scroll ── */
 .eval-scroll{
-  overflow-y:auto;padding:24px;
-  display:flex;flex-direction:column;gap:18px;
+  overflow-y:auto;padding:19px;
+  display:flex;flex-direction:column;gap:19px;
   background:#F0EFF8;
 }
 .eval-scroll::-webkit-scrollbar{width:5px;}
 .eval-scroll::-webkit-scrollbar-thumb{background:#C4B9E8;border-radius:99px;}
 
 /* ── Stats row ── */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
-.stat-box{background:#fff;border-radius:14px;padding:16px 18px;border:1.5px solid #EDE9FA;}
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:19px;}
+.stat-box{background:#fff;border-radius:14px;padding:19px;border:1.5px solid #EDE9FA;}
 .stat-label{
   display:block;font-size:10px;font-weight:800;color:#9B8FCC;
   text-transform:uppercase;letter-spacing:.1em;margin-bottom:7px;
@@ -493,19 +493,19 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
 }
 .card-head{
   display:flex;align-items:center;justify-content:space-between;
-  padding:16px 20px;border-bottom:1.5px solid #EDE9FA;
+  padding:13px 19px;border-bottom:1.5px solid #EDE9FA;
 }
 .card-sub-text{font-size:11px;font-weight:600;color:#9B8FCC;margin-top:3px;}
 
 /* ── Table ── */
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'Nunito',sans-serif;}
 th{
-  text-align:left;padding:10px 20px;background:#FAFAFE;
+  text-align:left;padding:9px 19px;background:#FAFAFE;
   color:#9B8FCC;font-size:10px;font-weight:800;
   text-transform:uppercase;letter-spacing:.1em;
   border-bottom:1.5px solid #EDE9FA;white-space:nowrap;
 }
-td{padding:12px 20px;border-bottom:1.5px solid #EDE9FA;vertical-align:middle;}
+td{padding:11px 19px;border-bottom:1.5px solid #EDE9FA;vertical-align:middle;}
 tr:last-child td{border-bottom:none;}
 tr:hover td{background:#FAFAFE;}
 
@@ -556,7 +556,7 @@ tr:hover td{background:#FAFAFE;}
 .mono{font-family:monospace;font-size:11px;color:#9B8FCC;letter-spacing:.05em;}
 .exp-date{color:#DC2626;font-weight:700;}
 .filter-row{
-  display:flex;gap:10px;padding:11px 20px;
+  display:flex;gap:10px;padding:11px 19px;
   border-bottom:1.5px solid #EDE9FA;background:#FAFAFE;
   flex-wrap:wrap;align-items:center;
 }
