@@ -16,7 +16,7 @@ if (!$isAdmin && !$isTeacher) {
     exit;
 }
 
-require_once __DIR__ . '/../../../config/db.php';
+require_once __DIR__ . '/../../config/db.php';
 if (!isset($pdo) || !($pdo instanceof PDO)) die('DB unavailable.');
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
