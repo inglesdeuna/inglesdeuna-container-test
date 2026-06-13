@@ -906,21 +906,20 @@ tr:hover td{background:#FAFAFE;}
             </label>
             <?php endforeach; ?>
           </div>
-          <div class="form-group">
-            <label>Instrucciones</label>
-            <textarea name="instructions"><?= h($currentExam['instructions'] ?? '') ?></textarea>
-          </div>
           <button type="submit" class="btn btn-primary">Guardar examen</button>
         </form>
         </div><!-- /card-body -->
       </div>
 
-      <?php if ($currentExamId > 0): ?>
-      <!-- Lista de preguntas -->
+      <!-- Lista de preguntas — always visible -->
       <div class="card" style="margin-top:19px;">
         <div class="card-head">
           <h3>Preguntas del examen</h3>
+          <?php if ($currentExamId > 0): ?>
           <button class="btn btn-primary" onclick="openQuestionModal(0);selectQType('multiple_choice');">+ Agregar pregunta</button>
+          <?php else: ?>
+          <span style="font-size:12px;color:#9B8FCC;font-weight:600;">Guarda el examen primero para agregar preguntas</span>
+          <?php endif; ?>
         </div>
         <table>
           <thead>
@@ -946,12 +945,17 @@ tr:hover td{background:#FAFAFE;}
           </tr>
           <?php endforeach; ?>
           <?php if (empty($examQuestions)): ?>
-          <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Sin preguntas todavía.</td></tr>
+          <tr><td colspan="6" style="text-align:center;color:#9B8FCC;padding:28px 20px;font-weight:600;font-size:13px;">
+            <?php if ($currentExamId > 0): ?>
+            Sin preguntas todavía — haz clic en "+ Agregar pregunta"
+            <?php else: ?>
+            Guarda la configuración del examen para comenzar a agregar preguntas
+            <?php endif; ?>
+          </td></tr>
           <?php endif; ?>
           </tbody>
         </table>
       </div>
-      <?php endif; ?>
     </div>
 
     <!-- TAB: Links -->
