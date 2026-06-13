@@ -365,6 +365,7 @@ $baseUrl = $_host . '/lessons/lessons/activities/eval/eval_viewer.php?t=';
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Módulo de Evaluaciones</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
 :root{
   --bg:#eef7f0;--card:#ffffff;--line:#d8e8dc;--text:#1f3b28;--title:#1f3b28;
@@ -377,123 +378,211 @@ body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text
 .topbar{background:linear-gradient(180deg,var(--green),var(--green-dark));color:#fff;padding:16px 24px;}
 .topbar-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:16px;}
 .topbar-title{margin:0;font-size:24px;font-weight:800;flex:1;}
-.back-btn,.logout-btn{display:inline-block;text-decoration:none;color:#fff;font-size:13px;font-weight:700;
-  border-radius:12px;padding:9px 16px;background:linear-gradient(180deg,#4b8b5b,#356844);
-  box-shadow:var(--shadow-sm);transition:filter .2s,transform .15s;}
-.back-btn:hover,.logout-btn:hover{filter:brightness(1.05);transform:translateY(-1px);}
-.page{max-width:1400px;margin:0 auto;padding:20px 20px 40px;}
-.layout{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start;}
-.sidebar{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:var(--shadow);padding:18px;position:sticky;top:20px;}
-.sidebar-title{margin:14px 0 8px;font-size:11px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.08em;color:var(--muted);}
-.nav-list{display:flex;flex-direction:column;gap:6px;}
-.nav-link{display:block;width:100%;text-decoration:none;color:#fff;font-size:13px;font-weight:700;
-  padding:10px 12px;border-radius:12px;background:linear-gradient(180deg,#41b95a,#2f9e44);
-  box-shadow:var(--shadow-sm);transition:filter .2s,transform .15s;cursor:pointer;border:none;}
-.nav-link:hover,.nav-link.active{filter:brightness(1.06);transform:translateY(-1px);}
-.nav-link.secondary{background:linear-gradient(180deg,#7b8b7f,#66756a);}
-.main-content{min-width:0;}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:var(--shadow);padding:24px;margin-bottom:18px;}
-.card h3{margin:0 0 16px;font-size:18px;font-weight:800;color:var(--green-dark);}
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:18px;}
-.stat-box{background:var(--card);border:1px solid var(--line);border-radius:14px;
-  box-shadow:var(--shadow-sm);padding:16px;text-align:center;}
-.stat-label{display:block;font-size:10px;font-weight:800;text-transform:uppercase;
-  letter-spacing:.08em;color:var(--muted);margin-bottom:4px;}
-.stat-value{display:block;font-size:26px;font-weight:800;color:var(--green-dark);}
-table{width:100%;border-collapse:collapse;font-size:14px;}
-th{text-align:left;padding:10px 12px;background:var(--green-soft);color:var(--green-dark);
-  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--line);}
-td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:middle;}
-tr:last-child td{border-bottom:none;}
-tr:hover td{background:#f7fcf8;}
-.badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;}
-.badge-draft{background:#6c757d;}
-.badge-active{background:#28a745;}
-.badge-closed{background:#dc3545;}
-.badge-online{background:#17a2b8;}
-.badge-printed{background:#fd7e14;}
-.btn{display:inline-block;text-decoration:none;color:#fff;font-size:13px;font-weight:700;
-  padding:8px 14px;border-radius:10px;box-shadow:var(--shadow-sm);border:none;cursor:pointer;
-  transition:filter .2s,transform .15s;}
-.btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
-.btn-primary{background:linear-gradient(180deg,#41b95a,#2f9e44);}
-.btn-secondary{background:linear-gradient(180deg,#7b8b7f,#66756a);}
-.btn-danger{background:linear-gradient(180deg,#e55353,#c82333);}
-.btn-sm{padding:5px 10px;font-size:12px;}
+.back-btn,.logout-btn{display:inline-flex;align-items:center;gap:5px;text-decoration:none;
+  color:var(--color-text-primary,#1a1a2e);font-size:12px;font-weight:500;border-radius:8px;
+  padding:6px 12px;border:0.5px solid rgba(0,0,0,.15);background:#fff;transition:background .15s;}
+.back-btn:hover,.logout-btn:hover{background:#f5f5f5;}
+.page{max-width:100%;margin:0;padding:0;}
+
+/* ── New layout ── */
+:root{--ora:#F97316;--pur:#7F77DD;--pur-light:#EEEDFE;--pur-dark:#534AB7;
+  --line2:rgba(0,0,0,.08);--bg2:#f8f8fb;--bg3:#f3f3f8;--text:#1a1a2e;--muted2:#6b7280;
+  --radius2:8px;--radius3:12px;}
+.eval-shell{display:grid;grid-template-columns:220px 1fr;height:calc(100vh - 52px);overflow:hidden;}
+.eval-sidebar{background:#fff;border-right:0.5px solid var(--line2);padding:18px 12px;
+  display:flex;flex-direction:column;gap:3px;overflow-y:auto;flex-shrink:0;}
+.es-logo{font-size:16px;font-weight:600;color:var(--pur);padding:0 4px 14px;
+  border-bottom:0.5px solid var(--line2);margin-bottom:8px;}
+.es-logo b{color:var(--ora);font-weight:600;}
+.es-logo small{display:block;font-size:11px;font-weight:400;color:var(--muted2);margin-top:2px;}
+.es-section{font-size:10px;color:var(--muted2);text-transform:uppercase;
+  letter-spacing:.09em;padding:10px 4px 4px;}
+.es-item{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--radius2);
+  font-size:13px;color:var(--muted2);cursor:pointer;border:none;background:none;
+  width:100%;text-align:left;transition:background .15s;}
+.es-item:hover{background:var(--bg2);}
+.es-item.active{background:var(--pur-light);color:var(--pur-dark);font-weight:500;}
+.es-item i{font-size:15px;flex-shrink:0;}
+.es-bottom{margin-top:auto;padding-top:10px;border-top:0.5px solid var(--line2);
+  display:flex;flex-direction:column;gap:3px;}
+.eval-topbar{background:#fff;border-bottom:0.5px solid var(--line2);padding:0 22px;
+  height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.eval-topbar-title{font-size:14px;font-weight:500;color:var(--text);}
+.eval-topbar-right{display:flex;gap:8px;}
+.eval-main{display:flex;flex-direction:column;background:var(--bg3);overflow:hidden;}
+.eval-scroll{flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:16px;}
+.eval-scroll::-webkit-scrollbar{width:4px;}
+.eval-scroll::-webkit-scrollbar-thumb{background:rgba(0,0,0,.15);border-radius:99px;}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.stat-box{background:#fff;border:0.5px solid var(--line2);border-radius:var(--radius2);
+  padding:12px 14px;}
+.stat-label{display:block;font-size:10px;color:var(--muted2);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:5px;}
+.stat-value{display:block;font-size:22px;font-weight:500;color:var(--text);}
+.stat-value.ora{color:var(--ora);}
+.stat-value.pur{color:var(--pur);}
+
+/* Card */
+.card{background:#fff;border:0.5px solid var(--line2);border-radius:var(--radius3);
+  overflow:hidden;margin-bottom:0;}
+.card h3{margin:0;font-size:13px;font-weight:500;color:var(--text);}
+.card-head{display:flex;align-items:center;justify-content:space-between;
+  padding:13px 18px;border-bottom:0.5px solid var(--line2);}
+.card-sub{font-size:11px;color:var(--muted2);margin-top:2px;}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;
+  border-radius:var(--radius2);border:0.5px solid rgba(0,0,0,.15);
+  background:#fff;font-size:12px;font-weight:500;color:var(--text);
+  cursor:pointer;white-space:nowrap;text-decoration:none;transition:background .15s;}
+.btn:hover{background:var(--bg2);}
+.btn i{font-size:14px;}
+.btn-primary{background:var(--ora);border-color:var(--ora);color:#fff;}
+.btn-primary:hover{background:#ea6a08;border-color:#ea6a08;color:#fff;}
+.btn-secondary{background:#fff;border-color:rgba(0,0,0,.15);color:var(--text);}
+.btn-purple{background:var(--pur);border-color:var(--pur);color:#fff;}
+.btn-purple:hover{background:#6c64cc;color:#fff;}
+.btn-green{background:#25D366;border-color:#25D366;color:#fff;}
+.btn-danger{background:#fff;border-color:#dc3545;color:#dc3545;}
+.btn-danger:hover{background:#fff0f0;}
+.btn-sm{padding:5px 10px;font-size:11px;}
+.btn-sm i{font-size:13px;}
+
+/* Forms */
 .form-group{margin-bottom:14px;}
-.form-group label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px;}
+.form-group label{display:block;font-size:11px;font-weight:500;color:var(--muted2);
+  text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;}
 .form-group input,.form-group select,.form-group textarea{
-  width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;
-  font-size:14px;font-family:Arial,sans-serif;background:#fff;color:var(--text);}
+  width:100%;padding:7px 10px;border:0.5px solid rgba(0,0,0,.18);border-radius:var(--radius2);
+  font-size:13px;background:#fff;color:var(--text);}
 .form-group textarea{min-height:80px;resize:vertical;}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
-.msg{padding:10px 16px;border-radius:10px;margin-bottom:14px;font-size:14px;font-weight:700;
-  background:#e9f8ee;color:var(--green-dark);border:1px solid var(--line);}
-.tab-panel{display:none;}
-.tab-panel.active{display:block;}
-.skill-chip{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;
-  cursor:pointer;border:2px solid var(--line);margin:3px;transition:all .2s;}
-.skill-chip.selected{background:var(--green);color:#fff;border-color:var(--green);}
+
+/* Tables */
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:8px 16px;background:var(--bg2);color:var(--muted2);
+  font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.07em;
+  border-bottom:0.5px solid var(--line2);white-space:nowrap;}
+td{padding:10px 16px;border-bottom:0.5px solid var(--line2);vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--bg2);}
+
+/* Badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;
+  border-radius:var(--radius2);font-size:11px;font-weight:500;}
+.badge-draft{background:var(--bg2);color:var(--muted2);border:0.5px solid rgba(0,0,0,.12);}
+.badge-active{background:#EAF3DE;color:#3B6D11;}
+.badge-closed{background:#FCEBEB;color:#A32D2D;}
+.badge-online{background:#E6F1FB;color:#185FA5;}
+.badge-printed{background:#FAEEDA;color:#854F0B;}
+.badge-b1{background:var(--pur-light);color:var(--pur-dark);}
+.badge-unit{background:#E1F5EE;color:#085041;}
+.badge-group{background:#EAF3DE;color:#3B6D11;}
+.badge-individual{background:#E6F1FB;color:#185FA5;}
+.badge-expired{background:#FCEBEB;color:#A32D2D;}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:#1D9E75;flex-shrink:0;}
+.actions-cell{display:flex;gap:5px;align-items:center;flex-wrap:nowrap;}
+.mono{font-family:monospace;font-size:11px;color:var(--muted2);}
+.exp-date{color:#dc3545;font-weight:500;}
+
+/* Duration clock */
+.dur-wrap{display:flex;align-items:center;gap:6px;}
+.dur-wrap input[type=number]{flex:1;min-width:0;}
+.dur-clock{display:inline-flex;align-items:center;gap:4px;padding:5px 8px;
+  border-radius:var(--radius2);background:var(--bg2);border:0.5px solid rgba(0,0,0,.12);
+  font-size:12px;font-weight:500;color:var(--muted2);white-space:nowrap;}
+.dur-clock i{font-size:13px;}
+
+/* Filters */
+.filter-row{display:flex;gap:8px;padding:10px 16px;border-bottom:0.5px solid var(--line2);
+  background:var(--bg2);flex-wrap:wrap;align-items:center;}
+.filter-row input,.filter-row select{padding:5px 9px;border:0.5px solid rgba(0,0,0,.15);
+  border-radius:var(--radius2);font-size:12px;background:#fff;color:var(--text);height:30px;}
+.filter-row input{flex:1;max-width:200px;}
+
+/* Msg */
+.msg{padding:10px 14px;border-radius:var(--radius2);margin-bottom:14px;font-size:13px;
+  font-weight:500;background:#EAF3DE;color:#3B6D11;border:0.5px solid #A8D97F;}
+.msg.err{background:#FCEBEB;color:#A32D2D;border-color:#F7C1C1;}
+
+/* Current exam badge in sidebar */
+.es-current{background:var(--bg2);border-radius:var(--radius2);padding:8px 10px;
+  font-size:12px;font-weight:500;color:var(--text);border:0.5px solid var(--line2);}
+.es-current-lbl{font-size:10px;color:var(--muted2);text-transform:uppercase;
+  letter-spacing:.08em;margin-bottom:4px;}
+
+/* Modals — keep working */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;
   align-items:center;justify-content:center;}
 .modal-bg.open{display:flex;}
-.modal{background:#fff;border-radius:var(--radius);padding:28px;max-width:540px;width:95%;
+.modal{background:#fff;border-radius:var(--radius3);padding:26px;max-width:480px;width:95%;
   box-shadow:0 20px 60px rgba(0,0,0,.2);}
-.modal h3{margin:0 0 18px;font-size:20px;font-weight:800;color:var(--green-dark);}
-.url-box{background:#f7fcf8;border:1px solid var(--line);border-radius:10px;padding:10px 14px;
-  font-size:13px;word-break:break-all;margin-bottom:12px;color:var(--text);}
-.filter-row{display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
-.filter-row input,.filter-row select{padding:8px 12px;border:1px solid var(--line);border-radius:10px;
-  font-size:13px;min-width:140px;}
-.cefr-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:800;color:#fff;}
-@media(max-width:900px){.layout{grid-template-columns:1fr;}.sidebar{position:static;}
-  .stats-row{grid-template-columns:1fr 1fr;}.form-row,.form-row-3{grid-template-columns:1fr;}}
-</style>
+.modal h3{margin:0 0 16px;font-size:16px;font-weight:500;color:var(--text);}
+
+/* Tab panels — unchanged */
+.tab-panel{display:none;}
+.tab-panel.active{display:block;}
+.skill-chip{display:inline-block;padding:4px 12px;border-radius:999px;font-size:12px;
+  font-weight:500;cursor:pointer;border:0.5px solid rgba(0,0,0,.15);margin:3px;transition:all .2s;}
+.skill-chip.selected{background:var(--pur);color:#fff;border-color:var(--pur);}
+.url-box{background:var(--bg2);border:0.5px solid var(--line2);border-radius:var(--radius2);
+  padding:10px 12px;font-size:12px;word-break:break-all;margin-bottom:10px;color:var(--text);}
+.cefr-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;
+  font-weight:500;color:#fff;}
+.side-doc-actions{display:flex;gap:8px;}
+.side-doc-actions .btn{flex:1;justify-content:center;}
+@media(max-width:900px){.eval-shell{grid-template-columns:1fr;height:auto;}
+  .eval-sidebar{display:none;}.stats-row{grid-template-columns:1fr 1fr;}
+  .form-row,.form-row-3{grid-template-columns:1fr;}}</style>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="topbar-inner">
-    <h1 class="topbar-title">Módulo de Evaluaciones</h1>
-    <a href="/lessons/lessons/admin/dashboard.php" class="back-btn">← Dashboard</a>
-    <a href="/lessons/lessons/admin/logout.php" class="logout-btn">Cerrar sesión</a>
+<div class="eval-topbar">
+  <span class="eval-topbar-title">Módulo de Evaluaciones</span>
+  <div class="eval-topbar-right">
+    <a href="/lessons/lessons/admin/dashboard.php" class="btn btn-sm"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>Dashboard</a>
+    <a href="/lessons/lessons/admin/logout.php" class="btn btn-sm"><i class="ti ti-logout" aria-hidden="true"></i>Cerrar sesión</a>
   </div>
-</header>
+</div>
 
-<main class="page">
-<div class="layout">
+<div class="eval-shell">
+  <aside class="eval-sidebar">
+    <div class="es-logo"><b>ONES</b> <span style="color:var(--pur)">Eval</span><small>Módulo de Evaluaciones</small></div>
 
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-title">Módulo Evaluaciones</div>
-    <div class="nav-list">
-      <button class="nav-link" onclick="showTab('list')">📋 Todos los exámenes</button>
-      <button class="nav-link" onclick="showTab('editor')">✏️ Crear examen</button>
-      <button class="nav-link" onclick="showTab('links')">🔗 Links activos</button>
-      <button class="nav-link" onclick="showTab('results')">📊 Resultados</button>
-      <button class="nav-link" onclick="showTab('cefr')">🎯 Rangos MCER</button>
-    </div>
+    <span class="es-section">Módulo</span>
+    <button class="es-item <?= $tab==='list'?'active':'' ?>" onclick="showTab('list')">
+      <i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes</button>
+    <button class="es-item <?= $tab==='editor'?'active':'' ?>" onclick="showTab('editor')">
+      <i class="ti ti-plus" aria-hidden="true"></i>Crear examen</button>
+    <button class="es-item <?= $tab==='links'?'active':'' ?>" onclick="showTab('links')">
+      <i class="ti ti-link" aria-hidden="true"></i>Links activos</button>
+    <button class="es-item <?= $tab==='results'?'active':'' ?>" onclick="showTab('results')">
+      <i class="ti ti-chart-bar" aria-hidden="true"></i>Resultados</button>
+    <button class="es-item <?= $tab==='cefr'?'active':'' ?>" onclick="showTab('cefr')">
+      <i class="ti ti-certificate" aria-hidden="true"></i>Rangos MCER</button>
+
     <?php if ($currentExam): ?>
-    <div class="sidebar-title">Examen actual</div>
-    <div style="font-size:13px;font-weight:700;color:var(--green-dark);padding:8px 4px;">
+    <span class="es-section">Examen actual</span>
+    <div class="es-current">
+      <div class="es-current-lbl">Seleccionado</div>
       <?= h($currentExam['title']) ?>
-      <span class="badge badge-<?= h($currentExam['status']) ?>" style="margin-left:6px;">
-        <?= h($currentExam['status']) ?>
-      </span>
+      <span class="badge badge-<?= h($currentExam['status']) ?>" style="margin-left:6px;font-size:10px;">
+        <?= h($currentExam['status']) ?></span>
     </div>
     <?php endif; ?>
-    <div class="sidebar-title">Accesos</div>
-    <div class="nav-list">
-      <a class="nav-link secondary" href="/lessons/lessons/admin/dashboard.php">← Dashboard</a>
+
+    <div class="es-bottom">
+      <span class="es-section" style="padding-top:0">Accesos</span>
+      <a class="es-item" href="/lessons/lessons/admin/dashboard.php">
+        <i class="ti ti-layout-dashboard" aria-hidden="true"></i>Dashboard</a>
     </div>
   </aside>
 
-  <!-- Panel principal -->
-  <section class="main-content">
+  <div class="eval-main">
+  <div class="eval-scroll">
 
     <?php if ($msg): ?>
     <div class="msg"><?= h($msg) ?></div>
@@ -502,10 +591,10 @@ tr:hover td{background:#f7fcf8;}
     <!-- TAB: Lista de exámenes -->
     <div id="tab-list" class="tab-panel">
       <div class="stats-row">
-        <div class="stat-box"><span class="stat-label">Exámenes activos</span><span class="stat-value"><?= $statsActiveExams ?></span></div>
-        <div class="stat-box"><span class="stat-label">Presentados este mes</span><span class="stat-value"><?= $statsThisMonth ?></span></div>
-        <div class="stat-box"><span class="stat-label">Pendientes de nota</span><span class="stat-value"><?= $statsPending ?></span></div>
-        <div class="stat-box"><span class="stat-label">Links activos</span><span class="stat-value"><?= $statsLinks ?></span></div>
+        <div class="stat-box"><span class="stat-label">Exámenes activos</span><span class="stat-value ora"><?= $statsActiveExams ?></span></div>
+        <div class="stat-box"><span class="stat-label">Presentados este mes</span><span class="stat-value ora"><?= $statsThisMonth ?></span></div>
+        <div class="stat-box"><span class="stat-label">Pendientes de nota</span><span class="stat-value ora"><?= $statsPending ?></span></div>
+        <div class="stat-box"><span class="stat-label">Links activos</span><span class="stat-value ora"><?= $statsLinks ?></span></div>
       </div>
 
       <div class="card">
@@ -940,9 +1029,9 @@ tr:hover td{background:#f7fcf8;}
       <?php endif; ?>
     </div>
 
-  </section>
-</div>
-</main>
+    </div><!-- /eval-scroll -->
+  </div><!-- /eval-main -->
+</div><!-- /eval-shell -->
 
 <!-- Modal: Agregar/Editar pregunta -->
 <div class="modal-bg" id="question-modal">
@@ -1077,7 +1166,9 @@ function showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById('tab-' + name);
   if (panel) panel.classList.add('active');
-  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.querySelectorAll('.es-item').forEach(l => l.classList.remove('active'));
+  const active = document.querySelector('.es-item[onclick*="\'' + name + '\'"]');
+  if (active) active.classList.add('active');
 }
 
 function filterExams() {
@@ -1224,5 +1315,6 @@ showTab(INITIAL_TAB);
 </script>
 </body>
 </html>
+
 
 
