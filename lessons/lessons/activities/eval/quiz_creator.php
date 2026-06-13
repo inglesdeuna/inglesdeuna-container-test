@@ -195,7 +195,30 @@ if ($examId > 0) {
          GROUP BY eq.id ORDER BY eq.position,eq.id"
     );
     $s->execute([$examId]);
-    $examQuestions = $s->fetchAll(PDO::FETCH_ASSOC);
+    $rawQs = $s->fetchAll(PDO::FETCH_ASSOC);
+
+    // Parse PostgreSQL array strings → PHP arrays
+    function _parse_pg_arr(?string $raw): array {
+        if ($raw === null || $raw === '') return [];
+        $raw = trim($raw, '{}');
+        if ($raw === '') return [];
+        $items = []; $cur = ''; $inQ = false;
+        for ($i = 0; $i < strlen($raw); $i++) {
+            $c = $raw[$i];
+            if ($c === '"')  { $inQ = !$inQ; continue; }
+            if ($c === ',' && !$inQ) { $items[] = $cur; $cur = ''; continue; }
+            $cur .= $c;
+        }
+        $items[] = $cur;
+        return array_map('trim', $items);
+    }
+
+    $examQuestions = [];
+    foreach ($rawQs as $q) {
+        $q['answer_texts']    = _parse_pg_arr($q['answer_texts']    ?? '');
+        $q['answer_corrects'] = _parse_pg_arr($q['answer_corrects'] ?? '');
+        $examQuestions[] = $q;
+    }
 }
 
 $mods = json_decode($exam['modalities'] ?? '["online","printed"]', true) ?: ['online','printed'];
@@ -348,7 +371,8 @@ tr:hover td{background:#FAFAFE}
   <?php endif; ?>
   <div class="tb-right">
     <?php if ($examId > 0): ?>
-    <a class="btn btn-sm btn-pur" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>"><i class="ti ti-send" aria-hidden="true"></i>Enviar / Links</a>
+    <a class="btn btn-sm btn-pur" href="eval_viewer.php?preview=1&exam_id=<?= $examId ?>" target="_blank"><i class="ti ti-player-play" aria-hidden="true"></i>Preview</a>
+    <a class="btn btn-sm" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank"><i class="ti ti-printer" aria-hidden="true"></i>Imprimir</a>
     <a class="btn btn-sm" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank"><i class="ti ti-printer" aria-hidden="true"></i>Imprimir</a>
     <?php endif; ?>
     <a class="btn btn-sm" href="<?= h($backUrl) ?>"><i class="ti ti-arrow-left" aria-hidden="true"></i>Volver</a>
@@ -534,16 +558,19 @@ tr:hover td{background:#FAFAFE}
           <div style="font-size:12px;font-weight:600;color:#374151"><?= count($examQuestions) ?> pregunta<?= count($examQuestions)!==1?'s':'' ?> · <?= number_format($totalPts,1) ?> pts total</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <a class="btn btn-pur" href="eval_viewer.php?preview=1&exam_id=<?= $examId ?>" target="_blank">
+            <i class="ti ti-player-play" aria-hidden="true"></i>Preview online
+          </a>
           <a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank">
-            <i class="ti ti-printer" aria-hidden="true"></i>Ver impreso (estudiante)
+            <i class="ti ti-printer" aria-hidden="true"></i>Ver impreso
           </a>
           <a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=key" target="_blank">
             <i class="ti ti-key" aria-hidden="true"></i>Ver clave
           </a>
-          <a class="btn btn-pur" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>">
+          <a class="btn btn-ora" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>">
             <i class="ti ti-send" aria-hidden="true"></i>Enviar / Links
           </a>
-          <a class="btn btn-grn" href="admin_eval.php?tab=list">
+          <a class="btn" href="admin_eval.php?tab=list">
             <i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes
           </a>
         </div>
