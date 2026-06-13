@@ -283,20 +283,48 @@ $exams = $pdo->query(
 )->fetchAll(PDO::FETCH_ASSOC);
 
 // Unidades agrupadas por curso para el selector
-$unitsByCourse = [];
+// Build Level → Phase → Units (same structure as english_courses_created.php)
+$unitsTree = []; // [level_name => [phase_name => [[id, unit_name], ...]]]
 try {
+    // Try english_levels / english_phases structure first
     $uRows = $pdo->query(
-        "SELECT u.id, u.name AS unit_name, c.name AS course_name
+        "SELECT
+            COALESCE(l.name, 'English')   AS level_name,
+            COALESCE(p.name, 'Sin fase')  AS phase_name,
+            p.id                           AS phase_id,
+            u.id,
+            u.name                         AS unit_name
          FROM units u
-         LEFT JOIN courses c ON c.id = u.course_id
-         ORDER BY c.name, u.position, u.name"
+         LEFT JOIN english_phases p  ON p.id  = u.phase_id
+         LEFT JOIN english_levels l  ON l.id  = p.level_id
+         ORDER BY l.id ASC, p.id ASC, u.position ASC, u.name ASC"
     )->fetchAll(PDO::FETCH_ASSOC);
+
     foreach ($uRows as $ur) {
-        $cName = $ur['course_name'] ?? 'Sin curso';
-        $unitsByCourse[$cName][] = $ur;
+        $lName = trim((string)($ur['level_name'] ?? 'English'));
+        $pName = trim((string)($ur['phase_name'] ?? 'Sin fase'));
+        $unitsTree[$lName][$pName][] = [
+            'id'        => $ur['id'],
+            'unit_name' => $ur['unit_name'],
+        ];
     }
-} catch (Exception $e) {
-    // tabla units vacía o sin datos — no bloqueante
+} catch (Exception $e) {}
+
+// Fallback: course-based grouping if phase tables don't exist
+$unitsByCourse = [];
+if (empty($unitsTree)) {
+    try {
+        $uRows = $pdo->query(
+            "SELECT u.id, u.name AS unit_name, c.name AS course_name
+             FROM units u
+             LEFT JOIN courses c ON c.id = u.course_id
+             ORDER BY c.name, u.name"
+        )->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($uRows as $ur) {
+            $cName = $ur['course_name'] ?? 'Sin curso';
+            $unitsByCourse[$cName][] = $ur;
+        }
+    } catch (Exception $e) {}
 }
 
 $currentExam = null;
@@ -802,17 +830,33 @@ tr:hover td{background:#FAFAFE;}
           </div>
           <div class="form-group">
             <label>Unidad asociada <span style="font-weight:400;color:var(--muted)">(opcional — para exámenes de unidad con link compartible)</span></label>
-            <select name="unit_id">
+            <select name="unit_id" style="font-size:13px;">
               <option value="">— Sin unidad —</option>
-              <?php foreach ($unitsByCourse as $courseName => $courseUnits): ?>
-              <optgroup label="<?= h($courseName) ?>">
-                <?php foreach ($courseUnits as $u): ?>
-                <option value="<?= h($u['id']) ?>" <?= ($currentExam['unit_id'] ?? '') === $u['id'] ? 'selected' : '' ?>>
-                  <?= h($u['unit_name']) ?>
-                </option>
+              <?php if (!empty($unitsTree)): ?>
+                <?php foreach ($unitsTree as $levelName => $phases): ?>
+                  <?php foreach ($phases as $phaseName => $punits): ?>
+                  <optgroup label="<?= h($levelName . ' · ' . $phaseName) ?>">
+                    <?php foreach ($punits as $u): ?>
+                    <option value="<?= h($u['id']) ?>"
+                      <?= ((string)($currentExam['unit_id'] ?? '')) === (string)$u['id'] ? 'selected' : '' ?>>
+                      <?= h($u['unit_name']) ?>
+                    </option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                  <?php endforeach; ?>
                 <?php endforeach; ?>
-              </optgroup>
-              <?php endforeach; ?>
+              <?php else: ?>
+                <?php foreach ($unitsByCourse as $courseName => $courseUnits): ?>
+                <optgroup label="<?= h($courseName) ?>">
+                  <?php foreach ($courseUnits as $u): ?>
+                  <option value="<?= h($u['id']) ?>"
+                    <?= ((string)($currentExam['unit_id'] ?? '')) === (string)$u['id'] ? 'selected' : '' ?>>
+                    <?= h($u['unit_name']) ?>
+                  </option>
+                  <?php endforeach; ?>
+                </optgroup>
+                <?php endforeach; ?>
+              <?php endif; ?>
             </select>
           </div>
           <div class="form-row-3">
