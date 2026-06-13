@@ -88,7 +88,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['admin_username'] ?? $_SESSION['teacher_username'] ?? 'admin']);
                 $examId = (int) $stmt->fetchColumn();
             }
-            header('Location: quiz_creator.php?unit='.$unitId.'&exam_id='.$examId.'&msg=saved');
+            // Keep unit_id from POST when unitId not in GET
+            $redirectUnit = $unitId ?: (int)($_POST['unit_id'] ?? 0);
+            header('Location: quiz_creator.php?unit='.$redirectUnit.'&exam_id='.$examId.'&msg=saved');
             exit;
         }
     }
@@ -97,6 +99,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'save_question') {
         $examId  = (int) ($_POST['exam_id'] ?? 0);
         $qId     = (int) ($_POST['question_id'] ?? 0);
+        // Resolve unitId for redirect
+        if (!$unitId && $examId > 0) {
+            try {
+                $r = $pdo->prepare("SELECT unit_id FROM eval_exams WHERE id=? LIMIT 1");
+                $r->execute([$examId]);
+                $rr = $r->fetch(PDO::FETCH_ASSOC);
+                if ($rr) $unitId = (int)($rr['unit_id'] ?? 0);
+            } catch (Throwable $e) {}
+        }
         $type    = trim($_POST['type'] ?? 'multiple_choice');
         $skill   = trim($_POST['skill'] ?? 'grammar');
         $text    = trim($_POST['question_text'] ?? '');
@@ -131,7 +142,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $aStmt->execute([$qId, $aText, $isCorrect ? 'true' : 'false', $idx]);
         }
 
-        header('Location: quiz_creator.php?unit='.$unitId.'&exam_id='.$examId.'&msg=question_saved');
+        $redirectUnit2 = $unitId ?: (int)($_POST['unit_id'] ?? 0);
+        header('Location: quiz_creator.php?unit='.$redirectUnit2.'&exam_id='.$examId.'&msg=question_saved');
         exit;
     }
 
@@ -140,7 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $qId    = (int) ($_POST['question_id'] ?? 0);
         $examId = (int) ($_POST['exam_id'] ?? 0);
         $pdo->prepare("DELETE FROM eval_questions WHERE id=? AND exam_id=?")->execute([$qId,$examId]);
-        header('Location: quiz_creator.php?unit='.$unitId.'&exam_id='.$examId.'&msg=deleted');
+        $redirectUnit3 = $unitId ?: (int)($_POST['unit_id'] ?? 0);
+        header('Location: quiz_creator.php?unit='.$redirectUnit3.'&exam_id='.$examId.'&msg=deleted');
         exit;
     }
 }
@@ -335,7 +348,7 @@ tr:hover td{background:#FAFAFE}
   <?php endif; ?>
   <div class="tb-right">
     <?php if ($examId > 0): ?>
-    <a class="btn btn-sm btn-pur" href="eval_viewer.php?t=PREVIEW&exam_id=<?= $examId ?>" target="_blank"><i class="ti ti-player-play" aria-hidden="true"></i>Ver online</a>
+    <a class="btn btn-sm btn-pur" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>"><i class="ti ti-send" aria-hidden="true"></i>Enviar / Links</a>
     <a class="btn btn-sm" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank"><i class="ti ti-printer" aria-hidden="true"></i>Imprimir</a>
     <?php endif; ?>
     <a class="btn btn-sm" href="<?= h($backUrl) ?>"><i class="ti ti-arrow-left" aria-hidden="true"></i>Volver</a>
@@ -365,7 +378,7 @@ tr:hover td{background:#FAFAFE}
       <form method="POST">
         <input type="hidden" name="action" value="save_exam">
         <input type="hidden" name="exam_id" value="<?= $examId ?>">
-        <input type="hidden" name="unit_id" value="<?= $unitId ?>">
+        <input type="hidden" name="unit_id" value="<?= $unitId ?: (int)($exam['unit_id'] ?? 0) ?>">
         <div class="row2">
           <div class="fg">
             <label>Nombre del quiz *</label>
@@ -512,19 +525,27 @@ tr:hover td{background:#FAFAFE}
       </tbody>
     </table>
 
-    <?php if ($examId > 0 && count($examQuestions) > 0): ?>
-    <!-- Done banner -->
-    <div style="padding:19px">
-      <div class="done-banner">
-        <i class="ti ti-circle-check" style="font-size:32px;color:#10B981" aria-hidden="true"></i>
-        <div style="flex:1">
-          <div style="font-family:'Fredoka One',sans-serif;font-size:16px;color:var(--ink);margin-bottom:4px">Quiz listo para enviar</div>
-          <div style="font-size:12px;color:var(--muted);font-weight:600"><?= count($examQuestions) ?> preguntas · <?= number_format($totalPts,1) ?> pts · Ahora puedes compartirlo con tus estudiantes</div>
+    <?php if ($examId > 0): ?>
+    <!-- Preview + share section — always visible once exam is saved -->
+    <div style="padding:0 19px 19px">
+      <div style="border-top:1.5px solid var(--line);padding-top:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px">
+        <div>
+          <div style="font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:5px">Previsualizar y compartir</div>
+          <div style="font-size:12px;font-weight:600;color:#374151"><?= count($examQuestions) ?> pregunta<?= count($examQuestions)!==1?'s':'' ?> · <?= number_format($totalPts,1) ?> pts total</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <a class="btn btn-pur" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>"><i class="ti ti-send" aria-hidden="true"></i>Generar links</a>
-          <a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank"><i class="ti ti-printer" aria-hidden="true"></i>Imprimir</a>
-          <a class="btn" href="admin_eval.php?tab=list"><i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes</a>
+          <a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank">
+            <i class="ti ti-printer" aria-hidden="true"></i>Ver impreso (estudiante)
+          </a>
+          <a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=key" target="_blank">
+            <i class="ti ti-key" aria-hidden="true"></i>Ver clave
+          </a>
+          <a class="btn btn-pur" href="admin_eval.php?tab=links&exam_id=<?= $examId ?>">
+            <i class="ti ti-send" aria-hidden="true"></i>Enviar / Links
+          </a>
+          <a class="btn btn-grn" href="admin_eval.php?tab=list">
+            <i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes
+          </a>
         </div>
       </div>
     </div>
