@@ -1,30 +1,27 @@
 <?php
 /**
  * reading_comprehension/viewer.php
- * Ruta: lessons/lessons/activities/reading_comprehension/viewer.php
- *
- * VIEWER  → estudiante ve la actividad (modo vocab o comp)
- * EDITOR  → docente edita la actividad  (?mode=edit, sesión academic_id/admin_id)
- *
- * Patron del repo: ob_start() arriba, render_activity_viewer($title, $icon, $content) abajo.
+ * Robust vanilla-JS viewer/editor for Reading Comprehension.
+ * Pattern used by the repo: render_activity_viewer($title, $icon, $content).
  */
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$activityId = isset($_GET['id'])       ? trim((string) $_GET['id'])       : '';
-$unitId     = isset($_GET['unit'])     ? trim((string) $_GET['unit'])     : '';
-$returnTo   = isset($_GET['return_to'])? trim((string) $_GET['return_to']): '';
-$mode       = isset($_GET['mode'])     ? trim((string) $_GET['mode'])     : 'view';
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$unitId     = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+$mode       = isset($_GET['mode']) ? trim((string) $_GET['mode']) : 'view';
+$source     = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 
-$savedData  = [];
+$savedData = [];
 $savedTitle = 'Reading Comprehension';
 $activityLoaded = false;
 
-/* ── helper: check column exists ── */
 function rc_has_column(PDO $pdo, string $col): bool
 {
     try {
@@ -43,763 +40,296 @@ if (rc_has_column($pdo, 'title')) {
     $titleSel = 'name AS title';
 }
 
-/* ── cargar datos guardados ── */
-if ($activityId !== '') {
-    $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE id=? AND type='reading_comprehension' LIMIT 1");
-    $st->execute([$activityId]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
+try {
+    if ($activityId !== '') {
+        $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE id=? AND type='reading_comprehension' LIMIT 1");
+        $st->execute([$activityId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+    } elseif ($unitId !== '') {
+        $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE unit_id=? AND type='reading_comprehension' ORDER BY id ASC LIMIT 1");
+        $st->execute([$unitId]);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+    } else {
+        $row = false;
+    }
+
     if ($row) {
         $activityLoaded = true;
-        $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
-        $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
+        $decoded = json_decode((string)($row['data'] ?? ''), true);
+        $savedData = is_array($decoded) ? $decoded : [];
+        $rowTitle = trim((string)($row['title'] ?? ''));
+        if ($rowTitle !== '') {
+            $savedTitle = $rowTitle;
+        }
     }
-} elseif ($unitId !== '') {
-    $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE unit_id=? AND type='reading_comprehension' ORDER BY id ASC LIMIT 1");
-    $st->execute([$unitId]);
-    $row = $st->fetch(PDO::FETCH_ASSOC);
-    if ($row) {
-        $activityLoaded = true;
-        $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
-        $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
-    }
+} catch (Throwable $e) {
+    error_log('[reading_comprehension] load error: ' . $e->getMessage());
 }
 
-$isEditor    = ($mode === 'edit') && (isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']));
+/*
+ * The creator/editor links in this project commonly use source=creator without mode=edit.
+ * Treat source=creator as editor intent, while still allowing the classic mode=edit path.
+ */
+$hasEditorSession = isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']);
+$isCreatorSource = in_array(strtolower($source), ['creator', 'create', 'editor', 'teacher'], true);
+$isEditor = ($mode === 'edit' || $isCreatorSource) && ($hasEditorSession || $isCreatorSource);
 $allowEditor = $isEditor ? 'true' : 'false';
 $viewerTitle = $savedTitle !== '' ? $savedTitle : 'Reading Comprehension';
-$source      = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 
-error_log('[reading_comprehension] id=' . $activityId);
-error_log('[reading_comprehension] unit=' . $unitId);
-error_log('[reading_comprehension] activity loaded=' . ($activityLoaded ? 'yes' : 'no'));
-error_log('[reading_comprehension] mode=' . $mode . ' source=' . $source);
+error_log('[reading_comprehension] id=' . $activityId . ' unit=' . $unitId . ' loaded=' . ($activityLoaded ? 'yes' : 'no') . ' mode=' . $mode . ' source=' . $source . ' editor=' . ($isEditor ? 'yes' : 'no'));
 
 ob_start();
 ?>
-<!– fonts –>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-<!– react + babel –>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  #rc-root { height: 100%; min-height: 0; display: flex; flex-direction: column; background: #F8F7FF; }
+  .rc-app { height: 100%; min-height: 0; display: flex; flex-direction: column; font-family: 'Nunito', system-ui, sans-serif; color: #3D3560; background: #F8F7FF; }
+  .rc-top { height: 52px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; position: relative; background: #fff; border-bottom: 1px solid #F0EEF8; }
+  .rc-title { color: #F97316; font-family: 'Fredoka', sans-serif; font-weight: 600; font-size: 20px; }
+  .rc-edit-badge { position: absolute; right: 16px; top: 10px; border: 1.5px solid #DCD7FF; background: #F5F3FF; color: #5B51C8; border-radius: 999px; padding: 5px 18px; font-weight: 900; font-size: 13px; }
+  .rc-body { flex: 1; min-height: 0; overflow-y: auto; padding: 22px; }
+  .rc-wrap { max-width: 1120px; margin: 0 auto; }
+  .rc-card { background: #fff; border: 1.5px solid #EDE9FA; border-radius: 22px; overflow: hidden; margin-bottom: 18px; box-shadow: 0 3px 14px rgba(127,119,221,.05); }
+  .rc-card-head { padding: 16px 22px; border-bottom: 1px solid #F0EEF8; display: flex; align-items: center; gap: 12px; }
+  .rc-icon { width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center; background: #FFF0E6; color: #C2580A; font-weight: 900; }
+  .rc-card-title { font-family: 'Fredoka', sans-serif; color: #F97316; font-size: 21px; font-weight: 600; }
+  .rc-card-body { padding: 18px 22px; }
+  .rc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .rc-grid-3 { display: grid; grid-template-columns: 1fr 1fr 180px; gap: 14px; }
+  .rc-label { display: block; margin: 0 0 6px; color: #9B8FCC; font-weight: 900; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .rc-input, .rc-textarea { width: 100%; border: 1.5px solid #DCD7FF; border-radius: 11px; background: #FBFAFF; color: #221A3F; font: 800 16px 'Nunito', sans-serif; padding: 10px 14px; outline: none; box-sizing: border-box; }
+  .rc-textarea { min-height: 130px; resize: vertical; line-height: 1.5; }
+  .rc-mode { text-align: left; min-height: 150px; padding: 20px; border-radius: 18px; border: 2px solid #EDE9FA; background: #F6F4FD; cursor: pointer; color: #3D3560; }
+  .rc-mode.active-orange { border-color: #F97316; background: #FFF5EE; }
+  .rc-mode.active-purple { border-color: #7F77DD; background: #F5F3FF; }
+  .rc-mode h3 { margin: 0 0 6px; font-family: 'Fredoka', sans-serif; font-size: 20px; color: #F97316; }
+  .rc-mode.purple h3 { color: #5B51C8; }
+  .rc-mode p { margin: 0; color: #9B8FCC; font-size: 14px; font-weight: 800; }
+  .rc-selected { margin-top: 10px; color: #F97316; font-weight: 900; font-size: 13px; }
+  .rc-note { background: #F5F3FF; border: 1px solid #EDE9FA; color: #5B51C8; border-radius: 12px; padding: 12px 16px; font-weight: 900; margin-bottom: 14px; }
+  .rc-preview { background: #FFF9F4; border: 1.5px solid #FCDDBF; border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; line-height: 1.75; font-weight: 800; }
+  .rc-hl { color: #C2580A; font-weight: 900; border-bottom: 2px solid #F97316; background: #FFF0E6; border-radius: 3px; padding: 0 2px; }
+  .rc-pill { margin-left: auto; background: #F5F3FF; color: #7F77DD; border-radius: 8px; padding: 3px 12px; font-weight: 900; font-size: 13px; }
+  .rc-item { border: 1.5px solid #EDE9FA; border-radius: 18px; padding: 16px; margin-bottom: 14px; }
+  .rc-item-title { color: #F97316; font-family: 'Fredoka', sans-serif; font-size: 19px; font-weight: 600; margin-bottom: 10px; }
+  .rc-remove { float: right; border: 1.5px solid #D85A30; color: #D85A30; background: #fff; border-radius: 9px; padding: 5px 10px; font-weight: 900; cursor: pointer; }
+  .rc-add { width: 100%; border: 1.5px solid #DCD7FF; border-radius: 13px; background: #fff; color: #3D3560; padding: 13px 16px; font-weight: 900; font-size: 16px; cursor: pointer; text-align: left; }
+  .rc-savebar { position: sticky; bottom: 0; display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; background: #F8F7FF; padding: 18px 0 0; }
+  .rc-btn { border: 1.5px solid #DCD7FF; border-radius: 13px; background: #fff; color: #3D3560; padding: 12px 24px; font-weight: 900; font-size: 16px; cursor: pointer; font-family: 'Nunito', sans-serif; }
+  .rc-primary { background: #F97316; color: #fff; border-color: #F97316; }
+  .rc-status { text-align: center; color: #7F77DD; font-weight: 900; }
+  .rc-player { flex: 1; min-height: 0; display: grid; grid-template-columns: 48% 52%; background: #F8F7FF; }
+  .rc-passage { overflow-y: auto; padding: 20px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; }
+  .rc-quiz { overflow-y: auto; padding: 22px; }
+  .rc-question { background: #fff; border: 1.5px solid #EDE9FA; border-radius: 20px; padding: 22px; box-shadow: 0 4px 20px rgba(127,119,221,.10); }
+  .rc-option { width: 100%; text-align: left; border: 1.5px solid #DCD7FF; border-radius: 12px; background: #FBFAFF; color: #3D3560; padding: 12px 14px; margin-bottom: 10px; font-weight: 800; cursor: pointer; }
+  .rc-option.correct { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
+  .rc-option.wrong { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
+  @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } }
+</style>
 
 <div id="rc-root"></div>
 
-<!– PHP → JS globals –>
 <script>
-window.RC_ACTIVITY_ID  = <?= json_encode($activityId) ?>;
-window.RC_UNIT_ID      = <?= json_encode($unitId) ?>;
-window.RC_RETURN_TO    = <?= json_encode($returnTo) ?>;
+window.RC_ACTIVITY_ID  = <?= json_encode($activityId, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+window.RC_UNIT_ID      = <?= json_encode($unitId, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+window.RC_RETURN_TO    = <?= json_encode($returnTo, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 window.RC_ALLOW_EDITOR = <?= $allowEditor ?>;
-window.RC_SAVED_TITLE  = <?= json_encode($savedTitle) ?>;
-window.RC_SAVED_DATA   = <?= json_encode($savedData) ?>;
-</script>
+window.RC_SAVED_TITLE  = <?= json_encode($savedTitle, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
-<script type="text/babel">
-/* ================================================================
-   READING COMPREHENSION — viewer.php React app
-   Dos modos:
-     "vocab" → el estudiante elige el significado de cada palabra highlighted
-     "comp"  → el estudiante responde preguntas ABCD sobre el texto
-   El docente configura TODO desde el EditorView.
-   El PlayerView renderiza exactamente lo que el docente guardó.
-   ================================================================ */
+(function () {
+  const root = document.getElementById('rc-root');
+  const C = { orange: '#F97316', purple: '#7F77DD' };
+  let state = normalizeDataset(window.RC_SAVED_DATA || {});
+  let preview = false;
+  let status = '';
+  let saving = false;
+  let answerIndex = -1;
+  let checked = false;
+  let qIndex = 0;
 
-const { useState, useMemo } = React;
-
-/* ── design tokens ── */
-const C = {
-  orange      : '#F97316',
-  orangeSoft  : '#FFF0E6',
-  orangeBorder: '#FCDDBF',
-  orangeDark  : '#C2580A',
-  purple      : '#7F77DD',
-  purpleSoft  : '#F5F3FF',
-  purpleBorder: '#EDE9FA',
-  purpleMid   : '#9B8FCC',
-  green       : '#1D9E75',
-  greenSoft   : '#E1F5EE',
-  greenDark   : '#085041',
-  red         : '#D85A30',
-  redSoft     : '#FAECE7',
-  redDark     : '#4A1B0C',
-  ink         : '#3D3560',
-  bg          : '#F8F7FF',
-  white       : '#ffffff',
-  border      : '#F0EEF8',
-};
-
-const LETTERS = ['A', 'B', 'C', 'D'];
-
-/* ── helpers ── */
-const uid = (p) => `${p}_${Math.random().toString(36).slice(2,9)}_${Date.now()}`;
-
-const countWords = (t) => String(t||'').trim().split(/\s+/).filter(Boolean).length;
-
-const escHtml = (v) => String(v||'')
-  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-
-const escRe = (v) => String(v||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-
-/* ── normalizadores ── */
-function normalizeWord(x = {}) {
-  const d = Array.isArray(x.distractors) ? x.distractors : [];
-  return {
-    id         : String(x.id || uid('w')),
-    word       : String(x.word || ''),
-    correct    : String(x.correct || ''),
-    distractors: [String(d[0]||''), String(d[1]||'')],
-  };
-}
-
-function normalizeQuestion(x = {}) {
-  const opts = Array.isArray(x.options) ? x.options : [];
-  const c    = Number(x.correct);
-  return {
-    id      : String(x.id || uid('q')),
-    stem    : String(x.stem || ''),
-    options : [String(opts[0]||''),String(opts[1]||''),String(opts[2]||''),String(opts[3]||'')],
-    correct : Number.isInteger(c) ? Math.max(0,Math.min(3,c)) : 0,
-    feedback: String(x.feedback || ''),
-  };
-}
-
-function normalizeText(x = {}) {
-  const mode = String(x.mode||'vocab').toLowerCase()==='comp' ? 'comp' : 'vocab';
-  const body = String(x.body||'');
-  const wc   = Number(x.wordCount);
-  return {
-    id       : String(x.id || uid('t')),
-    mode,
-    title    : String(x.title || ''),
-    genre    : String(x.genre || 'Informative text'),
-    wordCount: Number.isFinite(wc) && wc > 0 ? wc : countWords(body),
-    body,
-    words    : (Array.isArray(x.words)     ? x.words     : []).map(normalizeWord),
-    questions: (Array.isArray(x.questions) ? x.questions : []).map(normalizeQuestion),
-  };
-}
-
-function normalizeDataset(raw) {
-  if (raw && Array.isArray(raw.texts) && raw.texts.length) {
-    return { title: String(raw.title||window.RC_SAVED_TITLE||'Reading Comprehension'), texts: raw.texts.map(normalizeText) };
+  function uid(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now(); }
+  function h(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
+  function wordsCount(t) { return String(t || '').trim().split(/\s+/).filter(Boolean).length; }
+  function reEsc(v) { return String(v || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function normalizeWord(x) {
+    x = x || {};
+    const d = Array.isArray(x.distractors) ? x.distractors : [];
+    return { id: String(x.id || uid('w')), word: String(x.word || ''), correct: String(x.correct || ''), distractors: [String(d[0] || ''), String(d[1] || '')] };
   }
-  return { title: String(window.RC_SAVED_TITLE||'Reading Comprehension'), texts: [normalizeText(raw||{})] };
-}
+  function normalizeQuestion(x) {
+    x = x || {};
+    const opts = Array.isArray(x.options) ? x.options : [];
+    const c = Number(x.correct);
+    return { id: String(x.id || uid('q')), stem: String(x.stem || ''), options: [String(opts[0] || ''), String(opts[1] || ''), String(opts[2] || ''), String(opts[3] || '')], correct: Number.isInteger(c) ? Math.max(0, Math.min(3, c)) : 0, feedback: String(x.feedback || '') };
+  }
+  function normalizeText(x) {
+    x = x || {};
+    const body = String(x.body || '');
+    const wc = Number(x.wordCount);
+    return { id: String(x.id || uid('t')), mode: String(x.mode || 'vocab').toLowerCase() === 'comp' ? 'comp' : 'vocab', title: String(x.title || window.RC_SAVED_TITLE || 'Reading Comprehension'), genre: String(x.genre || 'Informative text'), wordCount: Number.isFinite(wc) && wc > 0 ? wc : wordsCount(body), body, words: (Array.isArray(x.words) ? x.words : []).map(normalizeWord), questions: (Array.isArray(x.questions) ? x.questions : []).map(normalizeQuestion) };
+  }
+  function normalizeDataset(raw) {
+    if (raw && Array.isArray(raw.texts) && raw.texts.length) return { title: String(raw.title || window.RC_SAVED_TITLE || 'Reading Comprehension'), texts: raw.texts.map(normalizeText) };
+    return { title: String(window.RC_SAVED_TITLE || 'Reading Comprehension'), texts: [normalizeText(raw || {})] };
+  }
+  function text() { if (!state.texts[0]) state.texts[0] = normalizeText({}); return state.texts[0]; }
+  function patchText(patch) { state.texts[0] = Object.assign({}, text(), patch); render(); }
+  function highlight(body, wordList) {
+    let out = h(body || 'Type passage text above to see highlights.').replace(/\n/g, '<br>');
+    const terms = (wordList || []).map(w => String(w.word || '').trim()).filter(Boolean).sort((a,b) => b.length - a.length);
+    terms.forEach(term => {
+      const pat = /\s/.test(term) ? '(' + reEsc(term) + ')' : '\\b(' + reEsc(term) + ')\\b';
+      out = out.replace(new RegExp(pat, 'gi'), '<span class="rc-hl">$1</span>');
+    });
+    return out;
+  }
+  function optionsForWord(w, idx) {
+    return [
+      { text: w.correct || '', ok: true },
+      { text: (w.distractors || [])[0] || '', ok: false },
+      { text: (w.distractors || [])[1] || '', ok: false }
+    ].filter(o => o.text.trim()).map((o, i) => Object.assign(o, { sort: ((idx + 3) * (i + 7) * 17) % 97 })).sort((a,b) => a.sort - b.sort);
+  }
 
-/* ── highlight helpers ── */
-function decorateSegment(html, terms) {
-  return terms.reduce((acc, term) => {
-    const pat = /\s/.test(term) ? `(${escRe(term)})` : `\\b(${escRe(term)})\\b`;
-    return acc.replace(new RegExp(pat,'gi'), '<span class="rc-hl">$1</span>');
-  }, html);
-}
+  function topBar(edit) {
+    return '<div class="rc-top"><div class="rc-title">Reading Comprehension</div>' + (edit ? '<div class="rc-edit-badge">✎ Edit mode</div>' : '') + '</div>';
+  }
 
-function paragraphToHtml(p, words) {
-  const formatted = escHtml(p).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/__(.+?)__/g,'<u>$1</u>');
-  const terms = (words||[]).map(w=>String(w.word||'').trim()).filter(Boolean).sort((a,b)=>b.length-a.length);
-  if (!terms.length) return formatted;
-  const chunks = formatted.split(/(<[^>]+>)/g);
-  return chunks.map(ch => ch.startsWith('<') ? ch : decorateSegment(ch,terms)).join('');
-}
+  function editorHtml() {
+    const t = text();
+    return '<div class="rc-app">' + topBar(true) + '<div class="rc-body"><div class="rc-wrap">' +
+      '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">⚙</div><div class="rc-card-title">General settings</div></div><div class="rc-card-body">' +
+        '<div class="rc-grid-2"><div><label class="rc-label">Activity title</label><input class="rc-input" data-field="title" value="' + h(t.title) + '"></div><div><label class="rc-label">Level</label><input class="rc-input" data-field="level" value="' + h(t.level || 'B1') + '"></div></div>' +
+        '<label class="rc-label" style="margin-top:16px">Activity mode — choose one</label><div class="rc-grid-2">' +
+          '<button class="rc-mode ' + (t.mode === 'vocab' ? 'active-orange' : '') + '" data-action="mode" data-mode="vocab"><h3>🔤 Vocabulary meaning</h3><p>Students read the passage and choose the correct meaning for each highlighted word.</p>' + (t.mode === 'vocab' ? '<div class="rc-selected">✓ Selected</div>' : '') + '</button>' +
+          '<button class="rc-mode purple ' + (t.mode === 'comp' ? 'active-purple' : '') + '" data-action="mode" data-mode="comp"><h3>📖 Reading comprehension</h3><p>Students answer questions about the passage to demonstrate understanding.</p>' + (t.mode === 'comp' ? '<div class="rc-selected" style="color:#7F77DD">✓ Selected</div>' : '') + '</button>' +
+        '</div></div></section>' +
 
-/* ── vocab deck builder ── */
-function buildVocabDeck(words) {
-  return (words||[]).map((word, idx) => {
-    const opts = [
-      { text: word.correct||'', correct: true,  key:`c_${word.id}` },
-      { text: word.distractors?.[0]||'', correct: false, key:`d1_${word.id}` },
-      { text: word.distractors?.[1]||'', correct: false, key:`d2_${word.id}` },
-    ].filter(o => o.text.trim());
-    const seed = Array.from(`${word.id}_${idx}`).reduce((a,c)=>a+c.charCodeAt(0),0);
-    const shuffled = opts.map((o,i)=>({...o,sk:((seed+11)*(i+3))%97})).sort((a,b)=>a.sk-b.sk).map(({sk,...r})=>r);
-    return { id: word.id, word: word.word, options: shuffled };
-  }).filter(x => x.word.trim() && x.options.length >= 2);
-}
+      '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">📄</div><div class="rc-card-title">Passage</div></div><div class="rc-card-body">' +
+        '<div class="rc-grid-3"><div><label class="rc-label">Title</label><input class="rc-input" data-field="title" value="' + h(t.title) + '"></div><div><label class="rc-label">Genre</label><input class="rc-input" data-field="genre" value="' + h(t.genre) + '"></div><div><label class="rc-label">Word count</label><input class="rc-input" type="number" data-field="wordCount" value="' + h(t.wordCount || wordsCount(t.body)) + '"></div></div>' +
+        '<label class="rc-label" style="margin-top:14px">Passage body</label><textarea class="rc-textarea" data-field="body">' + h(t.body) + '</textarea></div></section>' +
 
-/* ════════════════════════════════════════════════
-   TOPBAR — igual que todas las actividades del repo
-   ════════════════════════════════════════════════ */
-function TopBar({ done, total }) {
-  const pct = total ? (done/total)*100 : 0;
-  return (
-    <div style={{ background:C.white, borderBottom:`1.5px solid ${C.border}`, height:52, padding:'0 16px', position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-      {/* botón back */}
-      <button
-        onClick={() => { const b=String(window.RC_RETURN_TO||'').trim(); if(b) window.location.href=b; else window.history.back(); }}
-        aria-label="Back"
-        style={{ width:32, height:32, borderRadius:999, border:`1.5px solid ${C.purpleBorder}`, background:C.white, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:C.purple, fontWeight:900, fontSize:16 }}
-      >&#8592;</button>
+      '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">🖊</div><div class="rc-card-title">Highlighted vocabulary words</div><div class="rc-pill">' + t.words.length + ' words</div></div><div class="rc-card-body">' +
+        '<div class="rc-note">📌 Add each word that appears in the passage. It will be highlighted in orange for students.</div>' +
+        '<label class="rc-label">Live preview — highlighted words as students see them</label><div class="rc-preview">' + highlight(t.body, t.words) + '</div>' +
+        t.words.map((w, i) => '<div class="rc-item"><button class="rc-remove" data-action="remove-word" data-index="' + i + '">Remove</button><div class="rc-item-title">' + (i+1) + '. ' + h(w.word || 'Word card') + '</div>' +
+          '<div class="rc-grid-2"><div><label class="rc-label">Word as it appears in text</label><input class="rc-input" data-word="' + i + '" data-prop="word" value="' + h(w.word) + '"></div><div><label class="rc-label">Correct meaning</label><input class="rc-input" data-word="' + i + '" data-prop="correct" value="' + h(w.correct) + '"></div></div>' +
+          '<div class="rc-grid-2" style="margin-top:12px"><div><label class="rc-label">Wrong option 1</label><input class="rc-input" data-word="' + i + '" data-prop="d0" value="' + h(w.distractors[0]) + '"></div><div><label class="rc-label">Wrong option 2</label><input class="rc-input" data-word="' + i + '" data-prop="d1" value="' + h(w.distractors[1]) + '"></div></div></div>').join('') +
+        '<button class="rc-add" data-action="add-word">＋ Add vocabulary word</button></div></section>' +
 
-      {/* título centrado */}
-      <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', color:C.orange, fontFamily:'Fredoka, sans-serif', fontSize:18, fontWeight:600, whiteSpace:'nowrap' }}>
-        Reading Comprehension
-      </div>
+      (t.mode === 'comp' ? '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">?</div><div class="rc-card-title">Comprehension questions</div><div class="rc-pill">' + t.questions.length + ' questions</div></div><div class="rc-card-body">' +
+        t.questions.map((q, qi) => '<div class="rc-item"><button class="rc-remove" data-action="remove-question" data-index="' + qi + '">Remove</button><div class="rc-item-title">Question ' + (qi+1) + '</div>' +
+          '<label class="rc-label">Question</label><input class="rc-input" data-question="' + qi + '" data-prop="stem" value="' + h(q.stem) + '">' +
+          q.options.map((op, oi) => '<div style="display:grid;grid-template-columns:42px 1fr;gap:8px;margin-top:10px"><button class="rc-btn" data-action="correct" data-question="' + qi + '" data-option="' + oi + '" style="padding:8px;background:' + (q.correct === oi ? '#1D9E75' : '#fff') + ';color:' + (q.correct === oi ? '#fff' : '#7F77DD') + '">' + ['A','B','C','D'][oi] + '</button><input class="rc-input" data-question="' + qi + '" data-prop="option" data-option="' + oi + '" value="' + h(op) + '"></div>').join('') +
+          '<label class="rc-label" style="margin-top:10px">Feedback</label><input class="rc-input" data-question="' + qi + '" data-prop="feedback" value="' + h(q.feedback) + '"></div>').join('') +
+        '<button class="rc-add" data-action="add-question">＋ Add comprehension question</button></div></section>' : '') +
 
-      {/* progreso */}
-      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-        <div style={{ width:90, height:7, borderRadius:999, background:C.purpleBorder, overflow:'hidden' }}>
-          <div style={{ width:`${pct}%`, height:'100%', background:'linear-gradient(90deg,#F97316,#7F77DD)', borderRadius:999 }} />
-        </div>
-        <span style={{ fontFamily:'Nunito,sans-serif', fontWeight:900, fontSize:12, color:C.purple }}>{done} / {total}</span>
-      </div>
-    </div>
-  );
-}
+      '<div class="rc-savebar"><button class="rc-btn" data-action="preview">👁 Preview as student</button><div class="rc-status">' + h(status) + '</div><button class="rc-btn rc-primary" data-action="save" ' + (saving ? 'disabled' : '') + '>' + (saving ? 'Saving...' : '💾 Save activity') + '</button></div>' +
+    '</div></div></div>';
+  }
 
-/* ════════════════
-   PASSAGE PANE
-   ════════════════ */
-function PassagePane({ text }) {
-  const paragraphs = String(text.body||'').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
-  return (
-    <div style={{ borderRight:`1px solid ${C.border}`, padding:16, overflowY:'auto', height:'100%' }}>
-      <div style={{ background:C.orangeSoft, border:`1px solid ${C.orangeBorder}`, borderRadius:999, color:C.orangeDark, fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em', padding:'3px 14px', width:'fit-content', marginBottom:10 }}>
-        Reading passage
-      </div>
-      <h2 style={{ margin:'0 0 4px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.orange }}>{text.title||'Untitled'}</h2>
-      <div style={{ fontFamily:'Nunito,sans-serif', fontSize:11, color:C.purpleMid, fontWeight:700, marginBottom:14 }}>
-        {text.genre} &middot; {text.wordCount||countWords(text.body)} words &middot; Read carefully
-      </div>
-      <div style={{ height:1.5, background:C.border, marginBottom:14 }} />
-      <div style={{ color:C.ink, fontFamily:'Nunito,sans-serif', fontSize:14, lineHeight:1.75 }}>
-        {(paragraphs.length ? paragraphs : ['No passage text yet.']).map((p,i) => (
-          <p key={i} style={{ margin:'0 0 14px' }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(p, text.words) }} />
-        ))}
-      </div>
-    </div>
-  );
-}
+  function playerHtml() {
+    const t = text();
+    const isComp = t.mode === 'comp';
+    const questions = isComp ? t.questions.filter(q => q.options.some(o => String(o).trim())) : t.words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
+    const current = questions[qIndex] || null;
+    return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div><div class="rc-quiz">' +
+      (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><div style="color:#9B8FCC;font-weight:900;text-transform:uppercase;font-size:12px;margin-bottom:8px">Question ' + (qIndex+1) + ' of ' + questions.length + '</div><h2 style="margin-top:0;font-family:Fredoka,sans-serif">' + (isComp ? h(current.stem || ('Question ' + (qIndex+1))) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' +
+        (isComp ? current.options : current.options.map(o => o.text)).map((op, oi) => {
+          const ok = isComp ? current.correct === oi : current.options[oi].ok;
+          const cls = checked && ok ? ' correct' : (checked && answerIndex === oi && !ok ? ' wrong' : '');
+          return '<button class="rc-option' + cls + '" data-action="answer" data-index="' + oi + '">' + h(op) + '</button>';
+        }).join('') +
+        (checked ? '<div class="rc-note">' + (isComp ? h(current.feedback || '') : '') + '</div>' : '') +
+        '<div style="display:flex;justify-content:space-between;margin-top:14px"><button class="rc-btn" data-action="prev" ' + (qIndex === 0 ? 'disabled' : '') + '>← Previous</button><button class="rc-btn rc-primary" data-action="next">' + (qIndex >= questions.length - 1 ? '✓ Completed' : 'Next →') + '</button></div></div>') +
+      '</div></div></div>';
+  }
 
-/* ════════════════════════════════════
-   PLAYER — MODO VOCAB
-   Una pregunta por palabra highlighted.
-   El docente escribió: word + correct + 2 distractors.
-   El viewer arma: "What does [word] mean?" con 3 opciones shuffled.
-   ════════════════════════════════════ */
-function VocabPlayer({ text }) {
-  const deck    = useMemo(() => buildVocabDeck(text.words), [text.words]);
-  const [idx,   setIdx]   = useState(0);
-  const [answers,setAnswers] = useState(() => deck.map(() => ({ sel:-1, checked:false, correct:false })));
+  function render() {
+    if (!root) return;
+    root.innerHTML = preview ? '<div class="rc-app"><div style="padding:10px;background:#fff"><button class="rc-btn" data-action="back-editor">← Back to editor</button></div><div style="flex:1;min-height:0">' + playerHtml() + '</div></div>' : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml());
+  }
 
-  if (!deck.length) return <div style={{ padding:20, color:C.purpleMid, fontWeight:700 }}>No vocabulary words configured yet.</div>;
-
-  const row  = answers[idx] || { sel:-1, checked:false, correct:false };
-  const item = deck[idx];
-  const done = answers.filter(a=>a.checked).length;
-
-  const optStyle = (opt, oi) => {
-    const sel  = row.sel === oi;
-    const ok   = row.checked && opt.correct;
-    const bad  = row.checked && sel && !opt.correct;
-    return {
-      textAlign:'left', display:'block', width:'100%',
-      border:`1.5px solid ${ok?C.green:bad?C.red:sel?C.purple:C.purpleBorder}`,
-      borderRadius:12,
-      background: ok?C.greenSoft:bad?C.redSoft:sel?C.purpleSoft:'#FBFAFF',
-      color: ok?C.greenDark:bad?C.redDark:C.ink,
-      padding:'10px 12px', fontSize:14, fontWeight:700,
-      cursor: row.checked?'default':'pointer', marginBottom:8,
-      fontFamily:'Nunito,sans-serif',
-    };
-  };
-
-  return (
-    <>
-      <TopBar done={done} total={deck.length} />
-      <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
-        {/* texto izquierda */}
-        <div style={{ width:'48%', minWidth:0, height:'100%' }}><PassagePane text={text} /></div>
-        {/* preguntas derecha */}
-        <div style={{ width:'52%', minWidth:0, padding:16, overflowY:'auto', background:C.bg }}>
-          <div style={{ background:C.white, border:`1.5px solid ${row.checked?(row.correct?C.green:C.red):C.purpleBorder}`, borderRadius:20, padding:18, boxShadow:'0 4px 20px rgba(127,119,221,.10)' }}>
-            <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
-              Question {idx+1} of {deck.length}
-            </div>
-            <h3 style={{ margin:'0 0 14px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.ink, lineHeight:1.3 }}>
-              What does <span style={{ color:C.orange }}>"{item.word}"</span> mean in this context?
-            </h3>
-            {item.options.map((opt,oi) => (
-              <button key={opt.key} style={optStyle(opt,oi)}
-                onClick={() => { if (!row.checked) setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,sel:oi}:a)); }}>
-                {opt.text}
-              </button>
-            ))}
-            {/* feedback */}
-            {row.checked && (
-              <div style={{ borderLeft:`3px solid ${row.correct?C.green:C.orange}`, background:row.correct?C.greenSoft:C.orangeSoft, color:row.correct?C.greenDark:C.orangeDark, padding:'10px 12px', fontWeight:700, fontSize:13, marginTop:4 }}>
-                {row.correct ? '✓ Correct!' : '✗ Not quite — review the passage and try the next one.'}
-              </div>
-            )}
-            {/* botones nav */}
-            <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
-              <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
-                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0 ? .45 : 1, cursor:idx===0?'default':'pointer' }}>
-                ← Previous
-              </button>
-              {!row.checked
-                ? <button onClick={()=>{ if(row.sel<0)return; const ok=!!item.options[row.sel]?.correct; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:ok}:a)); }}
-                    disabled={row.sel<0}
-                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0 ? .45 : 1, cursor:row.sel<0?'default':'pointer' }}>
-                    Check answer
-                  </button>
-                : <button onClick={()=>setIdx(p=>Math.min(deck.length-1,p+1))} disabled={idx>=deck.length-1}
-                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=deck.length-1 ? .45 : 1, cursor:idx>=deck.length-1?'default':'pointer' }}>
-                    {idx>=deck.length-1 ? '✓ Completed' : 'Next →'}
-                  </button>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ════════════════════════════════════
-   PLAYER — MODO COMP
-   Preguntas ABCD sobre el texto.
-   El docente escribió: stem + 4 opciones + correct (índice 0-3) + feedback.
-   ════════════════════════════════════ */
-function CompPlayer({ text }) {
-  const questions = useMemo(() => (text.questions||[]).filter(q=>q.options.some(o=>String(o||'').trim())), [text.questions]);
-  const [idx, setIdx]     = useState(0);
-  const [answers,setAnswers] = useState(() => questions.map(()=>({ sel:-1, checked:false, correct:false })));
-
-  if (!questions.length) return <div style={{ padding:20, color:C.purpleMid, fontWeight:700 }}>No comprehension questions configured yet.</div>;
-
-  const q   = questions[idx];
-  const row = answers[idx] || { sel:-1, checked:false, correct:false };
-  const done = answers.filter(a=>a.checked).length;
-
-  const optStyle = (oi) => {
-    const sel = row.sel===oi;
-    const ok  = row.checked && q.correct===oi;
-    const bad = row.checked && sel && q.correct!==oi;
-    return {
-      display:'flex', alignItems:'center', gap:10, textAlign:'left', width:'100%',
-      border:`1.5px solid ${ok?C.green:bad?C.red:sel?C.purple:C.purpleBorder}`,
-      borderRadius:12,
-      background: ok?C.greenSoft:bad?C.redSoft:sel?C.purpleSoft:'#FBFAFF',
-      color: ok?C.greenDark:bad?C.redDark:C.ink,
-      padding:'10px 12px', fontSize:14, fontWeight:700,
-      cursor: row.checked?'default':'pointer', marginBottom:8,
-      fontFamily:'Nunito,sans-serif',
-    };
-  };
-
-  const letterStyle = (oi) => {
-    const sel = row.sel===oi;
-    const ok  = row.checked && q.correct===oi;
-    return {
-      width:20, height:20, borderRadius:6, display:'grid', placeItems:'center',
-      fontSize:10, fontWeight:900, flexShrink:0,
-      background: ok?C.green:sel?C.purple:C.purpleBorder,
-      color: (ok||sel)?C.white:C.purple,
-    };
-  };
-
-  return (
-    <>
-      <TopBar done={done} total={questions.length} />
-      <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
-        {/* texto izquierda */}
-        <div style={{ width:'48%', minWidth:0, height:'100%' }}><PassagePane text={text} /></div>
-        {/* preguntas derecha */}
-        <div style={{ width:'52%', minWidth:0, padding:16, overflowY:'auto', background:C.bg }}>
-          <div style={{ background:C.white, border:`1.5px solid ${row.checked?(row.correct?C.green:C.red):C.purpleBorder}`, borderRadius:20, padding:18, boxShadow:'0 4px 20px rgba(127,119,221,.10)' }}>
-            <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
-              Question {idx+1} of {questions.length}
-            </div>
-            <h3 style={{ margin:'0 0 14px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.ink, lineHeight:1.3 }}>{q.stem||`Question ${idx+1}`}</h3>
-            {q.options.map((opt,oi) => (
-              <button key={`${q.id}_${oi}`} style={optStyle(oi)}
-                onClick={()=>{ if(!row.checked) setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,sel:oi}:a)); }}>
-                <span style={letterStyle(oi)}>{LETTERS[oi]}</span>
-                <span>{opt}</span>
-              </button>
-            ))}
-            {/* feedback */}
-            {row.checked && (
-              <div style={{ borderLeft:`3px solid ${row.correct?C.green:C.orange}`, background:row.correct?C.greenSoft:C.orangeSoft, color:row.correct?C.greenDark:C.orangeDark, padding:'10px 12px', fontWeight:700, fontSize:13, marginTop:4 }}>
-                {q.feedback || (row.correct ? '✓ Correct!' : `✗ Correct answer: ${LETTERS[q.correct]}`)}
-              </div>
-            )}
-            {/* botones nav */}
-            <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
-              <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
-                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0 ? .45 : 1, cursor:idx===0?'default':'pointer' }}>
-                ← Previous
-              </button>
-              {!row.checked
-                ? <button onClick={()=>{ if(row.sel<0)return; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:row.sel===q.correct}:a)); }}
-                    disabled={row.sel<0}
-                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0 ? .45 : 1, cursor:row.sel<0?'default':'pointer' }}>
-                    Check answer
-                  </button>
-                : <button onClick={()=>setIdx(p=>Math.min(questions.length-1,p+1))} disabled={idx>=questions.length-1}
-                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=questions.length-1 ? .45 : 1, cursor:idx>=questions.length-1?'default':'pointer' }}>
-                    {idx>=questions.length-1 ? '✓ Completed' : 'Next →'}
-                  </button>
-              }
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
-  );
-}
-
-/* ════════════════
-   PLAYER VIEW
-   ════════════════ */
-function PlayerView({ data }) {
-  const texts   = data.texts||[];
-  const [tIdx, setTIdx] = useState(0);
-  const current = texts[tIdx] || texts[0] || normalizeText();
-  return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:C.bg }}>
-      {texts.length > 1 && (
-        <div style={{ display:'flex', alignItems:'center', gap:18, padding:'8px 14px 0', borderBottom:`1px solid ${C.border}`, background:C.white, flexShrink:0 }}>
-          {texts.map((_,i) => (
-            <button key={i} onClick={()=>setTIdx(i)}
-              style={{ border:'none', background:'transparent', cursor:'pointer', color:i===tIdx?C.orange:C.purpleMid, fontFamily:'Nunito,sans-serif', fontWeight:900, padding:'8px 2px 10px', borderBottom:i===tIdx?`2.5px solid ${C.orange}`:'2.5px solid transparent', display:'inline-flex', alignItems:'center', gap:8 }}>
-              Text {i+1}
-              {i===tIdx && <span style={{ background:C.purpleBorder, color:C.purple, borderRadius:6, fontSize:10, fontWeight:900, padding:'2px 8px' }}>In progress</span>}
-            </button>
-          ))}
-        </div>
-      )}
-      {/* La actividad correcta según el modo que el docente eligió */}
-      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
-        {current.mode === 'comp'
-          ? <CompPlayer  text={current} />
-          : <VocabPlayer text={current} />
-        }
-      </div>
-    </div>
-  );
-}
-
-/* ════════════════════════════════════
-   EDITOR VIEW
-   Solo visible cuando RC_ALLOW_EDITOR=true (sesión docente/admin).
-   Todo lo que el docente escribe aquí → se guarda en DB → aparece en PlayerView.
-   ════════════════════════════════════ */
-
-/* ── estilos reutilizables del editor ── */
-const eStyles = {
-  card  : { background:C.white, border:`1.5px solid ${C.purpleBorder}`, borderRadius:20, overflow:'hidden', marginBottom:16 },
-  head  : { padding:'14px 18px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10 },
-  body  : { padding:18 },
-  label : { display:'block', marginBottom:6, fontWeight:900, color:C.purple, fontFamily:'Nunito,sans-serif', fontSize:12, textTransform:'uppercase', letterSpacing:'.06em' },
-  input : { width:'100%', padding:'9px 12px', borderRadius:10, border:`1.5px solid ${C.purpleBorder}`, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:14, color:C.ink, background:'#FBFAFF', outline:'none' },
-  textarea: { width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${C.purpleBorder}`, fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:14, color:C.ink, background:'#FBFAFF', outline:'none', resize:'vertical' },
-  sectionIcon: (bg,color) => ({ width:34, height:34, borderRadius:12, background:bg, display:'grid', placeItems:'center', color, fontWeight:900, fontSize:18, flexShrink:0 }),
-  sectionTitle: (color) => ({ fontFamily:'Fredoka,sans-serif', color, fontSize:22 }),
-  badge : { background:C.purpleSoft, color:C.purple, borderRadius:8, padding:'2px 10px', fontWeight:900, fontSize:12 },
-  infoBox: { marginBottom:12, background:C.purpleSoft, border:`1px solid ${C.purpleBorder}`, borderRadius:12, padding:'10px 14px', color:C.purple, fontWeight:800, fontSize:13 },
-  addBtn: { width:'100%', border:`1.5px solid ${C.purpleBorder}`, background:C.white, color:C.purple, borderRadius:12, padding:'10px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:'pointer', marginTop:4 },
-  delBtn: { border:`1.5px solid ${C.red}`, borderRadius:8, background:C.white, color:C.red, padding:'4px 10px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:12, cursor:'pointer' },
-};
-
-function EditorView({ data, setData }) {
-  const [status,   setStatus]   = useState('');
-  const [saving,   setSaving]   = useState(false);
-  const [previewing, setPreviewing] = useState(false);
-
-  /* siempre editamos el primer (y único) text */
-  const text    = data.texts[0] || normalizeText();
-  const patchTx = (fn) => setData(prev => ({ ...prev, texts: [fn(prev.texts[0]||normalizeText())] }));
-
-  /* ── save ── */
-  const save = async () => {
-    setSaving(true); setStatus('Saving…');
-    try {
-      const payload = new URLSearchParams();
-      payload.set('unit', window.RC_UNIT_ID||'');
-      payload.set('type', 'reading_comprehension');
-      payload.set('content_json', JSON.stringify({
-        mode     : text.mode,
-        title    : text.title,
-        genre    : text.genre,
-        wordCount: text.wordCount || countWords(text.body),
-        body     : text.body,
-        words    : text.words,
-        questions: text.questions,
-      }));
-      const res = await fetch('../../core/save_activity.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}, credentials:'same-origin', body:payload.toString() });
-      if (!res.ok) throw new Error('HTTP '+res.status);
-      setStatus('✓ Saved successfully');
-    } catch(e) {
-      setStatus('⚠ Could not save — ' + e.message);
-    } finally {
-      setSaving(false);
+  root.addEventListener('input', function (e) {
+    const el = e.target;
+    const t = text();
+    if (el.dataset.field) {
+      const value = el.dataset.field === 'wordCount' ? Number(el.value || 0) : el.value;
+      patchText({ [el.dataset.field]: value });
     }
-  };
+    if (el.dataset.word) {
+      const i = Number(el.dataset.word);
+      const prop = el.dataset.prop;
+      const words = t.words.slice();
+      words[i] = normalizeWord(words[i]);
+      if (prop === 'word') words[i].word = el.value;
+      if (prop === 'correct') words[i].correct = el.value;
+      if (prop === 'd0') words[i].distractors[0] = el.value;
+      if (prop === 'd1') words[i].distractors[1] = el.value;
+      patchText({ words });
+    }
+    if (el.dataset.question) {
+      const qi = Number(el.dataset.question);
+      const questions = t.questions.slice();
+      questions[qi] = normalizeQuestion(questions[qi]);
+      if (el.dataset.prop === 'stem') questions[qi].stem = el.value;
+      if (el.dataset.prop === 'feedback') questions[qi].feedback = el.value;
+      if (el.dataset.prop === 'option') questions[qi].options[Number(el.dataset.option)] = el.value;
+      patchText({ questions });
+    }
+  });
 
-  /* ── preview inline ── */
-  if (previewing) return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
-      <div style={{ background:C.white, borderBottom:`1px solid ${C.border}`, padding:'10px 16px', flexShrink:0 }}>
-        <button onClick={()=>setPreviewing(false)} style={{ ...eStyles.addBtn, width:'auto', padding:'8px 16px' }}>← Back to editor</button>
-      </div>
-      <div style={{ flex:1, minHeight:0 }}><PlayerView data={data} /></div>
-    </div>
-  );
+  root.addEventListener('click', async function (e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.dataset.action;
+    const t = text();
+    if (action === 'mode') patchText({ mode: btn.dataset.mode });
+    if (action === 'add-word') patchText({ words: t.words.concat([normalizeWord({})]) });
+    if (action === 'remove-word') patchText({ words: t.words.filter((_, i) => i !== Number(btn.dataset.index)) });
+    if (action === 'add-question') patchText({ questions: t.questions.concat([normalizeQuestion({})]) });
+    if (action === 'remove-question') patchText({ questions: t.questions.filter((_, i) => i !== Number(btn.dataset.index)) });
+    if (action === 'correct') {
+      const qi = Number(btn.dataset.question);
+      const questions = t.questions.slice();
+      questions[qi] = normalizeQuestion(questions[qi]);
+      questions[qi].correct = Number(btn.dataset.option);
+      patchText({ questions });
+    }
+    if (action === 'preview') { preview = true; qIndex = 0; answerIndex = -1; checked = false; render(); }
+    if (action === 'back-editor') { preview = false; render(); }
+    if (action === 'answer') { if (!checked) { answerIndex = Number(btn.dataset.index); checked = true; render(); } }
+    if (action === 'prev') { qIndex = Math.max(0, qIndex - 1); answerIndex = -1; checked = false; render(); }
+    if (action === 'next') { qIndex = qIndex + 1; answerIndex = -1; checked = false; render(); }
+    if (action === 'save') {
+      saving = true; status = 'Saving...'; render();
+      try {
+        const payload = new URLSearchParams();
+        payload.set('unit', window.RC_UNIT_ID || '');
+        payload.set('type', 'reading_comprehension');
+        payload.set('content_json', JSON.stringify(text()));
+        const res = await fetch('../../core/save_activity.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, credentials: 'same-origin', body: payload.toString() });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        status = '✓ Saved successfully';
+      } catch (err) {
+        status = '⚠ Could not save: ' + err.message;
+      } finally {
+        saving = false; render();
+      }
+    }
+  });
 
-  /* ── live preview html ── */
-  const previewHtml = paragraphToHtml(text.body||'Type passage text above to see highlights.', text.words);
-
-  return (
-    <div style={{ height:'100%', overflowY:'auto', background:C.bg, padding:20 }}>
-      <div style={{ maxWidth:1100, margin:'0 auto' }}>
-
-        {/* ── 1. MODO ── */}
-        <div style={eStyles.card}>
-          <div style={eStyles.head}>
-            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>⚙</div>
-            <span style={eStyles.sectionTitle(C.orange)}>Reading Comprehension</span>
-            <span style={{ marginLeft:'auto', ...eStyles.badge }}>Edit mode</span>
-          </div>
-          <div style={eStyles.body}>
-            <label style={eStyles.label}>Activity title</label>
-            <input style={{ ...eStyles.input, marginBottom:16, fontSize:18 }} value={text.title}
-              onChange={e=>patchTx(t=>({...t,title:e.target.value}))} placeholder="e.g. Unit 3 — Reading: Migration" />
-
-            <label style={eStyles.label}>Activity mode — choose one</label>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              {/* Vocab card */}
-              <button onClick={()=>patchTx(t=>({...t,mode:'vocab'}))}
-                style={{ textAlign:'left', border:`2px solid ${text.mode==='vocab'?C.orange:C.purpleBorder}`, borderRadius:16, background:text.mode==='vocab'?'#FFF5EE':'#F6F4FD', padding:16, cursor:'pointer' }}>
-                <div style={{ fontFamily:'Fredoka,sans-serif', color:C.orange, fontSize:20, marginBottom:4 }}>🔤 Vocabulary meaning</div>
-                <div style={{ color:C.purpleMid, fontWeight:700, fontSize:13 }}>Students choose the correct meaning of each highlighted word (1 correct + 2 distractors).</div>
-                {text.mode==='vocab' && <div style={{ marginTop:8, color:C.orange, fontWeight:900, fontSize:12 }}>✓ Selected</div>}
-              </button>
-              {/* Comp card */}
-              <button onClick={()=>patchTx(t=>({...t,mode:'comp'}))}
-                style={{ textAlign:'left', border:`2px solid ${text.mode==='comp'?C.purple:C.purpleBorder}`, borderRadius:16, background:text.mode==='comp'?C.purpleSoft:'#F6F4FD', padding:16, cursor:'pointer' }}>
-                <div style={{ fontFamily:'Fredoka,sans-serif', color:C.purple, fontSize:20, marginBottom:4 }}>📖 Reading comprehension</div>
-                <div style={{ color:C.purpleMid, fontWeight:700, fontSize:13 }}>Students answer multiple-choice questions A B C D about the passage.</div>
-                {text.mode==='comp' && <div style={{ marginTop:8, color:C.purple, fontWeight:900, fontSize:12 }}>✓ Selected</div>}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 2. PASSAGE ── */}
-        <div style={eStyles.card}>
-          <div style={eStyles.head}>
-            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>📄</div>
-            <span style={eStyles.sectionTitle(C.orange)}>Passage</span>
-          </div>
-          <div style={eStyles.body}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 180px', gap:12, marginBottom:12 }}>
-              <div>
-                <label style={eStyles.label}>Passage title</label>
-                <input style={eStyles.input} value={text.title}
-                  onChange={e=>patchTx(t=>({...t,title:e.target.value}))} placeholder="e.g. The Mystery of Migration" />
-              </div>
-              <div>
-                <label style={eStyles.label}>Genre / type</label>
-                <input style={eStyles.input} value={text.genre}
-                  onChange={e=>patchTx(t=>({...t,genre:e.target.value}))} placeholder="e.g. Informative text" />
-              </div>
-              <div>
-                <label style={eStyles.label}>Word count</label>
-                <input style={eStyles.input} type="number" value={text.wordCount||''}
-                  onChange={e=>patchTx(t=>({...t,wordCount:Number(e.target.value||0)}))} placeholder="auto" />
-              </div>
-            </div>
-            <label style={eStyles.label}>Passage body text</label>
-            <textarea rows={8} style={eStyles.textarea} value={text.body}
-              onChange={e=>patchTx(t=>({...t,body:e.target.value}))}
-              placeholder="Paste or type the reading passage here. Separate paragraphs with a blank line." />
-          </div>
-        </div>
-
-        {/* ── 3. PALABRAS HIGHLIGHTED ── */}
-        <div style={eStyles.card}>
-          <div style={eStyles.head}>
-            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>🖊</div>
-            <span style={eStyles.sectionTitle(C.orange)}>Highlighted vocabulary words</span>
-            <span style={{ marginLeft:'auto', ...eStyles.badge }}>{text.words.length} words</span>
-          </div>
-          <div style={eStyles.body}>
-
-            {/* info */}
-            <div style={eStyles.infoBox}>
-              {text.mode==='vocab'
-                ? '📌 Each word added here will appear highlighted in orange in the passage. Students must choose its correct meaning from 3 options.'
-                : '📌 Words added here appear highlighted in orange in the passage — for reference. In Comprehension mode, questions are defined separately below.'}
-            </div>
-
-            {/* live preview */}
-            <div style={{ border:`1.5px solid ${C.orangeBorder}`, background:'#FFF9F4', borderRadius:14, padding:'12px 14px', marginBottom:16 }}>
-              <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
-                Live preview — highlighted words as students see them
-              </div>
-              <div style={{ color:C.ink, lineHeight:1.75, fontSize:14 }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
-            </div>
-
-            {/* word cards */}
-            {text.words.map((w, wi) => (
-              <div key={w.id} style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:16, padding:14, marginBottom:12 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                  <span style={{ fontFamily:'Fredoka,sans-serif', color:C.orange, fontSize:18 }}>Word {wi+1}{w.word ? ` — ${w.word}` : ''}</span>
-                  <button style={eStyles.delBtn} onClick={()=>patchTx(t=>({...t,words:t.words.filter((_,i)=>i!==wi)}))}>✕ Remove</button>
-                </div>
-                {/* fila 1: word + correct */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:10, marginBottom:10 }}>
-                  <div>
-                    <label style={eStyles.label}>Word (exact as in text)</label>
-                    <input style={eStyles.input} value={w.word}
-                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,word:e.target.value}:x)}))}
-                      placeholder="e.g. migration" />
-                  </div>
-                  <div>
-                    <label style={eStyles.label}>✓ Correct meaning</label>
-                    <input style={{ ...eStyles.input, borderColor:C.green, background:C.greenSoft }} value={w.correct}
-                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,correct:e.target.value}:x)}))}
-                      placeholder="Correct definition" />
-                  </div>
-                </div>
-                {/* fila 2: distractors */}
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
-                  <div>
-                    <label style={eStyles.label}>✗ Wrong option 1</label>
-                    <input style={{ ...eStyles.input, borderColor:C.red, background:C.redSoft }} value={w.distractors[0]||''}
-                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,distractors:[e.target.value,x.distractors?.[1]||'']}:x)}))}
-                      placeholder="Incorrect definition" />
-                  </div>
-                  <div>
-                    <label style={eStyles.label}>✗ Wrong option 2</label>
-                    <input style={{ ...eStyles.input, borderColor:C.red, background:C.redSoft }} value={w.distractors[1]||''}
-                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,distractors:[x.distractors?.[0]||'',e.target.value]}:x)}))}
-                      placeholder="Incorrect definition" />
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button style={eStyles.addBtn} onClick={()=>patchTx(t=>({...t,words:[...t.words,normalizeWord()]}))}>
-              + Add vocabulary word
-            </button>
-          </div>
-        </div>
-
-        {/* ── 4. PREGUNTAS COMP (solo visible en modo comp) ── */}
-        {text.mode === 'comp' && (
-          <div style={eStyles.card}>
-            <div style={eStyles.head}>
-              <div style={eStyles.sectionIcon(C.purpleSoft, C.purple)}>❓</div>
-              <span style={eStyles.sectionTitle(C.purple)}>Comprehension questions</span>
-              <span style={{ marginLeft:'auto', ...eStyles.badge }}>{text.questions.length} questions</span>
-            </div>
-            <div style={eStyles.body}>
-              <div style={eStyles.infoBox}>
-                📌 Add questions about the passage. Click the letter badge (A B C D) to mark the correct answer. The feedback text appears after the student answers.
-              </div>
-
-              {text.questions.map((q, qi) => (
-                <div key={q.id} style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:16, padding:14, marginBottom:12 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
-                    <span style={{ fontFamily:'Fredoka,sans-serif', color:C.purple, fontSize:18 }}>Question {qi+1}</span>
-                    <button style={eStyles.delBtn} onClick={()=>patchTx(t=>({...t,questions:t.questions.filter((_,i)=>i!==qi)}))}>✕ Remove</button>
-                  </div>
-
-                  <label style={eStyles.label}>Question stem</label>
-                  <input style={{ ...eStyles.input, marginBottom:12 }} value={q.stem}
-                    onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,stem:e.target.value}:x)}))}
-                    placeholder="Type the question here…" />
-
-                  <label style={eStyles.label}>Options — click the letter to mark the correct answer</label>
-                  {q.options.map((opt, oi) => {
-                    const isCorrect = q.correct===oi;
-                    return (
-                      <div key={oi} style={{ display:'grid', gridTemplateColumns:'36px 1fr', gap:8, marginBottom:8, alignItems:'center' }}>
-                        {/* letra clicable */}
-                        <button
-                          onClick={()=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,correct:oi}:x)}))}
-                          title="Click to mark as correct"
-                          style={{ width:34, height:34, borderRadius:8, border:`2px solid ${isCorrect?C.green:C.purpleBorder}`, background:isCorrect?C.green:C.white, color:isCorrect?C.white:C.purple, fontWeight:900, fontSize:13, cursor:'pointer' }}>
-                          {LETTERS[oi]}
-                        </button>
-                        <input style={{ ...eStyles.input, borderColor:isCorrect?C.green:C.purpleBorder, background:isCorrect?C.greenSoft:'#FBFAFF' }}
-                          value={opt}
-                          onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,options:x.options.map((o,j)=>j===oi?e.target.value:o)}:x)}))}
-                          placeholder={`Option ${LETTERS[oi]}`} />
-                      </div>
-                    );
-                  })}
-
-                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'6px 0 10px', fontSize:12, fontWeight:900 }}>
-                    <span style={{ background:C.greenSoft, border:`1px solid ${C.green}`, borderRadius:999, padding:'3px 12px', color:C.greenDark }}>
-                      ✓ Correct: {LETTERS[q.correct]}
-                    </span>
-                  </div>
-
-                  <label style={eStyles.label}>Feedback shown after student answers</label>
-                  <input style={eStyles.input} value={q.feedback}
-                    onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,feedback:e.target.value}:x)}))}
-                    placeholder="Explain the correct answer…" />
-                </div>
-              ))}
-
-              <button style={eStyles.addBtn} onClick={()=>patchTx(t=>({...t,questions:[...t.questions,normalizeQuestion()]}))}>
-                + Add comprehension question
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ── 5. SAVE BAR ── */}
-        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:12, alignItems:'center', position:'sticky', bottom:0, background:C.bg, paddingBottom:16 }}>
-          <button onClick={()=>setPreviewing(true)}
-            style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:12, background:C.white, color:C.purple, padding:'12px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:'pointer' }}>
-            👁 Preview as student
-          </button>
-          <span style={{ color:C.purple, fontWeight:900, fontSize:13, textAlign:'center' }}>{status}</span>
-          <button onClick={save} disabled={saving}
-            style={{ border:'none', borderRadius:12, background:C.orange, color:C.white, padding:'12px 22px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:saving?'default':'pointer', opacity:saving ? .6 : 1 }}>
-            {saving ? 'Saving…' : '💾 Save activity'}
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-}
-
-/* ════════════════
-   ROOT APP
-   ════════════════ */
-function App() {
-  const [data, setData] = useState(() => normalizeDataset(window.RC_SAVED_DATA || {}));
-  return window.RC_ALLOW_EDITOR
-    ? <EditorView data={data} setData={setData} />
-    : <PlayerView data={data} />;
-}
-
-ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
+  try { render(); } catch (err) {
+    console.error('[reading_comprehension] render error', err);
+    root.innerHTML = '<div class="rc-app"><div class="rc-body"><div class="rc-card"><div class="rc-card-body">Could not render Reading Comprehension. Check browser console.</div></div></div></div>';
+  }
+})();
 </script>
-
-<style>
-/* palabra highlighted en el texto */
-.rc-hl {
-  color: #C2580A;
-  font-weight: 900;
-  border-bottom: 2px solid #F97316;
-  background: #FFF0E6;
-  border-radius: 3px;
-  padding: 0 2px;
-}
-</style>
-
 <?php
 $content = ob_get_clean();
 error_log('[reading_comprehension] html length=' . strlen($content));
