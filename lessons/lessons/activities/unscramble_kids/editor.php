@@ -17,7 +17,7 @@ function usk_ed_resolve_unit(PDO $pdo, string $id): string {
     $r = $st->fetch(PDO::FETCH_ASSOC);
     return $r && isset($r['unit_id']) ? (string)$r['unit_id'] : '';
 }
-function usk_ed_def(c): array { return ['title'=>'Spell the Word','voice_id'=>'Nggzl2QAXh3OijoXD116','words'=>[]]; }
+function usk_ed_def($c): array { return ['title'=>'Spell the Word','voice_id'=>'Nggzl2QAXh3OijoXD116','words'=>[]]; }
 function usk_ed_norm($raw): array {
     $df = usk_ed_def(0);
     if ($raw === null || $raw === '') return $df;
