@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-if (!isset($_SESSION['academic_id']) && !isset($_SESSION['admin_id'])) {
+if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
     http_response_code(403);
     exit('Access denied');
 }
