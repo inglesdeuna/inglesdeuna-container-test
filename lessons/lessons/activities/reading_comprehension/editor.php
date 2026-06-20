@@ -8,12 +8,11 @@
  * Patron identico a roleplay_kids, drag_drop, question_answer, etc.
  */
 
-require_once __DIR__ . '/../../config/db.php';
-require_once __DIR__ . '/../../core/_session.php';
-
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+require_once __DIR__ . '/../../config/db.php';
 
 // Solo docentes y admins pueden editar
 if (!isset($_SESSION['academic_id']) && !isset($_SESSION['admin_id'])) {
