@@ -159,7 +159,7 @@ function save_reading_activity(PDO $pdo, string $unit, string $activityId, strin
 $action = isset($_GET['action']) ? trim((string) $_GET['action']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save') {
     header('Content-Type: application/json');
-    if (!isset($_SESSION['academic_id']) && !isset($_SESSION['admin_id'])) {
+    if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
         http_response_code(403);
         echo json_encode(['status' => 'error', 'message' => 'Access denied']);
         exit;
@@ -233,7 +233,7 @@ if (empty($savedData) && $unitId !== '') {
     }
 }
 
-$isEditor = ($mode === 'edit') && (isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']));
+$isEditor = ($mode === 'edit') && (!empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']));
 $allowEditor = $isEditor ? 'true' : 'false';
 
 ob_start();
