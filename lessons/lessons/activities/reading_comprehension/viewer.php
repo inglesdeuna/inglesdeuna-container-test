@@ -1,254 +1,87 @@
 <?php
+/**
+ * reading_comprehension/viewer.php
+ * Ruta: lessons/lessons/activities/reading_comprehension/viewer.php
+ *
+ * VIEWER  → estudiante ve la actividad (modo vocab o comp)
+ * EDITOR  → docente edita la actividad  (?mode=edit, sesión academic_id/admin_id)
+ *
+ * Patron del repo: ob_start() arriba, render_activity_viewer($content) abajo.
+ * NO pasar title ni icon — solo $content.
+ */
+
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
+require_once __DIR__ . '/../../core/_session.php';
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
-$unitId = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
-$mode = isset($_GET['mode']) ? trim((string) $_GET['mode']) : 'view';
+$activityId = isset($_GET['id'])       ? trim((string) $_GET['id'])       : '';
+$unitId     = isset($_GET['unit'])     ? trim((string) $_GET['unit'])     : '';
+$returnTo   = isset($_GET['return_to'])? trim((string) $_GET['return_to']): '';
+$mode       = isset($_GET['mode'])     ? trim((string) $_GET['mode'])     : 'view';
 
-$savedData = [];
+$savedData  = [];
 $savedTitle = 'Reading Comprehension';
 
-function activities_columns(PDO $pdo): array
+/* ── helper: check column exists ── */
+function rc_has_column(PDO $pdo, string $col): bool
 {
-    static $cache = null;
-    if (is_array($cache)) {
-        return $cache;
-    }
     try {
-        $stmt = $pdo->prepare("
-            SELECT column_name
-            FROM information_schema.columns
-            WHERE table_schema = 'public'
-              AND table_name = 'activities'
-        ");
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
-        $cache = array_map(static fn($col) => strtolower((string) $col), $rows);
-        return $cache;
+        $st = $pdo->prepare("SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='activities' AND column_name=:c LIMIT 1");
+        $st->execute(['c' => $col]);
+        return (bool) $st->fetchColumn();
     } catch (Throwable $e) {
-        $cache = [];
-        return $cache;
+        return false;
     }
 }
 
-function activities_has_column(PDO $pdo, string $columnName): bool
-{
-    return in_array(strtolower($columnName), activities_columns($pdo), true);
+$titleSel = "'' AS title";
+if (rc_has_column($pdo, 'title')) {
+    $titleSel = 'title AS title';
+} elseif (rc_has_column($pdo, 'name')) {
+    $titleSel = 'name AS title';
 }
 
-function save_reading_activity(PDO $pdo, string $unit, string $activityId, string $contentJson): string
-{
-    $columns = activities_columns($pdo);
-    $hasUnitId = in_array('unit_id', $columns, true);
-    $hasUnit = in_array('unit', $columns, true);
-    $hasData = in_array('data', $columns, true);
-    $hasContentJson = in_array('content_json', $columns, true);
-    $hasTitle = in_array('title', $columns, true);
-    $hasName = in_array('name', $columns, true);
-    $hasId = in_array('id', $columns, true);
-
-    $decoded = json_decode($contentJson, true);
-    $payloadTitle = '';
-    if (is_array($decoded) && isset($decoded['title'])) {
-        $payloadTitle = trim((string) $decoded['title']);
-    }
-    if ($payloadTitle === '') {
-        $payloadTitle = 'Reading Comprehension';
-    }
-
-    $targetId = trim($activityId);
-    if ($targetId === '' && $unit !== '') {
-        if ($hasUnitId) {
-            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
-            $stmt->execute(['unit' => $unit]);
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-        if ($targetId === '' && $hasUnit) {
-            $stmt = $pdo->prepare("SELECT id FROM activities WHERE unit = :unit AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
-            $stmt->execute(['unit' => $unit]);
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-    }
-
-    if ($targetId !== '') {
-        $setParts = [];
-        $params = ['id' => $targetId];
-        if ($hasData) {
-            $setParts[] = 'data = :data';
-            $params['data'] = $contentJson;
-        }
-        if ($hasContentJson) {
-            $setParts[] = 'content_json = :content_json';
-            $params['content_json'] = $contentJson;
-        }
-        if ($hasTitle) {
-            $setParts[] = 'title = :title';
-            $params['title'] = $payloadTitle;
-        }
-        if ($hasName) {
-            $setParts[] = 'name = :name';
-            $params['name'] = $payloadTitle;
-        }
-        if (!empty($setParts)) {
-            $stmt = $pdo->prepare("UPDATE activities SET " . implode(', ', $setParts) . " WHERE id = :id AND type = 'reading_comprehension'");
-            $stmt->execute($params);
-        }
-        return $targetId;
-    }
-
-    if ((!$hasUnitId && !$hasUnit) || ($unit === '')) {
-        throw new RuntimeException('Missing unit to create activity');
-    }
-    if (!$hasData && !$hasContentJson) {
-        throw new RuntimeException('Activities table does not support data storage columns');
-    }
-
-    $insertCols = [];
-    $insertVals = [];
-    $params = [];
-    $newId = '';
-
-    if ($hasId) {
-        $newId = md5(random_bytes(16));
-        $insertCols[] = 'id';
-        $insertVals[] = ':id';
-        $params['id'] = $newId;
-    }
-    if ($hasUnitId) {
-        $insertCols[] = 'unit_id';
-        $insertVals[] = ':unit';
-        $params['unit'] = $unit;
-    } elseif ($hasUnit) {
-        $insertCols[] = 'unit';
-        $insertVals[] = ':unit';
-        $params['unit'] = $unit;
-    }
-    $insertCols[] = 'type';
-    $insertVals[] = "'reading_comprehension'";
-    if ($hasData) {
-        $insertCols[] = 'data';
-        $insertVals[] = ':data';
-        $params['data'] = $contentJson;
-    }
-    if ($hasContentJson) {
-        $insertCols[] = 'content_json';
-        $insertVals[] = ':content_json';
-        $params['content_json'] = $contentJson;
-    }
-    if ($hasTitle) {
-        $insertCols[] = 'title';
-        $insertVals[] = ':title';
-        $params['title'] = $payloadTitle;
-    }
-    if ($hasName) {
-        $insertCols[] = 'name';
-        $insertVals[] = ':name';
-        $params['name'] = $payloadTitle;
-    }
-
-    $stmt = $pdo->prepare("INSERT INTO activities (" . implode(', ', $insertCols) . ") VALUES (" . implode(', ', $insertVals) . ")");
-    $stmt->execute($params);
-    return $newId;
-}
-
-$action = isset($_GET['action']) ? trim((string) $_GET['action']) : '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $action === 'save') {
-    header('Content-Type: application/json');
-    if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
-        http_response_code(403);
-        echo json_encode(['status' => 'error', 'message' => 'Access denied']);
-        exit;
-    }
-    try {
-        $postedUnit = isset($_POST['unit']) ? trim((string) $_POST['unit']) : '';
-        $postedActivityId = isset($_POST['id']) ? trim((string) $_POST['id']) : '';
-        $postedContent = isset($_POST['content_json']) ? (string) $_POST['content_json'] : '{}';
-        if ($postedUnit === '' && $postedActivityId === '') {
-            throw new RuntimeException('Missing unit or activity id');
-        }
-        $savedId = save_reading_activity($pdo, $postedUnit, $postedActivityId, $postedContent);
-        echo json_encode(['status' => 'success', 'activity_id' => $savedId]);
-    } catch (Throwable $e) {
-        http_response_code(500);
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
-    }
-    exit;
-}
-
-$columns = activities_columns($pdo);
-$selectFields = [];
-if (in_array('data', $columns, true)) {
-    $selectFields[] = 'data';
-}
-if (in_array('content_json', $columns, true)) {
-    $selectFields[] = 'content_json';
-}
-if (in_array('title', $columns, true)) {
-    $selectFields[] = 'title';
-} elseif (in_array('name', $columns, true)) {
-    $selectFields[] = 'name AS title';
-} else {
-    $selectFields[] = "'' AS title";
-}
-
-if (empty($selectFields)) {
-    $selectFields[] = "'' AS title";
-}
-
+/* ── cargar datos guardados ── */
 if ($activityId !== '') {
-    $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE id = ? AND type = 'reading_comprehension' LIMIT 1");
-    $stmt->execute([$activityId]);
-    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE id=? AND type='reading_comprehension' LIMIT 1");
+    $st->execute([$activityId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
     if ($row) {
-        $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
-        $savedData = json_decode((string) $rawData, true) ?? [];
-        $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
+        $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
+        $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
     }
-}
-if (empty($savedData) && $unitId !== '') {
-    if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit_id = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
-        $stmt->execute([$unitId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
-            $savedData = json_decode((string) $rawData, true) ?? [];
-            $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
-        }
-    }
-    if (empty($savedData) && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare("SELECT " . implode(', ', $selectFields) . " FROM activities WHERE unit = ? AND type = 'reading_comprehension' ORDER BY id ASC LIMIT 1");
-        $stmt->execute([$unitId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if ($row) {
-            $rawData = isset($row['data']) ? $row['data'] : ($row['content_json'] ?? '');
-            $savedData = json_decode((string) $rawData, true) ?? [];
-            $savedTitle = trim((string) ($row['title'] ?? '')) !== '' ? (string) $row['title'] : $savedTitle;
-        }
+} elseif ($unitId !== '') {
+    $st = $pdo->prepare("SELECT data, {$titleSel} FROM activities WHERE unit_id=? AND type='reading_comprehension' ORDER BY id ASC LIMIT 1");
+    $st->execute([$unitId]);
+    $row = $st->fetch(PDO::FETCH_ASSOC);
+    if ($row) {
+        $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
+        $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
     }
 }
 
-$isEditor = ($mode === 'edit') && (!empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']));
+$isEditor    = ($mode === 'edit') && (isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']));
 $allowEditor = $isEditor ? 'true' : 'false';
 
 ob_start();
 ?>
+<!– fonts –>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<!– react + babel –>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<audio id="rc-win-sound"  src="../../hangman/assets/win.mp3"       preload="auto"></audio>
-<audio id="rc-lose-sound" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>
-<audio id="rc-done-sound" src="../../hangman/assets/win (1).mp3"   preload="auto"></audio>
+
 <div id="rc-root"></div>
 
+<!– PHP → JS globals –>
 <script>
 window.RC_ACTIVITY_ID  = <?= json_encode($activityId) ?>;
 window.RC_UNIT_ID      = <?= json_encode($unitId) ?>;
@@ -256,1104 +89,714 @@ window.RC_RETURN_TO    = <?= json_encode($returnTo) ?>;
 window.RC_ALLOW_EDITOR = <?= $allowEditor ?>;
 window.RC_SAVED_TITLE  = <?= json_encode($savedTitle) ?>;
 window.RC_SAVED_DATA   = <?= json_encode($savedData) ?>;
-
-function rcBuildSaveUrl(percent, errors, total) {
-  const returnTo = String(window.RC_RETURN_TO || '').trim();
-  const activityId = String(window.RC_ACTIVITY_ID || '').trim();
-  if (!returnTo || !activityId) return '';
-  const joiner = returnTo.indexOf('?') !== -1 ? '&' : '?';
-  return returnTo
-    + joiner + 'activity_percent=' + encodeURIComponent(String(percent))
-    + '&activity_errors=' + encodeURIComponent(String(errors))
-    + '&activity_total=' + encodeURIComponent(String(total))
-    + '&activity_id=' + encodeURIComponent(String(activityId))
-    + '&activity_type=reading_comprehension';
-}
-
-function rcPersistScore(url) {
-  if (!url) return Promise.resolve(false);
-  return fetch(url, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
-    .then(function(r) { return !!(r && r.ok); })
-    .catch(function() { return false; });
-}
-
-function rcPlaySound(id) {
-  try {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.pause();
-    el.currentTime = 0;
-    el.play();
-  } catch(e) {}
-}
 </script>
 
 <script type="text/babel">
-const { useMemo, useState } = React;
+/* ================================================================
+   READING COMPREHENSION — viewer.php React app
+   Dos modos:
+     "vocab" → el estudiante elige el significado de cada palabra highlighted
+     "comp"  → el estudiante responde preguntas ABCD sobre el texto
+   El docente configura TODO desde el EditorView.
+   El PlayerView renderiza exactamente lo que el docente guardó.
+   ================================================================ */
 
+const { useState, useMemo } = React;
+
+/* ── design tokens ── */
 const C = {
-  orange: '#F97316',
-  orangeSoft: '#FFF0E6',
+  orange      : '#F97316',
+  orangeSoft  : '#FFF0E6',
   orangeBorder: '#FCDDBF',
-  orangeDark: '#C2580A',
-  purple: '#7F77DD',
-  purpleDark: '#5A50C8',
-  purpleSoft: '#F5F3FF',
+  orangeDark  : '#C2580A',
+  purple      : '#7F77DD',
+  purpleSoft  : '#F5F3FF',
   purpleBorder: '#EDE9FA',
-  purpleMid: '#9B8FCC',
-  green: '#1D9E75',
-  greenSoft: '#E1F5EE',
-  greenDark: '#085041',
-  red: '#D85A30',
-  redSoft: '#FAECE7',
-  redDark: '#4A1B0C',
-  ink: '#3D3560',
-  bg: '#F8F7FF',
-  white: '#ffffff',
-  border: '#F0EEF8',
+  purpleMid   : '#9B8FCC',
+  green       : '#1D9E75',
+  greenSoft   : '#E1F5EE',
+  greenDark   : '#085041',
+  red         : '#D85A30',
+  redSoft     : '#FAECE7',
+  redDark     : '#4A1B0C',
+  ink         : '#3D3560',
+  bg          : '#F8F7FF',
+  white       : '#ffffff',
+  border      : '#F0EEF8',
 };
 
 const LETTERS = ['A', 'B', 'C', 'D'];
 
-const baseButtonStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  border: 'none',
-  borderRadius: 999,
-  padding: '11px 22px',
-  minWidth: 120,
-  fontFamily: 'Nunito, sans-serif',
-  fontSize: 14,
-  fontWeight: 900,
-  lineHeight: 1,
-  textDecoration: 'none',
-  transition: 'filter .15s ease, transform .15s ease',
-};
+/* ── helpers ── */
+const uid = (p) => `${p}_${Math.random().toString(36).slice(2,9)}_${Date.now()}`;
 
-function buttonStyle(variant = 'secondary', disabled = false) {
-  const variants = {
-    primary: {
-      background: C.orange,
-      color: C.white,
-      boxShadow: '0 8px 20px rgba(249,115,22,.22)',
-    },
-    accent: {
-      background: C.purple,
-      color: C.white,
-      boxShadow: '0 8px 20px rgba(127,119,221,.18)',
-    },
-    secondary: {
-      background: C.white,
-      color: C.purpleDark,
-      border: `1.5px solid ${C.purpleBorder}`,
-      boxShadow: '0 6px 18px rgba(127,119,221,.08)',
-    },
-    subtle: {
-      background: '#FBFAFF',
-      color: C.ink,
-      border: `1.5px solid ${C.purpleBorder}`,
-      boxShadow: 'none',
-    },
-    danger: {
-      background: C.white,
-      color: C.red,
-      border: `1px solid ${C.red}`,
-      boxShadow: 'none',
-    },
-  };
+const countWords = (t) => String(t||'').trim().split(/\s+/).filter(Boolean).length;
 
+const escHtml = (v) => String(v||'')
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+  .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+
+const escRe = (v) => String(v||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+/* ── normalizadores ── */
+function normalizeWord(x = {}) {
+  const d = Array.isArray(x.distractors) ? x.distractors : [];
   return {
-    ...baseButtonStyle,
-    ...(variants[variant] || variants.secondary),
-    opacity: disabled ? 0.45 : 1,
-    cursor: disabled ? 'not-allowed' : 'pointer',
+    id         : String(x.id || uid('w')),
+    word       : String(x.word || ''),
+    correct    : String(x.correct || ''),
+    distractors: [String(d[0]||''), String(d[1]||'')],
   };
 }
 
-function optionButtonStyle({ border, bg, color, disabled = false }) {
+function normalizeQuestion(x = {}) {
+  const opts = Array.isArray(x.options) ? x.options : [];
+  const c    = Number(x.correct);
   return {
-    ...baseButtonStyle,
-    width: '100%',
-    minWidth: 0,
-    justifyContent: 'flex-start',
-    textAlign: 'left',
-    whiteSpace: 'normal',
-    padding: '12px 16px',
-    borderRadius: 16,
-    border: `1.5px solid ${border}`,
-    background: bg,
-    color,
-    boxShadow: 'none',
-    cursor: disabled ? 'default' : 'pointer',
+    id      : String(x.id || uid('q')),
+    stem    : String(x.stem || ''),
+    options : [String(opts[0]||''),String(opts[1]||''),String(opts[2]||''),String(opts[3]||'')],
+    correct : Number.isInteger(c) ? Math.max(0,Math.min(3,c)) : 0,
+    feedback: String(x.feedback || ''),
   };
 }
 
-const editorInputStyle = {
-  width: '100%',
-  padding: '11px 13px',
-  borderRadius: 12,
-  border: `1px solid ${C.purpleBorder}`,
-  fontFamily: 'Nunito, sans-serif',
-  fontSize: 14,
-  fontWeight: 700,
-  color: C.ink,
-  background: C.white,
-};
-
-const editorSectionStyle = {
-  background: C.white,
-  border: `1.5px solid ${C.purpleBorder}`,
-  borderRadius: 24,
-  overflow: 'hidden',
-  marginBottom: 18,
-  boxShadow: '0 10px 28px rgba(127,119,221,.08)',
-};
-
-const editorSectionHeaderStyle = {
-  padding: '16px 20px',
-  borderBottom: `1px solid ${C.border}`,
-  display: 'flex',
-  alignItems: 'center',
-  gap: 12,
-};
-
-const uid = (prefix) => `${prefix}_${Math.random().toString(36).slice(2, 9)}_${Date.now()}`;
-
-const countWords = (text) => String(text || '').trim().split(/\s+/).filter(Boolean).length;
-
-const escapeHtml = (value) => String(value || '')
-  .replace(/&/g, '&amp;')
-  .replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
-  .replace(/'/g, '&#39;');
-
-const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-function normalizeWord(item = {}) {
-  const distractors = Array.isArray(item.distractors) ? item.distractors : [];
+function normalizeText(x = {}) {
+  const mode = String(x.mode||'vocab').toLowerCase()==='comp' ? 'comp' : 'vocab';
+  const body = String(x.body||'');
+  const wc   = Number(x.wordCount);
   return {
-    id: String(item.id || uid('w')),
-    word: String(item.word || ''),
-    correct: String(item.correct || ''),
-    distractors: [
-      String(distractors[0] || ''),
-      String(distractors[1] || ''),
-    ],
-  };
-}
-
-function normalizeQuestion(item = {}) {
-  const options = Array.isArray(item.options) ? item.options : [];
-  const rawCorrect = Number(item.correct);
-  return {
-    id: String(item.id || uid('q')),
-    stem: String(item.stem || ''),
-    options: [
-      String(options[0] || ''),
-      String(options[1] || ''),
-      String(options[2] || ''),
-      String(options[3] || ''),
-    ],
-    correct: Number.isInteger(rawCorrect) ? Math.max(0, Math.min(3, rawCorrect)) : 0,
-    feedback: String(item.feedback || ''),
-  };
-}
-
-function normalizeText(input = {}) {
-  const mode = String(input.mode || 'vocab').toLowerCase() === 'comp' ? 'comp' : 'vocab';
-  const words = (Array.isArray(input.words) ? input.words : []).map(normalizeWord);
-  const questions = (Array.isArray(input.questions) ? input.questions : []).map(normalizeQuestion);
-  const body = String(input.body || '');
-  const wc = Number(input.wordCount);
-  return {
-    id: String(input.id || uid('text')),
+    id       : String(x.id || uid('t')),
     mode,
-    title: String(input.title || 'The Mystery of Migration'),
-    genre: String(input.genre || 'Informative text'),
+    title    : String(x.title || ''),
+    genre    : String(x.genre || 'Informative text'),
     wordCount: Number.isFinite(wc) && wc > 0 ? wc : countWords(body),
     body,
-    words,
-    questions,
+    words    : (Array.isArray(x.words)     ? x.words     : []).map(normalizeWord),
+    questions: (Array.isArray(x.questions) ? x.questions : []).map(normalizeQuestion),
   };
 }
 
 function normalizeDataset(raw) {
   if (raw && Array.isArray(raw.texts) && raw.texts.length) {
-    return {
-      title: String(raw.title || window.RC_SAVED_TITLE || 'Reading Comprehension'),
-      texts: raw.texts.map(normalizeText),
-    };
+    return { title: String(raw.title||window.RC_SAVED_TITLE||'Reading Comprehension'), texts: raw.texts.map(normalizeText) };
   }
-
-  const base = normalizeText(raw || {});
-  if ((!raw || !raw.title) && window.RC_SAVED_TITLE && !base.title) {
-    base.title = String(window.RC_SAVED_TITLE || 'Reading Comprehension');
-  }
-
-  return {
-    title: String(window.RC_SAVED_TITLE || 'Reading Comprehension'),
-    texts: [base],
-  };
+  return { title: String(window.RC_SAVED_TITLE||'Reading Comprehension'), texts: [normalizeText(raw||{})] };
 }
 
-function decorateTextSegment(html, terms) {
+/* ── highlight helpers ── */
+function decorateSegment(html, terms) {
   return terms.reduce((acc, term) => {
-    const escaped = escapeRegExp(term);
-    const pattern = /\s/.test(term) ? `(${escaped})` : `\\b(${escaped})\\b`;
-    return acc.replace(new RegExp(pattern, 'gi'), '<span class="rc-hl">$1</span>');
+    const pat = /\s/.test(term) ? `(${escRe(term)})` : `\\b(${escRe(term)})\\b`;
+    return acc.replace(new RegExp(pat,'gi'), '<span class="rc-hl">$1</span>');
   }, html);
 }
 
-function paragraphToHtml(paragraph, words) {
-  const formatted = escapeHtml(paragraph)
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    .replace(/__(.+?)__/g, '<u>$1</u>');
-
-  const terms = (words || []).map((w) => String(w.word || '').trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+function paragraphToHtml(p, words) {
+  const formatted = escHtml(p).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/__(.+?)__/g,'<u>$1</u>');
+  const terms = (words||[]).map(w=>String(w.word||'').trim()).filter(Boolean).sort((a,b)=>b.length-a.length);
   if (!terms.length) return formatted;
-
   const chunks = formatted.split(/(<[^>]+>)/g);
-  return chunks.map((chunk) => (chunk.startsWith('<') ? chunk : decorateTextSegment(chunk, terms))).join('');
+  return chunks.map(ch => ch.startsWith('<') ? ch : decorateSegment(ch,terms)).join('');
 }
 
+/* ── vocab deck builder ── */
 function buildVocabDeck(words) {
-  return (words || []).map((word, idx) => {
-    const options = [
-      { text: word.correct || '', correct: true, key: `c_${word.id}` },
-      { text: word.distractors?.[0] || '', correct: false, key: `d1_${word.id}` },
-      { text: word.distractors?.[1] || '', correct: false, key: `d2_${word.id}` },
-    ].filter((x) => x.text.trim() !== '');
-
-    const seed = Array.from(`${word.id}_${idx}`).reduce((a, c) => a + c.charCodeAt(0), 0);
-    const shuffled = options
-      .map((opt, i) => ({ ...opt, sortKey: ((seed + 11) * (i + 3)) % 97 }))
-      .sort((a, b) => a.sortKey - b.sortKey)
-      .map(({ sortKey, ...rest }) => rest);
-
-    return {
-      id: word.id,
-      word: word.word,
-      options: shuffled,
-    };
-  }).filter((x) => x.word.trim() && x.options.length >= 2);
+  return (words||[]).map((word, idx) => {
+    const opts = [
+      { text: word.correct||'', correct: true,  key:`c_${word.id}` },
+      { text: word.distractors?.[0]||'', correct: false, key:`d1_${word.id}` },
+      { text: word.distractors?.[1]||'', correct: false, key:`d2_${word.id}` },
+    ].filter(o => o.text.trim());
+    const seed = Array.from(`${word.id}_${idx}`).reduce((a,c)=>a+c.charCodeAt(0),0);
+    const shuffled = opts.map((o,i)=>({...o,sk:((seed+11)*(i+3))%97})).sort((a,b)=>a.sk-b.sk).map(({sk,...r})=>r);
+    return { id: word.id, word: word.word, options: shuffled };
+  }).filter(x => x.word.trim() && x.options.length >= 2);
 }
 
-function ScoreGrid({ answers }) {
-  const checked = answers.filter(a => a.checked);
-  if (!checked.length) return null;
-  const correct = checked.filter(a => a.correct).length;
-  const wrong = checked.filter(a => !a.correct).length;
-  const pct = checked.length > 0 ? Math.round((correct / checked.length) * 100) : 0;
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginTop: 16 }}>
-      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.green, lineHeight: 1 }}>{correct}</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Correct</div>
-      </div>
-      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.red, lineHeight: 1 }}>{wrong}</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Wrong</div>
-      </div>
-      <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-        <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
-        <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Score</div>
-      </div>
-    </div>
-  );
-}
-
+/* ════════════════════════════════════════════════
+   TOPBAR — igual que todas las actividades del repo
+   ════════════════════════════════════════════════ */
 function TopBar({ done, total }) {
+  const pct = total ? (done/total)*100 : 0;
   return (
-    <div className="rc-topbar">
+    <div style={{ background:C.white, borderBottom:`1.5px solid ${C.border}`, height:52, padding:'0 16px', position:'relative', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      {/* botón back */}
       <button
-        onClick={() => {
-          const backTo = String(window.RC_RETURN_TO || '').trim();
-          if (backTo) window.location.href = backTo;
-          else window.history.back();
-        }}
-        style={{ ...buttonStyle('secondary'), width: 42, height: 42, minWidth: 42, padding: 0, boxShadow: 'none' }}
-      >←</button>
+        onClick={() => { const b=String(window.RC_RETURN_TO||'').trim(); if(b) window.location.href=b; else window.history.back(); }}
+        aria-label="Back"
+        style={{ width:32, height:32, borderRadius:999, border:`1.5px solid ${C.purpleBorder}`, background:C.white, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:C.purple, fontWeight:900, fontSize:16 }}
+      >&#8592;</button>
 
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase' }}>Activity</div>
-        <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(24px, 3vw, 32px)', lineHeight: 1.05 }}>Reading Comprehension</div>
+      {/* título centrado */}
+      <div style={{ position:'absolute', left:'50%', transform:'translateX(-50%)', color:C.orange, fontFamily:'Fredoka, sans-serif', fontSize:18, fontWeight:600, whiteSpace:'nowrap' }}>
+        Reading Comprehension
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <div style={{ width: 110, height: 8, borderRadius: 999, background: C.purpleBorder, overflow: 'hidden' }}>
-          <div style={{ width: `${total ? (done / total) * 100 : 0}%`, height: '100%', borderRadius: 999, background: 'linear-gradient(90deg,#F97316,#7F77DD)' }} />
+      {/* progreso */}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <div style={{ width:90, height:7, borderRadius:999, background:C.purpleBorder, overflow:'hidden' }}>
+          <div style={{ width:`${pct}%`, height:'100%', background:'linear-gradient(90deg,#F97316,#7F77DD)', borderRadius:999 }} />
         </div>
-        <div style={{ minWidth: 58, textAlign: 'center', background: C.purpleSoft, color: C.purpleDark, borderRadius: 999, padding: '6px 10px', fontFamily: 'Nunito, sans-serif', fontWeight: 900, fontSize: 12 }}>{done} / {total}</div>
+        <span style={{ fontFamily:'Nunito,sans-serif', fontWeight:900, fontSize:12, color:C.purple }}>{done} / {total}</span>
       </div>
     </div>
   );
 }
 
+/* ════════════════
+   PASSAGE PANE
+   ════════════════ */
 function PassagePane({ text }) {
-  const paragraphs = String(text.body || '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const paragraphs = String(text.body||'').split(/\n\s*\n/).map(p=>p.trim()).filter(Boolean);
   return (
-    <div className="rc-passage-pane">
-      <div style={{ background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, borderRadius: 999, color: C.orangeDark, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '.08em', padding: '4px 14px', width: 'fit-content' }}>Reading passage</div>
-      <h2 style={{ margin: '14px 0 8px', fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(26px, 3vw, 34px)', color: C.orange, lineHeight: 1.05 }}>{text.title || 'Untitled passage'}</h2>
-      <div style={{ fontFamily: 'Nunito, sans-serif', fontSize: 12, color: C.purpleMid, fontWeight: 800 }}>{text.genre || 'Informative text'} · {text.wordCount || countWords(text.body)} words · Read carefully</div>
-      <div style={{ height: 1.5, background: C.border, margin: '14px 0' }} />
-      <div style={{ color: C.ink, fontFamily: 'Nunito, sans-serif', fontSize: 15, lineHeight: 1.75 }}>
-        {(paragraphs.length ? paragraphs : ['No passage text available.']).map((p, idx) => (
-          <p key={`p_${idx}`} style={{ margin: '0 0 14px' }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(p, text.words) }} />
+    <div style={{ borderRight:`1px solid ${C.border}`, padding:16, overflowY:'auto', height:'100%' }}>
+      <div style={{ background:C.orangeSoft, border:`1px solid ${C.orangeBorder}`, borderRadius:999, color:C.orangeDark, fontSize:11, fontWeight:900, textTransform:'uppercase', letterSpacing:'.08em', padding:'3px 14px', width:'fit-content', marginBottom:10 }}>
+        Reading passage
+      </div>
+      <h2 style={{ margin:'0 0 4px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.orange }}>{text.title||'Untitled'}</h2>
+      <div style={{ fontFamily:'Nunito,sans-serif', fontSize:11, color:C.purpleMid, fontWeight:700, marginBottom:14 }}>
+        {text.genre} &middot; {text.wordCount||countWords(text.body)} words &middot; Read carefully
+      </div>
+      <div style={{ height:1.5, background:C.border, marginBottom:14 }} />
+      <div style={{ color:C.ink, fontFamily:'Nunito,sans-serif', fontSize:14, lineHeight:1.75 }}>
+        {(paragraphs.length ? paragraphs : ['No passage text yet.']).map((p,i) => (
+          <p key={i} style={{ margin:'0 0 14px' }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(p, text.words) }} />
         ))}
       </div>
     </div>
   );
 }
 
-function VocabQuestions({ text, onDone }) {
-  const deck = useMemo(() => buildVocabDeck(text.words), [text.words]);
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState(() => deck.map(() => ({ selected: -1, checked: false, correct: false })));
+/* ════════════════════════════════════
+   PLAYER — MODO VOCAB
+   Una pregunta por palabra highlighted.
+   El docente escribió: word + correct + 2 distractors.
+   El viewer arma: "What does [word] mean?" con 3 opciones shuffled.
+   ════════════════════════════════════ */
+function VocabPlayer({ text }) {
+  const deck    = useMemo(() => buildVocabDeck(text.words), [text.words]);
+  const [idx,   setIdx]   = useState(0);
+  const [answers,setAnswers] = useState(() => deck.map(() => ({ sel:-1, checked:false, correct:false })));
 
-  const row = answers[index] || { selected: -1, checked: false, correct: false };
-  const item = deck[index] || null;
-  const done = answers.filter((a) => a.checked).length;
+  if (!deck.length) return <div style={{ padding:20, color:C.purpleMid, fontWeight:700 }}>No vocabulary words configured yet.</div>;
 
-  if (!item) {
-    return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add highlighted words with meanings to generate questions.</div>;
-  }
+  const row  = answers[idx] || { sel:-1, checked:false, correct:false };
+  const item = deck[idx];
+  const done = answers.filter(a=>a.checked).length;
 
-  const isLast = index >= deck.length - 1;
+  const optStyle = (opt, oi) => {
+    const sel  = row.sel === oi;
+    const ok   = row.checked && opt.correct;
+    const bad  = row.checked && sel && !opt.correct;
+    return {
+      textAlign:'left', display:'block', width:'100%',
+      border:`1.5px solid ${ok?C.green:bad?C.red:sel?C.purple:C.purpleBorder}`,
+      borderRadius:12,
+      background: ok?C.greenSoft:bad?C.redSoft:sel?C.purpleSoft:'#FBFAFF',
+      color: ok?C.greenDark:bad?C.redDark:C.ink,
+      padding:'10px 12px', fontSize:14, fontWeight:700,
+      cursor: row.checked?'default':'pointer', marginBottom:8,
+      fontFamily:'Nunito,sans-serif',
+    };
+  };
 
   return (
-    <div className="rc-stage-shell">
+    <>
       <TopBar done={done} total={deck.length} />
-      <div className="rc-stage-layout">
-        <div style={{ minWidth: 0 }}><PassagePane text={text} /></div>
-        <div className="rc-question-pane">
-          <div className="rc-question-card">
-            <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {deck.length}</div>
-            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(22px, 2.2vw, 28px)', lineHeight: 1.15 }}>What does <span style={{ color: C.orange }}>{item.word}</span> mean?</h3>
-
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {item.options.map((opt, optIdx) => {
-                const selected = row.selected === optIdx;
-                const isCorrect = row.checked && opt.correct;
-                const isWrong = row.checked && selected && !opt.correct;
-                const border = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
-                const bg = isCorrect ? C.greenSoft : (isWrong ? C.redSoft : (selected ? C.purpleSoft : '#FBFAFF'));
-                const color = isCorrect ? C.greenDark : (isWrong ? C.redDark : C.ink);
-                return (
-                  <button key={opt.key} onClick={() => {
-                    if (row.checked) return;
-                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
-                  }} style={optionButtonStyle({ border, bg, color, disabled: row.checked })}>
-                    {opt.text}
-                  </button>
-                );
-              })}
+      <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
+        {/* texto izquierda */}
+        <div style={{ width:'48%', minWidth:0, height:'100%' }}><PassagePane text={text} /></div>
+        {/* preguntas derecha */}
+        <div style={{ width:'52%', minWidth:0, padding:16, overflowY:'auto', background:C.bg }}>
+          <div style={{ background:C.white, border:`1.5px solid ${row.checked?(row.correct?C.green:C.red):C.purpleBorder}`, borderRadius:20, padding:18, boxShadow:'0 4px 20px rgba(127,119,221,.10)' }}>
+            <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
+              Question {idx+1} of {deck.length}
             </div>
-
-            <div className="rc-actions">
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={buttonStyle('secondary', index === 0)}>← Previous</button>
-              {!row.checked ? (
-                <button
-                  onClick={() => {
-                    if (row.selected < 0) return;
-                    const isCorrect = !!item.options[row.selected]?.correct;
-                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
-                    rcPlaySound(isCorrect ? 'rc-win-sound' : 'rc-lose-sound');
-                  }}
-                  disabled={row.selected < 0}
-                  style={buttonStyle('accent', row.selected < 0)}
-                >Check answer</button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (isLast) {
-                      if (typeof onDone === 'function') {
-                        const correct = answers.filter((a) => a.correct).length;
-                        const wrong = answers.filter((a) => a.checked && !a.correct).length;
-                        const total = deck.length;
-                        const scorable = correct + wrong;
-                        onDone({ correct, wrong, total, percent: scorable > 0 ? Math.round((correct / scorable) * 100) : 0 });
-                      }
-                    } else {
-                      setIndex((p) => p + 1);
-                    }
-                  }}
-                  style={buttonStyle('primary')}
-                >{isLast ? 'Finish ✓' : 'Next →'}</button>
-              )}
-            </div>
-
+            <h3 style={{ margin:'0 0 14px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.ink, lineHeight:1.3 }}>
+              What does <span style={{ color:C.orange }}>"{item.word}"</span> mean in this context?
+            </h3>
+            {item.options.map((opt,oi) => (
+              <button key={opt.key} style={optStyle(opt,oi)}
+                onClick={() => { if (!row.checked) setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,sel:oi}:a)); }}>
+                {opt.text}
+              </button>
+            ))}
+            {/* feedback */}
             {row.checked && (
-              <div style={{ marginTop: 14, background: row.correct ? C.greenSoft : C.redSoft, color: row.correct ? C.greenDark : C.redDark, borderLeft: `4px solid ${row.correct ? C.green : C.red}`, borderRadius: 14, padding: '12px 14px', fontWeight: 700 }}>
-                {row.correct ? 'Correct!' : 'Try again on the next round.'}
+              <div style={{ borderLeft:`3px solid ${row.correct?C.green:C.orange}`, background:row.correct?C.greenSoft:C.orangeSoft, color:row.correct?C.greenDark:C.orangeDark, padding:'10px 12px', fontWeight:700, fontSize:13, marginTop:4 }}>
+                {row.correct ? '✓ Correct!' : '✗ Not quite — review the passage and try the next one.'}
               </div>
             )}
-
-            <ScoreGrid answers={answers} />
+            {/* botones nav */}
+            <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
+              <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
+                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0?.45:1, cursor:idx===0?'default':'pointer' }}>
+                ← Previous
+              </button>
+              {!row.checked
+                ? <button onClick={()=>{ if(row.sel<0)return; const ok=!!item.options[row.sel]?.correct; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:ok}:a)); }}
+                    disabled={row.sel<0}
+                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0?.45:1, cursor:row.sel<0?'default':'pointer' }}>
+                    Check answer
+                  </button>
+                : <button onClick={()=>setIdx(p=>Math.min(deck.length-1,p+1))} disabled={idx>=deck.length-1}
+                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=deck.length-1?.45:1, cursor:idx>=deck.length-1?'default':'pointer' }}>
+                    {idx>=deck.length-1 ? '✓ Completed' : 'Next →'}
+                  </button>
+              }
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
-function CompQuestions({ text, onDone }) {
-  const questions = useMemo(() => (text.questions || []).filter((q) => q.options.some((o) => String(o || '').trim())), [text.questions]);
-  const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState(() => questions.map(() => ({ selected: -1, checked: false, correct: false })));
-  const done = answers.filter((a) => a.checked).length;
-  const q = questions[index] || null;
-  const row = answers[index] || { selected: -1, checked: false, correct: false };
+/* ════════════════════════════════════
+   PLAYER — MODO COMP
+   Preguntas ABCD sobre el texto.
+   El docente escribió: stem + 4 opciones + correct (índice 0-3) + feedback.
+   ════════════════════════════════════ */
+function CompPlayer({ text }) {
+  const questions = useMemo(() => (text.questions||[]).filter(q=>q.options.some(o=>String(o||'').trim())), [text.questions]);
+  const [idx, setIdx]     = useState(0);
+  const [answers,setAnswers] = useState(() => questions.map(()=>({ sel:-1, checked:false, correct:false })));
 
-  if (!q) {
-    return <div style={{ padding: 16, color: C.purpleMid, fontWeight: 700 }}>Add comprehension questions to preview this mode.</div>;
-  }
+  if (!questions.length) return <div style={{ padding:20, color:C.purpleMid, fontWeight:700 }}>No comprehension questions configured yet.</div>;
 
-  const isLast = index >= questions.length - 1;
+  const q   = questions[idx];
+  const row = answers[idx] || { sel:-1, checked:false, correct:false };
+  const done = answers.filter(a=>a.checked).length;
+
+  const optStyle = (oi) => {
+    const sel = row.sel===oi;
+    const ok  = row.checked && q.correct===oi;
+    const bad = row.checked && sel && q.correct!==oi;
+    return {
+      display:'flex', alignItems:'center', gap:10, textAlign:'left', width:'100%',
+      border:`1.5px solid ${ok?C.green:bad?C.red:sel?C.purple:C.purpleBorder}`,
+      borderRadius:12,
+      background: ok?C.greenSoft:bad?C.redSoft:sel?C.purpleSoft:'#FBFAFF',
+      color: ok?C.greenDark:bad?C.redDark:C.ink,
+      padding:'10px 12px', fontSize:14, fontWeight:700,
+      cursor: row.checked?'default':'pointer', marginBottom:8,
+      fontFamily:'Nunito,sans-serif',
+    };
+  };
+
+  const letterStyle = (oi) => {
+    const sel = row.sel===oi;
+    const ok  = row.checked && q.correct===oi;
+    return {
+      width:20, height:20, borderRadius:6, display:'grid', placeItems:'center',
+      fontSize:10, fontWeight:900, flexShrink:0,
+      background: ok?C.green:sel?C.purple:C.purpleBorder,
+      color: (ok||sel)?C.white:C.purple,
+    };
+  };
 
   return (
-    <div className="rc-stage-shell">
+    <>
       <TopBar done={done} total={questions.length} />
-      <div className="rc-stage-layout">
-        <div style={{ minWidth: 0 }}><PassagePane text={text} /></div>
-        <div className="rc-question-pane">
-          <div className="rc-question-card">
-            <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, textTransform: 'uppercase', marginBottom: 8 }}>Question {index + 1} of {questions.length}</div>
-            <h3 style={{ margin: 0, color: C.ink, fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(22px, 2.2vw, 28px)', lineHeight: 1.15 }}>{q.stem || `Question ${index + 1}`}</h3>
-
-            <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {q.options.map((opt, optIdx) => {
-                const selected = row.selected === optIdx;
-                const isCorrect = row.checked && q.correct === optIdx;
-                const isWrong = row.checked && selected && q.correct !== optIdx;
-                const border = isCorrect ? C.green : (isWrong ? C.red : (selected ? C.purple : C.purpleBorder));
-                const bg = isCorrect ? C.greenSoft : (isWrong ? C.redSoft : (selected ? C.purpleSoft : '#FBFAFF'));
-                const color = isCorrect ? C.greenDark : (isWrong ? C.redDark : C.ink);
-                return (
-                  <button key={`${q.id}_${optIdx}`} onClick={() => {
-                    if (row.checked) return;
-                    setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, selected: optIdx } : a));
-                  }} style={{ ...optionButtonStyle({ border, bg, color, disabled: row.checked }), gap: 10 }}>
-                    <span style={{ width: 20, height: 20, borderRadius: 6, background: selected ? C.purple : C.purpleBorder, color: selected ? C.white : C.purple, fontSize: 10, fontWeight: 900, display: 'grid', placeItems: 'center' }}>{LETTERS[optIdx]}</span>
-                    <span>{opt}</span>
-                  </button>
-                );
-              })}
+      <div style={{ flex:1, minHeight:0, display:'flex', overflow:'hidden' }}>
+        {/* texto izquierda */}
+        <div style={{ width:'48%', minWidth:0, height:'100%' }}><PassagePane text={text} /></div>
+        {/* preguntas derecha */}
+        <div style={{ width:'52%', minWidth:0, padding:16, overflowY:'auto', background:C.bg }}>
+          <div style={{ background:C.white, border:`1.5px solid ${row.checked?(row.correct?C.green:C.red):C.purpleBorder}`, borderRadius:20, padding:18, boxShadow:'0 4px 20px rgba(127,119,221,.10)' }}>
+            <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
+              Question {idx+1} of {questions.length}
             </div>
-
-            <div className="rc-actions">
-              <button onClick={() => setIndex((p) => Math.max(0, p - 1))} disabled={index === 0} style={buttonStyle('secondary', index === 0)}>← Previous</button>
-              {!row.checked ? (
-                <button onClick={() => {
-                  if (row.selected < 0) return;
-                  const isCorrect = row.selected === q.correct;
-                  setAnswers((prev) => prev.map((a, i) => i === index ? { ...a, checked: true, correct: isCorrect } : a));
-                  rcPlaySound(isCorrect ? 'rc-win-sound' : 'rc-lose-sound');
-                }} disabled={row.selected < 0} style={buttonStyle('accent', row.selected < 0)}>Check answer</button>
-              ) : (
-                <button
-                  onClick={() => {
-                    if (isLast) {
-                      if (typeof onDone === 'function') {
-                        const correct = answers.filter((a) => a.correct).length;
-                        const wrong = answers.filter((a) => a.checked && !a.correct).length;
-                        const total = questions.length;
-                        const scorable = correct + wrong;
-                        onDone({ correct, wrong, total, percent: scorable > 0 ? Math.round((correct / scorable) * 100) : 0 });
-                      }
-                    } else {
-                      setIndex((p) => p + 1);
-                    }
-                  }}
-                  style={buttonStyle('primary')}
-                >{isLast ? 'Finish ✓' : 'Next →'}</button>
-              )}
-            </div>
-
+            <h3 style={{ margin:'0 0 14px', fontFamily:'Fredoka,sans-serif', fontSize:20, color:C.ink, lineHeight:1.3 }}>{q.stem||`Question ${idx+1}`}</h3>
+            {q.options.map((opt,oi) => (
+              <button key={`${q.id}_${oi}`} style={optStyle(oi)}
+                onClick={()=>{ if(!row.checked) setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,sel:oi}:a)); }}>
+                <span style={letterStyle(oi)}>{LETTERS[oi]}</span>
+                <span>{opt}</span>
+              </button>
+            ))}
+            {/* feedback */}
             {row.checked && (
-              <div style={{ marginTop: 14, background: row.correct ? C.greenSoft : C.orangeSoft, color: row.correct ? C.greenDark : C.orangeDark, borderLeft: `4px solid ${row.correct ? C.green : C.orange}`, borderRadius: 14, padding: '12px 14px', fontWeight: 700 }}>
-                {q.feedback || (row.correct ? 'Correct answer!' : `Correct answer: ${LETTERS[q.correct]}`)}
+              <div style={{ borderLeft:`3px solid ${row.correct?C.green:C.orange}`, background:row.correct?C.greenSoft:C.orangeSoft, color:row.correct?C.greenDark:C.orangeDark, padding:'10px 12px', fontWeight:700, fontSize:13, marginTop:4 }}>
+                {q.feedback || (row.correct ? '✓ Correct!' : `✗ Correct answer: ${LETTERS[q.correct]}`)}
               </div>
             )}
-
-            <ScoreGrid answers={answers} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CompletedScreen({ score, title, onRestart }) {
-  const pct = score.percent;
-  const msg = pct >= 80 ? 'Excellent work!' : pct >= 50 ? 'Good effort!' : 'Keep practicing!';
-  const scoreLine = `${score.correct} correct · ${score.wrong} wrong · ${pct}%`;
-  return (
-    <div className="rc-stage-shell">
-      <TopBar done={score.total} total={score.total} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(20px,3vw,36px) 20px', overflowY: 'auto' }}>
-        <div style={{ maxWidth: 460, width: '100%', textAlign: 'center' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
-            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.green, lineHeight: 1 }}>{score.correct}</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Correct</div>
-            </div>
-            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.red, lineHeight: 1 }}>{score.wrong}</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Wrong</div>
-            </div>
-            <div style={{ background: '#FAFAFE', border: '1px solid #EDE9FA', borderRadius: 14, padding: '12px 8px', textAlign: 'center' }}>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: 26, color: C.purple, lineHeight: 1 }}>{pct}%</div>
-              <div style={{ fontSize: 10, fontWeight: 900, color: '#9B94BE', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: 5 }}>Score</div>
-            </div>
-          </div>
-          <div style={{ background: C.white, border: `1px solid ${C.purpleBorder}`, borderRadius: 24, padding: '28px 24px', boxShadow: '0 8px 28px rgba(127,119,221,.10)' }}>
-            <div style={{ fontSize: 36, lineHeight: 1, marginBottom: 12 }}>✅</div>
-            <div style={{ fontFamily: 'Fredoka, sans-serif', fontSize: 'clamp(24px,3vw,32px)', color: C.orange, lineHeight: 1.05, marginBottom: 10 }}>{title || 'Reading Comprehension'}</div>
-            <p style={{ color: C.purpleMid, fontWeight: 800, fontSize: 14, margin: '0 0 8px' }}>You've completed {title || 'Reading Comprehension'}. {msg}</p>
-            <p style={{ fontWeight: 900, fontSize: 15, color: C.purpleDark, margin: '0 0 20px' }}>{scoreLine}</p>
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-              {typeof onRestart === 'function' && (
-                <button onClick={onRestart} style={buttonStyle('accent')}>Restart</button>
-              )}
-              <button
-                onClick={() => {
-                  const back = String(window.RC_RETURN_TO || '').trim();
-                  if (back) { try { if (window.top && window.top !== window.self) { window.top.location.href = back; return; } } catch(e) {} window.location.href = back; }
-                  else window.history.back();
-                }}
-                style={buttonStyle('primary')}
-              >← Back</button>
+            {/* botones nav */}
+            <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
+              <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
+                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0?.45:1, cursor:idx===0?'default':'pointer' }}>
+                ← Previous
+              </button>
+              {!row.checked
+                ? <button onClick={()=>{ if(row.sel<0)return; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:row.sel===q.correct}:a)); }}
+                    disabled={row.sel<0}
+                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0?.45:1, cursor:row.sel<0?'default':'pointer' }}>
+                    Check answer
+                  </button>
+                : <button onClick={()=>setIdx(p=>Math.min(questions.length-1,p+1))} disabled={idx>=questions.length-1}
+                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=questions.length-1?.45:1, cursor:idx>=questions.length-1?'default':'pointer' }}>
+                    {idx>=questions.length-1 ? '✓ Completed' : 'Next →'}
+                  </button>
+              }
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
+/* ════════════════
+   PLAYER VIEW
+   ════════════════ */
 function PlayerView({ data }) {
-  const texts = data.texts || [];
-  const [textIdx, setTextIdx] = useState(0);
-  const [completed, setCompleted] = useState(false);
-  const [score, setScore] = useState(null);
-  const [restartKey, setRestartKey] = useState(0);
-  const current = texts[textIdx] || texts[0] || normalizeText();
-
-  async function handleDone(textScore) {
-    // aggregate across all texts (single-text case just uses textScore directly)
-    const finalScore = textScore;
-    setScore(finalScore);
-    setCompleted(true);
-    rcPlaySound('rc-done-sound');
-
-    const saveUrl = rcBuildSaveUrl(finalScore.percent, finalScore.wrong, finalScore.total);
-    if (saveUrl) {
-      await rcPersistScore(saveUrl);
-    }
-  }
-
-  function handleRestart() {
-    setCompleted(false);
-    setScore(null);
-    setTextIdx(0);
-    setRestartKey(k => k + 1);
-  }
-
-  if (completed && score) {
-    return (
-      <div className="rc-page">
-        <div className="rc-app">
-          <CompletedScreen score={score} title={data.title || String(window.RC_SAVED_TITLE || 'Reading Comprehension')} onRestart={handleRestart} />
-        </div>
-      </div>
-    );
-  }
-
+  const texts   = data.texts||[];
+  const [tIdx, setTIdx] = useState(0);
+  const current = texts[tIdx] || texts[0] || normalizeText();
   return (
-    <div className="rc-page">
-      <div className="rc-app">
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', background:C.bg }}>
       {texts.length > 1 && (
-        <div className="rc-tabs">
-          {texts.map((_, idx) => (
-            <button key={`tab_${idx}`} onClick={() => setTextIdx(idx)} style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: idx === textIdx ? C.orange : C.purpleMid, fontFamily: 'Nunito, sans-serif', fontWeight: 900, padding: '8px 2px 10px', borderBottom: idx === textIdx ? `2.5px solid ${C.orange}` : '2.5px solid transparent', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <span>Text {idx + 1}</span>
-              {idx === textIdx && <span style={{ background: C.purpleBorder, color: C.purple, borderRadius: 6, fontSize: 10, fontWeight: 900, padding: '2px 8px' }}>In progress</span>}
+        <div style={{ display:'flex', alignItems:'center', gap:18, padding:'8px 14px 0', borderBottom:`1px solid ${C.border}`, background:C.white, flexShrink:0 }}>
+          {texts.map((_,i) => (
+            <button key={i} onClick={()=>setTIdx(i)}
+              style={{ border:'none', background:'transparent', cursor:'pointer', color:i===tIdx?C.orange:C.purpleMid, fontFamily:'Nunito,sans-serif', fontWeight:900, padding:'8px 2px 10px', borderBottom:i===tIdx?`2.5px solid ${C.orange}`:'2.5px solid transparent', display:'inline-flex', alignItems:'center', gap:8 }}>
+              Text {i+1}
+              {i===tIdx && <span style={{ background:C.purpleBorder, color:C.purple, borderRadius:6, fontSize:10, fontWeight:900, padding:'2px 8px' }}>In progress</span>}
             </button>
           ))}
         </div>
       )}
-
-      {current.mode === 'comp' ? <CompQuestions key={`comp_${textIdx}_${restartKey}`} text={current} onDone={handleDone} /> : <VocabQuestions key={`vocab_${textIdx}_${restartKey}`} text={current} onDone={handleDone} />}
+      {/* La actividad correcta según el modo que el docente eligió */}
+      <div style={{ flex:1, minHeight:0, display:'flex', flexDirection:'column' }}>
+        {current.mode === 'comp'
+          ? <CompPlayer  text={current} />
+          : <VocabPlayer text={current} />
+        }
       </div>
     </div>
   );
 }
 
-async function saveActivity(data) {
-  const formPayload = new URLSearchParams();
-  formPayload.set('id', window.RC_ACTIVITY_ID || '');
-  formPayload.set('unit', window.RC_UNIT_ID || '');
-  formPayload.set('type', 'reading_comprehension');
-  formPayload.set('content_json', JSON.stringify(data));
+/* ════════════════════════════════════
+   EDITOR VIEW
+   Solo visible cuando RC_ALLOW_EDITOR=true (sesión docente/admin).
+   Todo lo que el docente escribe aquí → se guarda en DB → aparece en PlayerView.
+   ════════════════════════════════════ */
 
-  const res = await fetch('viewer.php?action=save', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    credentials: 'same-origin',
-    body: formPayload.toString(),
-  });
-
-  const payload = await res.json().catch(() => ({}));
-  if (!res.ok || payload.status !== 'success') {
-    throw new Error(payload.message || `Save failed (${res.status})`);
-  }
-  if (payload.activity_id) {
-    window.RC_ACTIVITY_ID = String(payload.activity_id);
-  }
-}
+/* ── estilos reutilizables del editor ── */
+const eStyles = {
+  card  : { background:C.white, border:`1.5px solid ${C.purpleBorder}`, borderRadius:20, overflow:'hidden', marginBottom:16 },
+  head  : { padding:'14px 18px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10 },
+  body  : { padding:18 },
+  label : { display:'block', marginBottom:6, fontWeight:900, color:C.purple, fontFamily:'Nunito,sans-serif', fontSize:12, textTransform:'uppercase', letterSpacing:'.06em' },
+  input : { width:'100%', padding:'9px 12px', borderRadius:10, border:`1.5px solid ${C.purpleBorder}`, fontFamily:'Nunito,sans-serif', fontWeight:700, fontSize:14, color:C.ink, background:'#FBFAFF', outline:'none' },
+  textarea: { width:'100%', padding:'10px 12px', borderRadius:12, border:`1.5px solid ${C.purpleBorder}`, fontFamily:'Nunito,sans-serif', fontWeight:600, fontSize:14, color:C.ink, background:'#FBFAFF', outline:'none', resize:'vertical' },
+  sectionIcon: (bg,color) => ({ width:34, height:34, borderRadius:12, background:bg, display:'grid', placeItems:'center', color, fontWeight:900, fontSize:18, flexShrink:0 }),
+  sectionTitle: (color) => ({ fontFamily:'Fredoka,sans-serif', color, fontSize:22 }),
+  badge : { background:C.purpleSoft, color:C.purple, borderRadius:8, padding:'2px 10px', fontWeight:900, fontSize:12 },
+  infoBox: { marginBottom:12, background:C.purpleSoft, border:`1px solid ${C.purpleBorder}`, borderRadius:12, padding:'10px 14px', color:C.purple, fontWeight:800, fontSize:13 },
+  addBtn: { width:'100%', border:`1.5px solid ${C.purpleBorder}`, background:C.white, color:C.purple, borderRadius:12, padding:'10px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:'pointer', marginTop:4 },
+  delBtn: { border:`1.5px solid ${C.red}`, borderRadius:8, background:C.white, color:C.red, padding:'4px 10px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:12, cursor:'pointer' },
+};
 
 function EditorView({ data, setData }) {
-  const [status, setStatus] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [status,   setStatus]   = useState('');
+  const [saving,   setSaving]   = useState(false);
   const [previewing, setPreviewing] = useState(false);
 
-  const text = data.texts[0] || normalizeText();
-  const patchText = (patcher) => {
-    setData((prev) => ({ ...prev, texts: [patcher(prev.texts[0] || normalizeText())] }));
-  };
+  /* siempre editamos el primer (y único) text */
+  const text    = data.texts[0] || normalizeText();
+  const patchTx = (fn) => setData(prev => ({ ...prev, texts: [fn(prev.texts[0]||normalizeText())] }));
 
-  const addWord = () => patchText((t) => ({ ...t, words: [...t.words, normalizeWord()] }));
-  const addQuestion = () => patchText((t) => ({ ...t, questions: [...t.questions, normalizeQuestion()] }));
-
+  /* ── save ── */
   const save = async () => {
-    setSaving(true);
-    setStatus('Saving...');
+    setSaving(true); setStatus('Saving…');
     try {
-      const payload = {
-        mode: text.mode,
-        title: text.title,
-        genre: text.genre,
+      const payload = new URLSearchParams();
+      payload.set('unit', window.RC_UNIT_ID||'');
+      payload.set('type', 'reading_comprehension');
+      payload.set('content_json', JSON.stringify({
+        mode     : text.mode,
+        title    : text.title,
+        genre    : text.genre,
         wordCount: text.wordCount || countWords(text.body),
-        body: text.body,
-        words: text.words,
+        body     : text.body,
+        words    : text.words,
         questions: text.questions,
-      };
-      await saveActivity(payload);
-      setStatus('Saved successfully.');
-    } catch (err) {
-      setStatus('Could not save activity.');
+      }));
+      const res = await fetch('../../core/save_activity.php', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'}, credentials:'same-origin', body:payload.toString() });
+      if (!res.ok) throw new Error('HTTP '+res.status);
+      setStatus('✓ Saved successfully');
+    } catch(e) {
+      setStatus('⚠ Could not save — ' + e.message);
     } finally {
       setSaving(false);
     }
   };
 
-  const sectionTitleStyle = { fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 22, lineHeight: 1.1 };
-  const countBadgeStyle = { marginLeft: 'auto', background: C.purpleSoft, color: C.purpleDark, borderRadius: 999, padding: '5px 12px', fontWeight: 900, fontSize: 12 };
-  const sectionCardStyle = { border: `1px solid ${C.purpleBorder}`, borderRadius: 18, padding: 14, marginBottom: 12, background: '#FBFAFF' };
-
-  if (previewing) {
-    return (
-      <div style={{ minHeight: '100vh', background: C.bg }}>
-        <div style={{ width: 'min(1120px, 100%)', margin: '0 auto', padding: '16px 18px 0' }}>
-          <button onClick={() => setPreviewing(false)} style={buttonStyle('secondary')}>← Back to editor</button>
-        </div>
-        <PlayerView data={data} />
+  /* ── preview inline ── */
+  if (previewing) return (
+    <div style={{ height:'100%', display:'flex', flexDirection:'column' }}>
+      <div style={{ background:C.white, borderBottom:`1px solid ${C.border}`, padding:'10px 16px', flexShrink:0 }}>
+        <button onClick={()=>setPreviewing(false)} style={{ ...eStyles.addBtn, width:'auto', padding:'8px 16px' }}>← Back to editor</button>
       </div>
-    );
-  }
+      <div style={{ flex:1, minHeight:0 }}><PlayerView data={data} /></div>
+    </div>
+  );
+
+  /* ── live preview html ── */
+  const previewHtml = paragraphToHtml(text.body||'Type passage text above to see highlights.', text.words);
 
   return (
-    <div className="rc-editor-page">
-      <div className="rc-editor-app">
-        <div style={editorSectionStyle}>
-          <div style={editorSectionHeaderStyle}>
-            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>⚙</div>
-            <div>
-              <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 'clamp(24px, 2.6vw, 32px)', lineHeight: 1.05 }}>Reading Comprehension</div>
-              <div style={{ color: C.purpleMid, fontSize: 13, fontWeight: 800 }}>Edit mode</div>
-            </div>
-            <div style={{ ...countBadgeStyle, background: C.orangeSoft, color: C.orangeDark }}>Activity setup</div>
+    <div style={{ height:'100%', overflowY:'auto', background:C.bg, padding:20 }}>
+      <div style={{ maxWidth:1100, margin:'0 auto' }}>
+
+        {/* ── 1. MODO ── */}
+        <div style={eStyles.card}>
+          <div style={eStyles.head}>
+            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>⚙</div>
+            <span style={eStyles.sectionTitle(C.orange)}>Reading Comprehension</span>
+            <span style={{ marginLeft:'auto', ...eStyles.badge }}>Edit mode</span>
           </div>
+          <div style={eStyles.body}>
+            <label style={eStyles.label}>Activity title</label>
+            <input style={{ ...eStyles.input, marginBottom:16, fontSize:18 }} value={text.title}
+              onChange={e=>patchTx(t=>({...t,title:e.target.value}))} placeholder="e.g. Unit 3 — Reading: Migration" />
 
-          <div style={{ padding: 20 }}>
-            <div className="rc-editor-grid-main" style={{ marginBottom: 16 }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Activity title</label>
-                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={editorInputStyle} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Level</label>
-                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={editorInputStyle} />
-              </div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: 8, fontWeight: 900, color: C.purple }}>Activity mode — choose one</label>
-              <div className="rc-editor-grid-half">
-                <button onClick={() => patchText((t) => ({ ...t, mode: 'vocab' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'vocab' ? C.orange : C.purpleBorder}`, borderRadius: 18, background: text.mode === 'vocab' ? '#FFF7F0' : '#FBFAFF', padding: 18, cursor: 'pointer' }}>
-                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.orange, fontSize: 20, marginBottom: 6 }}>Vocabulary meaning</div>
-                  <div style={{ color: C.purpleMid, fontWeight: 700, fontSize: 14, lineHeight: 1.5 }}>Students read the passage and choose the correct meaning for each highlighted word.</div>
-                </button>
-                <button onClick={() => patchText((t) => ({ ...t, mode: 'comp' }))} style={{ textAlign: 'left', border: `2px solid ${text.mode === 'comp' ? C.orange : C.purpleBorder}`, borderRadius: 18, background: text.mode === 'comp' ? '#FFF7F0' : '#FBFAFF', padding: 18, cursor: 'pointer' }}>
-                  <div style={{ fontFamily: 'Fredoka, sans-serif', color: C.purpleDark, fontSize: 20, marginBottom: 6 }}>Reading comprehension</div>
-                  <div style={{ color: C.purpleMid, fontWeight: 700, fontSize: 14, lineHeight: 1.5 }}>Students answer questions about the passage to demonstrate understanding.</div>
-                </button>
-              </div>
+            <label style={eStyles.label}>Activity mode — choose one</label>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              {/* Vocab card */}
+              <button onClick={()=>patchTx(t=>({...t,mode:'vocab'}))}
+                style={{ textAlign:'left', border:`2px solid ${text.mode==='vocab'?C.orange:C.purpleBorder}`, borderRadius:16, background:text.mode==='vocab'?'#FFF5EE':'#F6F4FD', padding:16, cursor:'pointer' }}>
+                <div style={{ fontFamily:'Fredoka,sans-serif', color:C.orange, fontSize:20, marginBottom:4 }}>🔤 Vocabulary meaning</div>
+                <div style={{ color:C.purpleMid, fontWeight:700, fontSize:13 }}>Students choose the correct meaning of each highlighted word (1 correct + 2 distractors).</div>
+                {text.mode==='vocab' && <div style={{ marginTop:8, color:C.orange, fontWeight:900, fontSize:12 }}>✓ Selected</div>}
+              </button>
+              {/* Comp card */}
+              <button onClick={()=>patchTx(t=>({...t,mode:'comp'}))}
+                style={{ textAlign:'left', border:`2px solid ${text.mode==='comp'?C.purple:C.purpleBorder}`, borderRadius:16, background:text.mode==='comp'?C.purpleSoft:'#F6F4FD', padding:16, cursor:'pointer' }}>
+                <div style={{ fontFamily:'Fredoka,sans-serif', color:C.purple, fontSize:20, marginBottom:4 }}>📖 Reading comprehension</div>
+                <div style={{ color:C.purpleMid, fontWeight:700, fontSize:13 }}>Students answer multiple-choice questions A B C D about the passage.</div>
+                {text.mode==='comp' && <div style={{ marginTop:8, color:C.purple, fontWeight:900, fontSize:12 }}>✓ Selected</div>}
+              </button>
             </div>
           </div>
         </div>
 
-        <div style={editorSectionStyle}>
-          <div style={editorSectionHeaderStyle}>
-            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>📘</div>
-            <div style={sectionTitleStyle}>Passage</div>
+        {/* ── 2. PASSAGE ── */}
+        <div style={eStyles.card}>
+          <div style={eStyles.head}>
+            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>📄</div>
+            <span style={eStyles.sectionTitle(C.orange)}>Passage</span>
           </div>
-
-          <div style={{ padding: 20 }}>
-            <div className="rc-editor-grid-passage" style={{ marginBottom: 12 }}>
+          <div style={eStyles.body}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 180px', gap:12, marginBottom:12 }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Title</label>
-                <input value={text.title} onChange={(e) => patchText((t) => ({ ...t, title: e.target.value }))} style={editorInputStyle} />
+                <label style={eStyles.label}>Passage title</label>
+                <input style={eStyles.input} value={text.title}
+                  onChange={e=>patchTx(t=>({...t,title:e.target.value}))} placeholder="e.g. The Mystery of Migration" />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Genre</label>
-                <input value={text.genre} onChange={(e) => patchText((t) => ({ ...t, genre: e.target.value }))} style={editorInputStyle} />
+                <label style={eStyles.label}>Genre / type</label>
+                <input style={eStyles.input} value={text.genre}
+                  onChange={e=>patchTx(t=>({...t,genre:e.target.value}))} placeholder="e.g. Informative text" />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Word count</label>
-                <input type="number" value={text.wordCount || ''} onChange={(e) => patchText((t) => ({ ...t, wordCount: Number(e.target.value || 0) }))} style={editorInputStyle} />
+                <label style={eStyles.label}>Word count</label>
+                <input style={eStyles.input} type="number" value={text.wordCount||''}
+                  onChange={e=>patchTx(t=>({...t,wordCount:Number(e.target.value||0)}))} placeholder="auto" />
               </div>
             </div>
-            <label style={{ display: 'block', marginBottom: 6, fontWeight: 900, color: C.purple }}>Passage body</label>
-            <textarea rows={8} value={text.body} onChange={(e) => patchText((t) => ({ ...t, body: e.target.value }))} style={{ ...editorInputStyle, minHeight: 180, lineHeight: 1.6, resize: 'vertical' }} />
+            <label style={eStyles.label}>Passage body text</label>
+            <textarea rows={8} style={eStyles.textarea} value={text.body}
+              onChange={e=>patchTx(t=>({...t,body:e.target.value}))}
+              placeholder="Paste or type the reading passage here. Separate paragraphs with a blank line." />
           </div>
         </div>
 
-        <div style={editorSectionStyle}>
-          <div style={editorSectionHeaderStyle}>
-            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>🟧</div>
-            <div style={sectionTitleStyle}>Highlighted vocabulary words</div>
-            <div style={countBadgeStyle}>{text.words.length} words</div>
+        {/* ── 3. PALABRAS HIGHLIGHTED ── */}
+        <div style={eStyles.card}>
+          <div style={eStyles.head}>
+            <div style={eStyles.sectionIcon(C.orangeSoft, C.orangeDark)}>🖊</div>
+            <span style={eStyles.sectionTitle(C.orange)}>Highlighted vocabulary words</span>
+            <span style={{ marginLeft:'auto', ...eStyles.badge }}>{text.words.length} words</span>
           </div>
+          <div style={eStyles.body}>
 
-          <div style={{ padding: 20 }}>
-            <div style={{ marginBottom: 12, background: C.purpleSoft, border: `1px solid ${C.purpleBorder}`, borderRadius: 16, padding: '12px 14px', color: C.purpleDark, fontWeight: 800, fontSize: 14 }}>
-              Add each word that appears in the passage. It will be highlighted in orange for students.
+            {/* info */}
+            <div style={eStyles.infoBox}>
+              {text.mode==='vocab'
+                ? '📌 Each word added here will appear highlighted in orange in the passage. Students must choose its correct meaning from 3 options.'
+                : '📌 Words added here appear highlighted in orange in the passage — for reference. In Comprehension mode, questions are defined separately below.'}
             </div>
 
-            <div style={{ border: `1px solid ${C.orangeBorder}`, background: '#FFF9F4', borderRadius: 18, padding: 14, marginBottom: 14 }}>
-              <div style={{ color: C.purpleMid, fontSize: 11, fontWeight: 900, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.08em' }}>Live preview — highlighted words</div>
-              <div style={{ color: C.ink, lineHeight: 1.7 }} dangerouslySetInnerHTML={{ __html: paragraphToHtml(text.body || 'Type passage text to preview highlights.', text.words) }} />
+            {/* live preview */}
+            <div style={{ border:`1.5px solid ${C.orangeBorder}`, background:'#FFF9F4', borderRadius:14, padding:'12px 14px', marginBottom:16 }}>
+              <div style={{ fontSize:11, fontWeight:900, color:C.purpleMid, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:8 }}>
+                Live preview — highlighted words as students see them
+              </div>
+              <div style={{ color:C.ink, lineHeight:1.75, fontSize:14 }} dangerouslySetInnerHTML={{ __html: previewHtml }} />
             </div>
 
-            {text.words.map((word, idx) => (
-              <div key={word.id} style={sectionCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>Word card {idx + 1}</div>
-                  <button onClick={() => patchText((t) => ({ ...t, words: t.words.filter((_, i) => i !== idx) }))} style={buttonStyle('danger')}>Delete</button>
+            {/* word cards */}
+            {text.words.map((w, wi) => (
+              <div key={w.id} style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:16, padding:14, marginBottom:12 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                  <span style={{ fontFamily:'Fredoka,sans-serif', color:C.orange, fontSize:18 }}>Word {wi+1}{w.word ? ` — ${w.word}` : ''}</span>
+                  <button style={eStyles.delBtn} onClick={()=>patchTx(t=>({...t,words:t.words.filter((_,i)=>i!==wi)}))}>✕ Remove</button>
                 </div>
-                <div className="rc-editor-grid-half" style={{ marginBottom: 10 }}>
+                {/* fila 1: word + correct */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 2fr', gap:10, marginBottom:10 }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Word (as it appears in text)</label>
-                    <input value={word.word} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, word: e.target.value } : w) }))} style={editorInputStyle} />
+                    <label style={eStyles.label}>Word (exact as in text)</label>
+                    <input style={eStyles.input} value={w.word}
+                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,word:e.target.value}:x)}))}
+                      placeholder="e.g. migration" />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Correct meaning</label>
-                    <input value={word.correct} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, correct: e.target.value } : w) }))} style={editorInputStyle} />
+                    <label style={eStyles.label}>✓ Correct meaning</label>
+                    <input style={{ ...eStyles.input, borderColor:C.green, background:C.greenSoft }} value={w.correct}
+                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,correct:e.target.value}:x)}))}
+                      placeholder="Correct definition" />
                   </div>
                 </div>
-                <div className="rc-editor-grid-half">
+                {/* fila 2: distractors */}
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 1</label>
-                    <input value={word.distractors[0] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [e.target.value, w.distractors?.[1] || ''] } : w) }))} style={editorInputStyle} />
+                    <label style={eStyles.label}>✗ Wrong option 1</label>
+                    <input style={{ ...eStyles.input, borderColor:C.red, background:C.redSoft }} value={w.distractors[0]||''}
+                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,distractors:[e.target.value,x.distractors?.[1]||'']}:x)}))}
+                      placeholder="Incorrect definition" />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 900, color: C.purple }}>Wrong option 2</label>
-                    <input value={word.distractors[1] || ''} onChange={(e) => patchText((t) => ({ ...t, words: t.words.map((w, i) => i === idx ? { ...w, distractors: [w.distractors?.[0] || '', e.target.value] } : w) }))} style={editorInputStyle} />
+                    <label style={eStyles.label}>✗ Wrong option 2</label>
+                    <input style={{ ...eStyles.input, borderColor:C.red, background:C.redSoft }} value={w.distractors[1]||''}
+                      onChange={e=>patchTx(t=>({...t,words:t.words.map((x,i)=>i===wi?{...x,distractors:[x.distractors?.[0]||'',e.target.value]}:x)}))}
+                      placeholder="Incorrect definition" />
                   </div>
                 </div>
               </div>
             ))}
 
-            <button onClick={addWord} style={{ ...buttonStyle('secondary'), width: '100%' }}>+ Add vocabulary word</button>
+            <button style={eStyles.addBtn} onClick={()=>patchTx(t=>({...t,words:[...t.words,normalizeWord()]}))}>
+              + Add vocabulary word
+            </button>
           </div>
         </div>
 
-        <div style={editorSectionStyle}>
-          <div style={editorSectionHeaderStyle}>
-            <div style={{ width: 38, height: 38, borderRadius: 14, background: C.orangeSoft, border: `1px solid ${C.orangeBorder}`, display: 'grid', placeItems: 'center', color: C.orangeDark, fontWeight: 900 }}>❓</div>
-            <div style={sectionTitleStyle}>Reading comprehension questions</div>
-            <div style={countBadgeStyle}>{text.questions.length} questions</div>
-          </div>
-
-          <div style={{ padding: 20 }}>
-            {text.questions.map((q, idx) => (
-              <div key={q.id} style={sectionCardStyle}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <div style={{ color: C.orange, fontFamily: 'Fredoka, sans-serif', fontSize: 20 }}>Question {idx + 1}</div>
-                  <button onClick={() => patchText((t) => ({ ...t, questions: t.questions.filter((_, i) => i !== idx) }))} style={buttonStyle('danger')}>Delete</button>
-                </div>
-                <input value={q.stem} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, stem: e.target.value } : x) }))} placeholder="Question stem" style={{ ...editorInputStyle, marginBottom: 10 }} />
-                {q.options.map((opt, optIdx) => (
-                  <input key={`${q.id}_${optIdx}`} value={opt} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, options: x.options.map((o, j) => j === optIdx ? e.target.value : o) } : x) }))} placeholder={`Option ${LETTERS[optIdx]}`} style={{ ...editorInputStyle, marginBottom: 8 }} />
-                ))}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 900, color: C.ink }}>Correct:</span>
-                  {LETTERS.map((label, optIdx) => (
-                    <label key={`${q.id}_c_${optIdx}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 800, color: C.purpleDark }}>
-                      <input type="radio" checked={q.correct === optIdx} onChange={() => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, correct: optIdx } : x) }))} /> {label}
-                    </label>
-                  ))}
-                </div>
-                <input value={q.feedback} onChange={(e) => patchText((t) => ({ ...t, questions: t.questions.map((x, i) => i === idx ? { ...x, feedback: e.target.value } : x) }))} placeholder="Feedback" style={editorInputStyle} />
+        {/* ── 4. PREGUNTAS COMP (solo visible en modo comp) ── */}
+        {text.mode === 'comp' && (
+          <div style={eStyles.card}>
+            <div style={eStyles.head}>
+              <div style={eStyles.sectionIcon(C.purpleSoft, C.purple)}>❓</div>
+              <span style={eStyles.sectionTitle(C.purple)}>Comprehension questions</span>
+              <span style={{ marginLeft:'auto', ...eStyles.badge }}>{text.questions.length} questions</span>
+            </div>
+            <div style={eStyles.body}>
+              <div style={eStyles.infoBox}>
+                📌 Add questions about the passage. Click the letter badge (A B C D) to mark the correct answer. The feedback text appears after the student answers.
               </div>
-            ))}
-            <button onClick={addQuestion} style={{ ...buttonStyle('secondary'), width: '100%' }}>+ Add comprehension question</button>
+
+              {text.questions.map((q, qi) => (
+                <div key={q.id} style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:16, padding:14, marginBottom:12 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+                    <span style={{ fontFamily:'Fredoka,sans-serif', color:C.purple, fontSize:18 }}>Question {qi+1}</span>
+                    <button style={eStyles.delBtn} onClick={()=>patchTx(t=>({...t,questions:t.questions.filter((_,i)=>i!==qi)}))}>✕ Remove</button>
+                  </div>
+
+                  <label style={eStyles.label}>Question stem</label>
+                  <input style={{ ...eStyles.input, marginBottom:12 }} value={q.stem}
+                    onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,stem:e.target.value}:x)}))}
+                    placeholder="Type the question here…" />
+
+                  <label style={eStyles.label}>Options — click the letter to mark the correct answer</label>
+                  {q.options.map((opt, oi) => {
+                    const isCorrect = q.correct===oi;
+                    return (
+                      <div key={oi} style={{ display:'grid', gridTemplateColumns:'36px 1fr', gap:8, marginBottom:8, alignItems:'center' }}>
+                        {/* letra clicable */}
+                        <button
+                          onClick={()=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,correct:oi}:x)}))}
+                          title="Click to mark as correct"
+                          style={{ width:34, height:34, borderRadius:8, border:`2px solid ${isCorrect?C.green:C.purpleBorder}`, background:isCorrect?C.green:C.white, color:isCorrect?C.white:C.purple, fontWeight:900, fontSize:13, cursor:'pointer' }}>
+                          {LETTERS[oi]}
+                        </button>
+                        <input style={{ ...eStyles.input, borderColor:isCorrect?C.green:C.purpleBorder, background:isCorrect?C.greenSoft:'#FBFAFF' }}
+                          value={opt}
+                          onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,options:x.options.map((o,j)=>j===oi?e.target.value:o)}:x)}))}
+                          placeholder={`Option ${LETTERS[oi]}`} />
+                      </div>
+                    );
+                  })}
+
+                  <div style={{ display:'flex', alignItems:'center', gap:8, margin:'6px 0 10px', fontSize:12, fontWeight:900 }}>
+                    <span style={{ background:C.greenSoft, border:`1px solid ${C.green}`, borderRadius:999, padding:'3px 12px', color:C.greenDark }}>
+                      ✓ Correct: {LETTERS[q.correct]}
+                    </span>
+                  </div>
+
+                  <label style={eStyles.label}>Feedback shown after student answers</label>
+                  <input style={eStyles.input} value={q.feedback}
+                    onChange={e=>patchTx(t=>({...t,questions:t.questions.map((x,i)=>i===qi?{...x,feedback:e.target.value}:x)}))}
+                    placeholder="Explain the correct answer…" />
+                </div>
+              ))}
+
+              <button style={eStyles.addBtn} onClick={()=>patchTx(t=>({...t,questions:[...t.questions,normalizeQuestion()]}))}>
+                + Add comprehension question
+              </button>
+            </div>
           </div>
+        )}
+
+        {/* ── 5. SAVE BAR ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'auto 1fr auto', gap:12, alignItems:'center', position:'sticky', bottom:0, background:C.bg, paddingBottom:16 }}>
+          <button onClick={()=>setPreviewing(true)}
+            style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:12, background:C.white, color:C.purple, padding:'12px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:'pointer' }}>
+            👁 Preview as student
+          </button>
+          <span style={{ color:C.purple, fontWeight:900, fontSize:13, textAlign:'center' }}>{status}</span>
+          <button onClick={save} disabled={saving}
+            style={{ border:'none', borderRadius:12, background:C.orange, color:C.white, padding:'12px 22px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:saving?'default':'pointer', opacity:saving?.6:1 }}>
+            {saving ? 'Saving…' : '💾 Save activity'}
+          </button>
         </div>
 
-        <div className="rc-editor-actions">
-          <div style={{ color: C.purple, fontWeight: 900, fontSize: 14, textAlign: 'right' }}>{status}</div>
-          <button onClick={() => setPreviewing(true)} style={buttonStyle('secondary')}>Preview as student</button>
-          <button onClick={save} disabled={saving} style={buttonStyle('primary', saving)}>Save activity</button>
-        </div>
       </div>
     </div>
   );
 }
 
+/* ════════════════
+   ROOT APP
+   ════════════════ */
 function App() {
   const [data, setData] = useState(() => normalizeDataset(window.RC_SAVED_DATA || {}));
-  const allowEditor = !!window.RC_ALLOW_EDITOR;
-
-  if (allowEditor) {
-    return <EditorView data={data} setData={setData} />;
-  }
-
-  return <PlayerView data={data} />;
+  return window.RC_ALLOW_EDITOR
+    ? <EditorView data={data} setData={setData} />
+    : <PlayerView data={data} />;
 }
 
 ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 </script>
 
 <style>
-html,body{
-  width:100%;
-  min-height:100%;
-  margin:0;
-  background:#F8F7FF;
-  font-family:'Nunito','Segoe UI',sans-serif;
-}
-body{
-  margin:0!important;
-  padding:0!important;
-  background:#F8F7FF!important;
-}
-.activity-wrapper{
-  max-width:100%!important;
-  margin:0!important;
-  padding:0!important;
-  min-height:100vh!important;
-  display:flex!important;
-  flex-direction:column!important;
-  background:transparent!important;
-}
-.top-row,
-.activity-header,
-.viewer-header{
-  display:none!important;
-}
-.viewer-content{
-  flex:1!important;
-  min-height:0!important;
-  display:flex!important;
-  flex-direction:column!important;
-  padding:0!important;
-  margin:0!important;
-  background:transparent!important;
-  border:none!important;
-  box-shadow:none!important;
-  border-radius:0!important;
-  overflow:hidden!important;
-}
-.rc-page{
-  width:100%;
-  flex:1;
-  min-height:0;
-  overflow:auto;
-  padding:clamp(14px,2.2vw,28px);
-  display:flex;
-  justify-content:center;
-  align-items:flex-start;
-  background:#F8F7FF;
-}
-.rc-app,
-.rc-editor-app{
-  width:min(1120px,100%);
-  margin:0 auto;
-}
-.rc-tabs{
-  margin-bottom:14px;
-  padding:0 18px;
-  min-height:54px;
-  display:flex;
-  align-items:flex-end;
-  gap:18px;
-  border:1px solid #EDE9FA;
-  border-radius:22px;
-  background:#fff;
-  box-shadow:0 8px 28px rgba(127,119,221,.08);
-}
-.rc-stage-shell{
-  display:grid;
-  grid-template-rows:auto minmax(0,1fr);
-  min-height:min(760px,calc(100vh - 72px));
-  background:#fff;
-  border:1px solid #EDE9FA;
-  border-radius:28px;
-  overflow:hidden;
-  box-shadow:0 12px 36px rgba(127,119,221,.12);
-}
-.rc-topbar{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  gap:16px;
-  padding:18px 22px;
-  border-bottom:1px solid #F0EEF8;
-  background:linear-gradient(180deg,#ffffff 0%,#fbfaff 100%);
-}
-.rc-stage-layout{
-  display:grid;
-  grid-template-columns:minmax(0,1.03fr) minmax(320px,.97fr);
-  min-height:0;
-}
-.rc-passage-pane{
-  height:100%;
-  min-height:0;
-  overflow:auto;
-  padding:22px;
-  border-right:1px solid #F0EEF8;
-  background:#FCFBFF;
-}
-.rc-question-pane{
-  min-height:0;
-  overflow:auto;
-  padding:22px;
-  background:#fff;
-}
-.rc-question-card{
-  border:1px solid #EDE9FA;
-  border-radius:24px;
-  background:#fff;
-  padding:22px;
-  box-shadow:0 8px 24px rgba(127,119,221,.08);
-}
-.rc-actions{
-  margin-top:16px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.rc-editor-page{
-  min-height:100vh;
-  overflow:auto;
-  background:#F8F7FF;
-  padding:20px;
-}
-.rc-editor-grid-main{
-  display:grid;
-  grid-template-columns:2fr 1fr;
-  gap:12px;
-}
-.rc-editor-grid-passage{
-  display:grid;
-  grid-template-columns:1fr 1fr 220px;
-  gap:10px;
-}
-.rc-editor-grid-half{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-}
-.rc-editor-actions{
-  display:grid;
-  grid-template-columns:1fr auto auto;
-  gap:12px;
-  align-items:center;
-  position:sticky;
-  bottom:0;
-  padding:12px 0 2px;
-  background:linear-gradient(180deg,rgba(248,247,255,0) 0%,#F8F7FF 34%);
-}
-.rc-hl{
-  color:#C2580A;
-  font-weight:900;
-  border-bottom:2px solid #F97316;
-  background:#FFF0E6;
-  border-radius:4px;
-  padding:0 2px;
-}
-@media (max-width: 980px){
-  .rc-stage-shell{
-    min-height:auto;
-  }
-  .rc-stage-layout,
-  .rc-editor-grid-main,
-  .rc-editor-grid-passage,
-  .rc-editor-grid-half,
-  .rc-editor-actions{
-    grid-template-columns:1fr;
-  }
-  .rc-passage-pane{
-    border-right:none;
-    border-bottom:1px solid #F0EEF8;
-  }
-  .rc-editor-actions{
-    position:static;
-    background:transparent;
-    padding-top:0;
-  }
-}
-@media (max-width: 640px){
-  .rc-page,
-  .rc-editor-page{
-    padding:12px;
-  }
-  .rc-topbar,
-  .rc-question-pane,
-  .rc-passage-pane{
-    padding:16px;
-  }
-  .rc-tabs{
-    padding:0 14px;
-    gap:12px;
-    overflow:auto;
-  }
-}
-/* Editor mode: override template's overflow:hidden so the page can scroll */
-body:has(.rc-editor-page){
-  height:auto!important;
-  overflow:auto!important;
-}
-.activity-wrapper:has(.rc-editor-page){
-  height:auto!important;
-  min-height:100vh!important;
-}
-.viewer-content:has(.rc-editor-page){
-  overflow:visible!important;
-  height:auto!important;
-  min-height:0!important;
-  flex:none!important;
+/* palabra highlighted en el texto */
+.rc-hl {
+  color: #C2580A;
+  font-weight: 900;
+  border-bottom: 2px solid #F97316;
+  background: #FFF0E6;
+  border-radius: 3px;
+  padding: 0 2px;
 }
 </style>
 
 <?php
 $content = ob_get_clean();
-render_activity_viewer($savedTitle, '📖', $content);
+/* ════════════════════════════════════════════════════════
+   FIRMA CORRECTA — igual que TODAS las actividades del repo
+   UN solo argumento: $content
+   ════════════════════════════════════════════════════════ */
+render_activity_viewer($content);
