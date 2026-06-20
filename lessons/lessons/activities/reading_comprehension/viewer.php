@@ -6,8 +6,7 @@
  * VIEWER  → estudiante ve la actividad (modo vocab o comp)
  * EDITOR  → docente edita la actividad  (?mode=edit, sesión academic_id/admin_id)
  *
- * Patron del repo: ob_start() arriba, render_activity_viewer($content) abajo.
- * NO pasar title ni icon — solo $content.
+ * Patron del repo: ob_start() arriba, render_activity_viewer($title, $icon, $content) abajo.
  */
 
 require_once __DIR__ . '/../../config/db.php';
@@ -64,6 +63,7 @@ if ($activityId !== '') {
 
 $isEditor    = ($mode === 'edit') && (isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']));
 $allowEditor = $isEditor ? 'true' : 'false';
+$viewerTitle = $savedTitle !== '' ? $savedTitle : 'Reading Comprehension';
 
 ob_start();
 ?>
@@ -793,8 +793,4 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 
 <?php
 $content = ob_get_clean();
-/* ════════════════════════════════════════════════════════
-   FIRMA CORRECTA — igual que TODAS las actividades del repo
-   UN solo argumento: $content
-   ════════════════════════════════════════════════════════ */
-render_activity_viewer($content);
+render_activity_viewer($viewerTitle, '📖', $content);
