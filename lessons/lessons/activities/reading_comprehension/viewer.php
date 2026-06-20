@@ -22,6 +22,7 @@ $mode       = isset($_GET['mode'])     ? trim((string) $_GET['mode'])     : 'vie
 
 $savedData  = [];
 $savedTitle = 'Reading Comprehension';
+$activityLoaded = false;
 
 /* ── helper: check column exists ── */
 function rc_has_column(PDO $pdo, string $col): bool
@@ -48,6 +49,7 @@ if ($activityId !== '') {
     $st->execute([$activityId]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
     if ($row) {
+        $activityLoaded = true;
         $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
         $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
     }
@@ -56,6 +58,7 @@ if ($activityId !== '') {
     $st->execute([$unitId]);
     $row = $st->fetch(PDO::FETCH_ASSOC);
     if ($row) {
+        $activityLoaded = true;
         $savedData  = json_decode((string)($row['data'] ?? ''), true) ?? [];
         $savedTitle = trim((string)($row['title'] ?? '')) !== '' ? (string)$row['title'] : $savedTitle;
     }
@@ -64,6 +67,12 @@ if ($activityId !== '') {
 $isEditor    = ($mode === 'edit') && (isset($_SESSION['academic_id']) || isset($_SESSION['admin_id']));
 $allowEditor = $isEditor ? 'true' : 'false';
 $viewerTitle = $savedTitle !== '' ? $savedTitle : 'Reading Comprehension';
+$source      = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+
+error_log('[reading_comprehension] id=' . $activityId);
+error_log('[reading_comprehension] unit=' . $unitId);
+error_log('[reading_comprehension] activity loaded=' . ($activityLoaded ? 'yes' : 'no'));
+error_log('[reading_comprehension] mode=' . $mode . ' source=' . $source);
 
 ob_start();
 ?>
@@ -329,17 +338,17 @@ function VocabPlayer({ text }) {
             {/* botones nav */}
             <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
               <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
-                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0?.45:1, cursor:idx===0?'default':'pointer' }}>
+                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0 ? .45 : 1, cursor:idx===0?'default':'pointer' }}>
                 ← Previous
               </button>
               {!row.checked
                 ? <button onClick={()=>{ if(row.sel<0)return; const ok=!!item.options[row.sel]?.correct; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:ok}:a)); }}
                     disabled={row.sel<0}
-                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0?.45:1, cursor:row.sel<0?'default':'pointer' }}>
+                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0 ? .45 : 1, cursor:row.sel<0?'default':'pointer' }}>
                     Check answer
                   </button>
                 : <button onClick={()=>setIdx(p=>Math.min(deck.length-1,p+1))} disabled={idx>=deck.length-1}
-                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=deck.length-1?.45:1, cursor:idx>=deck.length-1?'default':'pointer' }}>
+                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=deck.length-1 ? .45 : 1, cursor:idx>=deck.length-1?'default':'pointer' }}>
                     {idx>=deck.length-1 ? '✓ Completed' : 'Next →'}
                   </button>
               }
@@ -423,17 +432,17 @@ function CompPlayer({ text }) {
             {/* botones nav */}
             <div style={{ display:'flex', justifyContent:'space-between', gap:8, marginTop:14 }}>
               <button onClick={()=>setIdx(p=>Math.max(0,p-1))} disabled={idx===0}
-                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0?.45:1, cursor:idx===0?'default':'pointer' }}>
+                style={{ border:`1.5px solid ${C.purpleBorder}`, borderRadius:10, background:C.white, color:C.purple, padding:'8px 14px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx===0 ? .45 : 1, cursor:idx===0?'default':'pointer' }}>
                 ← Previous
               </button>
               {!row.checked
                 ? <button onClick={()=>{ if(row.sel<0)return; setAnswers(prev=>prev.map((a,i)=>i===idx?{...a,checked:true,correct:row.sel===q.correct}:a)); }}
                     disabled={row.sel<0}
-                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0?.45:1, cursor:row.sel<0?'default':'pointer' }}>
+                    style={{ border:'none', borderRadius:10, background:C.purple, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:row.sel<0 ? .45 : 1, cursor:row.sel<0?'default':'pointer' }}>
                     Check answer
                   </button>
                 : <button onClick={()=>setIdx(p=>Math.min(questions.length-1,p+1))} disabled={idx>=questions.length-1}
-                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=questions.length-1?.45:1, cursor:idx>=questions.length-1?'default':'pointer' }}>
+                    style={{ border:'none', borderRadius:10, background:C.orange, color:C.white, padding:'8px 18px', fontWeight:900, fontFamily:'Nunito,sans-serif', opacity:idx>=questions.length-1 ? .45 : 1, cursor:idx>=questions.length-1?'default':'pointer' }}>
                     {idx>=questions.length-1 ? '✓ Completed' : 'Next →'}
                   </button>
               }
@@ -756,7 +765,7 @@ function EditorView({ data, setData }) {
           </button>
           <span style={{ color:C.purple, fontWeight:900, fontSize:13, textAlign:'center' }}>{status}</span>
           <button onClick={save} disabled={saving}
-            style={{ border:'none', borderRadius:12, background:C.orange, color:C.white, padding:'12px 22px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:saving?'default':'pointer', opacity:saving?.6:1 }}>
+            style={{ border:'none', borderRadius:12, background:C.orange, color:C.white, padding:'12px 22px', fontWeight:900, fontFamily:'Nunito,sans-serif', fontSize:14, cursor:saving?'default':'pointer', opacity:saving ? .6 : 1 }}>
             {saving ? 'Saving…' : '💾 Save activity'}
           </button>
         </div>
@@ -793,4 +802,5 @@ ReactDOM.createRoot(document.getElementById('rc-root')).render(<App />);
 
 <?php
 $content = ob_get_clean();
+error_log('[reading_comprehension] html length=' . strlen($content));
 render_activity_viewer($viewerTitle, '📖', $content);
