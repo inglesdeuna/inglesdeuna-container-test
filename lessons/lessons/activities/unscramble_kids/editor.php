@@ -110,12 +110,12 @@ if(isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:700;margin-b
 <input type="hidden" name="audio[]" class="usk-audio-hidden" value="<?= htmlspecialchars((string)($item['audio'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
 <input type="hidden" name="item_voice_id[]" value="<?= htmlspecialchars((string)($item['voice_id'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
 <input type="text" name="pre_audio_show" readonly style="display:none" value="<?= htmlspecialchars((string)($item['audio'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
-<button type="button" class="usk-btn-tts" onclick="uskGenerateAudio(this)">🔊 Generate audio</button>
+<button type="button" class="usk-btn-tts" onclick="uskGA(this)">🔊 Generate audio</button>
 <div class="usk-audio-url<?= !empty($item['audio']) ? ' has-audio' : '' ?>"><?= !empty($item['audio']) ? '✔ '.htmlspecialchars((string)$item['audio'],ENT_QUOTES,'UTF-8') : '' ?></div>
 </div>
 <?php endforeach; ?>
 </div>
-<div class="usk-toolbar"><button type="button" class="usk-btn-add" onclick="uskAddWord()">+ Add Word</button><button type="submit" class="usk-btn-save">💾 Save</button></div>
+<div class="usk-toolbar"><button type="button" class="usk-btn-add" onclick="uskAW()">+ Add Word</button><button type="submit" class="usk-btn-save">💾 Save</button></div>
 </form>
 <script>
 let uskFC=false,uskFS=false,uskWC=<?=count($words)?>;
