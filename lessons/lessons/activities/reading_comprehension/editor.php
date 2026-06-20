@@ -9,7 +9,5 @@ if (empty($_SESSION['academic_logged']) && empty($_SESSION['admin_logged'])) {
     exit('Access denied');
 }
 
-$params = $_GET;
-$params['mode'] = 'edit';
-header('Location: viewer.php?' . http_build_query($params));
-exit;
+$_GET['mode'] = 'edit';
+require __DIR__ . '/viewer.php';
