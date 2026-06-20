@@ -44,6 +44,7 @@ $activityTypes = [
     "drag_drop" => "Drag & Drop",
     "drag_drop_kids" => "Drag & Drop Kids",
     "unscramble" => "Unscramble",
+    "unscramble_kids" => "Unscramble (Kids)",
     "flashcards" => "Flashcards",
     "memory_cards" => "Memory Cards",
     "match" => "Match",
