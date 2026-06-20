@@ -17,7 +17,7 @@ function usk_ed_resolve_unit(PDO $pdo, string $id): string {
     $r = $st->fetch(PDO::FETCH_ASSOC);
     return $r && isset($r['unit_id']) ? (string)$r['unit_id'] : '';
 }
-function usk_ed_def(c): array { return ['title'=>'Spell the Word','voice_id'=>'Nggzl2QAXh3OijoXD116','words'=>[]]; }
+function usk_ed_def($c): array { return ['title'=>'Spell the Word','voice_id'=>'Nggzl2QAXh3OijoXD116','words'=>[]]; }
 function usk_ed_norm($raw): array {
     $df = usk_ed_def(0);
     if ($raw === null || $raw === '') return $df;
@@ -35,23 +35,23 @@ function usk_ed_norm($raw): array {
     return ['title'=>$title ? $title : 'Spell the Word','voice_id'=>$void,'words'=>$words];
 }
 function usk_ed_enc(array $p): string {
-    return json_encode(['title'=>trim((string)($p['title'] ?? '')) ?: 'Spell the Word','voice_id'=>trim((string)($p['voice_id'] ?? 'Nggzl2QAXh3OijoXD116')) ?: 'Nggzl2QAXh3OijoXD116','words'=>array_values($p['words'] ?? [])],JOON_UNESCAPED_UNICODE);
+    return json_encode(['title'=>trim((string)($p['title'] ?? '')) ?: 'Spell the Word','voice_id'=>trim((string)($p['voice_id'] ?? 'Nggzl2QAXh3OijoXD116')) ?: 'Nggzl2QAXh3OijoXD116','words'=>array_values($p['words'] ?? [])],JSON_UNESCAPED_UNICODE);
 }
 function usk_ed_load(PDO $pdo, string $unit, string $id): array {
     $fb = ['id'=>'','title'=>'Spell the Word','voice_id'=>'Nggzl2QAXh3OijoXD116','words'=>[]];
     $row = null;
-    if ($id !== '') { $st = $pdo->prepare("SELECT id,data FDOM activities WHERE id=:id AND type='unscramble_kids' LIMIT 1"); $st->execute(['id'=>$id]); $row=$st->fetch(PDO::FETCH_ASSOC); }
-    if (!$row && $unit !== '') { $st = $pdo->prepare("SELECT id,data FROM activities WHERE unit_id=:u MD type='unscramble_kids' ORDER BY id ASC LIMIT 1"); $st->execute(['u'=>$unit]); $row=$st->fetch(PDO::FETCH_ASSOC); }
+    if ($id !== '') { $st = $pdo->prepare("SELECT id,data FROM activities WHERE id=:id AND type='unscramble_kids' LIMIT 1"); $st->execute(['id'=>$id]); $row=$st->fetch(PDO::FETCH_ASSOC); }
+    if (!$row && $unit !== '') { $st = $pdo->prepare("SELECT id,data FROM activities WHERE unit_id=:u AND type='unscramble_kids' ORDER BY id ASC LIMIT 1"); $st->execute(['u'=>$unit]); $row=$st->fetch(PDO::FETCH_ASSOC); }
     if (!$row) return $fb;
     $p = usk_ed_norm($row['data'] ?? null);
-    return ['id'=>(string)($row['id'] ?? ''),'title'=>$p['title'],'voice_id'=>$p['voice_id'],'words'=>$p['words']n];
+    return ['id'=>(string)($row['id'] ?? ''),'title'=>$p['title'],'voice_id'=>$p['voice_id'],'words'=>$p['words']];
 }
 function usk_ed_save(PDO $pdo, string $unit, string $id, string $title, string $void, array $words): string {
     $json = usk_ed_enc(['title'=>$title,'voice_id'=>$void,'words'=>$words]);
     $tid = $id;
     if ($tid === '') { $st=$pdo->prepare("SELECT id FROM activities WHERE unit_id=:u AND type='unscramble_kids' ORDER BY id ASC LIMIT 1"); $st->execute(['u'=>$unit]); $tid=trim((string)$st->fetchColumn()); }
     if ($tid !== '') { $st=$pdo->prepare("UPDATE activities SET data=:data WHERE id=:id AND type='unscramble_kids'"); $st->execute(['data'=>$json,'id'=>$tid]); return $tid; }
-    $st=$pdo->prepare("INSERT INTO activities(unit_id,type,data,position,created_at) VANUES(:u,'unscramble_kids',:d,(SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id=:u2),CURRENT_TIMESTAMP RETUP�F NING id");
+    $st=$pdo->prepare("INSERT INTO activities(unit_id,type,data,position,created_at) VALUES(:u,'unscramble_kids',:d,(SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id=:u2),CURRENT_TIMESTAMP) RETURNING id");
     $st->execute(['u'=>$unit,'u2'=>$unit,'d'=>$json]);
     return (string)$st->fetchColumn();
 }
@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD']==='POST') {
     $postedVoice=in_array(trim((string)($_POST['voice_id'] ?? '')),$allowedVoices,true) ? trim((string)$_POST['voice_id']) : 'Nggzl2QAXh3OijoXD116';
     $ids=is_array($_POST['word_id'] ?? null) ? $_POST['word_id'] : [];
     $wt=is_array($_POST['word'] ?? null) ? $_POST['word'] : [];
-    $em=is_array($_POST['emoji') ?? null) ? $_POST['emoji') : [];
+    $em=is_array($_POST['emoji'] ?? null) ? $_POST['emoji'] : [];
     $hi=is_array($_POST['hint'] ?? null) ? $_POST['hint'] : [];
     $au=is_array($_POST['audio'] ?? null) ? $_POST['audio'] : [];
     $vd=is_array($_POST['item_voice_id'] ?? null) ? $_POST['item_voice_id'] : [];
@@ -99,19 +99,19 @@ if(isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:700;margin-b
 <option value="Nggzl2QAXh3OijoXD116"<?= $activityVoice==='Nggzl2QAXh3OijoXD116'?' selected':'' ?>>Child (Candy) -- recommended</option>
 <option value="nzFihrBIvB34imQBuxub"<?= $activityVoice==='nzFihrBIvB34imQBuxub'?' selected':'' ?>>Adult Male (Josh)</option>
 <option value="NoOVOzCQFLOvtsMoNcdT"<?= $activityVoice==='NoOVOzCQFLOvtsMoNcdT'?' selected':'' ?>>Adult Female (Lily-)</option>
-</uelect></div>
+</select></div>
 <div id="uskWordsContainer">
 <?php foreach($words as $idx => $item): ?>
 <div class="usk-word-item">
 <input type="hidden" name="word_id[]" value="<?= htmlspecialchars((string)($item['id'] ?? uniqid('usk_')),ENT_QUOTES,'UTF-8') ?>">
-<div class="usk-word-header"><span class="usk-word-num"Word <?= $idx+1 ?></span><button type="button" class="usk-btn-remove" onclick="uskRemoveWord(this)">✖ Remove</button></div>
-<div class="usk-row2"><div><labelWord</label><input type="text" name="word[]" value="<?= htmlspecialchars((string)($item['word'] ?? ''),ENT_QUOTES,'UTF-8') ?>" placeholder="CAT" style="text-transform:uppercase;font-family:'Fredoka';font-size:18px;font-weight:600" required></div><div><label>Emoji (picture clue)</label><input type="text" name="emoji[]" value="<?= htmlspecialchars((string)($item['emoji'] ?? ''),ENT_QUOTES,'UTF-8') ?>" placeholder="🐱" style="font-size:22px"></div></div>
+<div class="usk-word-header"><span class="usk-word-num">Word <?= $idx+1 ?></span><button type="button" class="usk-btn-remove" onclick="uskRW(this)">✖ Remove</button></div>
+<div class="usk-row2"><div><label>Word</label><input type="text" name="word[]" value="<?= htmlspecialchars((string)($item['word'] ?? ''),ENT_QUOTES,'UTF-8') ?>" placeholder="CAT" style="text-transform:uppercase;font-family:'Fredoka';font-size:18px;font-weight:600" required></div><div><label>Emoji (picture clue)</label><input type="text" name="emoji[]" value="<?= htmlspecialchars((string)($item['emoji'] ?? ''),ENT_QUOTES,'UTF-8') ?>" placeholder="🐱" style="font-size:22px"></div></div>
 <label>Hint text (shown below picture)</label><input type="text" name="hint[]" value="<?= htmlspecialchars((string)($item['hint'] ?? ''),ENT_QUOTES,'UTF-8') ?>" placeholder="A pet that meows">
 <input type="hidden" name="audio[]" class="usk-audio-hidden" value="<?= htmlspecialchars((string)($item['audio'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
 <input type="hidden" name="item_voice_id[]" value="<?= htmlspecialchars((string)($item['voice_id'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
 <input type="text" name="pre_audio_show" readonly style="display:none" value="<?= htmlspecialchars((string)($item['audio'] ?? ''),ENT_QUOTES,'UTF-8') ?>">
 <button type="button" class="usk-btn-tts" onclick="uskGenerateAudio(this)">🔊 Generate audio</button>
-<div class="usk-audio-url<?= !empty($item['audio'H) ? ' has-audio' : '' ?>"><?= !empty($item['audio']) ? '✔ '.htmlspecialchars((string)$item['audio'],ENT_QUOTES,'UTF-8') : '' ?></div>
+<div class="usk-audio-url<?= !empty($item['audio']) ? ' has-audio' : '' ?>"><?= !empty($item['audio']) ? '✔ '.htmlspecialchars((string)$item['audio'],ENT_QUOTES,'UTF-8') : '' ?></div>
 </div>
 <?php endforeach; ?>
 </div>
@@ -121,9 +121,9 @@ if(isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:700;margin-b
 let uskFC=false,uskFS=false,uskWC=<?=count($words)?>;
 function uskMC(){uskFC=true;}
 function uskRW(btn){btn.closest('.usk-word-item').remove();uskMC();uskRN();}
-function uskRN(){document.querySelectorAll('.usk-word-item .usk-word-num').forEach((e,I=>{e.textContent='Word '+(I+1);});}
-function uskAW(){uskWC++;const id='usk_'+Date.now();const div=document.createElement('div');div.className='usk-word-item';div.innerHTML=`<input type="hidden" name="word_id[]" value="${id}"><div class="usk-word-header"><span class="usk-word-num">Word ${document.querySelectorAll('.usk-word-item').length+1}</span><button type="button" class="usk-btn-remove" onclick="uskRW(this)">✖ Remove</button></div><div class="usk-row2"><div><label>Word</label><input type="text" name="word[]" placeholder="DOG" style="text-transform:uppercase;font-family:'Fredoka';font-size:18px;font-weight:600" required></div><div><label>Emoji</label><input type="text" name="emoji[]" placeholder="🐶 style="font-size:22px"></div></div><label>Hint</label><input type="text" name="hint[]" placeholder="A pet that barks"><input type="hidden" name="audio[]" class="usk-audio-hidden" value=""><input type="hidden" name="item_voice_id[]" value=""><button type="button" class="usk-btn-tts" onclick="uskGA(this)">🔊 Generate</button><div class="usk-audio-url"></div>`;document.getElementById('uskWordsContainer').appendChild(div);uskBC(div);uskMC();uskRN();}
-function uskGA(btn){const it=obtn.closest('.usk-word-item');const we=it.querySelector('input[name="word[]"]');const ae=it.querySelector('.usk-audio-hidden');const se=it.querySelector('.usk-audio-url');const vi=document.getElementById('usk_voice_id').value;const w=(we?.value||'').trim().toLowerCase();if(!w){alert('Enter word first');return;}btn.disabled=true;btn.textContent='⏳';const fd=new FormData();fd.append('text',w);fd.append('voice_id',vi);fetch('tts.php',{method:'POST',body:fd,credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('TTS '+r.status);return r.blob();}).then(blob=>{const cf=new FormData();cf.append('file',blob,w+'.mp3');cf.append('upload_preset','ml_default');return fetch('https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/auto/upload',{method:'POST',body:cf});}).then(r=>r.json()).then(d=>{const u=d.secure_url||'';if(!u)throw new Error('No URL');ae.value=u;se.className='usk-audio-url has-audio';se.textContent='✔ �u;uskMC();}).catch(e=>{se.textContent='✘ '+e.message;}).finally(()=>{btn.disabled=false;btn.textContent='🔊 Generate';});}
+function uskRN(){document.querySelectorAll('.usk-word-item .usk-word-num').forEach((e,i)=>{e.textContent='Word '+(i+1);});}
+function uskAW(){uskWC++;const id='usk_'+Date.now();const div=document.createElement('div');div.className='usk-word-item';div.innerHTML=`<input type="hidden" name="word_id[]" value="${id}"><div class="usk-word-header"><span class="usk-word-num">Word ${document.querySelectorAll('.usk-word-item').length+1}</span><button type="button" class="usk-btn-remove" onclick="uskRW(this)">✖ Remove</button></div><div class="usk-row2"><div><label>Word</label><input type="text" name="word[]" placeholder="DOG" style="text-transform:uppercase;font-family:'Fredoka';font-size:18px;font-weight:600" required></div><div><label>Emoji</label><input type="text" name="emoji[]" placeholder="🐶" style="font-size:22px"></div></div><label>Hint</label><input type="text" name="hint[]" placeholder="A pet that barks"><input type="hidden" name="audio[]" class="usk-audio-hidden" value=""><input type="hidden" name="item_voice_id[]" value=""><button type="button" class="usk-btn-tts" onclick="uskGA(this)">🔊 Generate</button><div class="usk-audio-url"></div>`;document.getElementById('uskWordsContainer').appendChild(div);uskBC(div);uskMC();uskRN();}
+function uskGA(btn){const it=btn.closest('.usk-word-item');const we=it.querySelector('input[name="word[]"]');const ae=it.querySelector('.usk-audio-hidden');const se=it.querySelector('.usk-audio-url');const vi=document.getElementById('usk_voice_id').value;const w=(we?.value||'').trim().toLowerCase();if(!w){alert('Enter word first');return;}btn.disabled=true;btn.textContent='⏳';const fd=new FormData();fd.append('text',w);fd.append('voice_id',vi);fetch('tts.php',{method:'POST',body:fd,credentials:'same-origin'}).then(r=>{if(!r.ok)throw new Error('TTS '+r.status);return r.blob();}).then(blob=>{const cf=new FormData();cf.append('file',blob,w+'.mp3');cf.append('upload_preset','ml_default');return fetch('https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/auto/upload',{method:'POST',body:cf});}).then(r=>r.json()).then(d=>{const u=d.secure_url||'';if(!u)throw new Error('No URL');ae.value=u;se.className='usk-audio-url has-audio';se.textContent='✔ '+u;uskMC();}).catch(e=>{se.textContent='✘ '+e.message;}).finally(()=>{btn.disabled=false;btn.textContent='🔊 Generate';});}
 function uskBC(s){s.querySelectorAll('input,textarea,select').forEach(e=>{e.addEventListener('input',uskMC);e.addEventListener('change',uskMC);});}
 document.addEventListener('DOMContentLoaded',()=>{uskBC(document);const f=document.getElementById('uskEdForm');if(f)f.addEventListener('submit',()=>{uskFS=true;uskFC=false;});});
 window.addEventListener('beforeunload',e=>{if(uskFC&&!uskFS){e.preventDefault();e.returnValue='';}});
