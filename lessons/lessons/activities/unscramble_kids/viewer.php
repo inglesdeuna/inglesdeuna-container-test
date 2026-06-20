@@ -143,8 +143,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 /* ── inner card ── */
 .usk-card-inner{padding:clamp(18px,3vw,24px);background:#fff;border:1px solid var(--us-lila);border-radius:28px;margin-bottom:16px;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 12px 36px rgba(127,119,221,.08)}
 
-.usk-img-box{width:140px;height:120px;border-radius:20px;background:#FFF0E6;border:1.5px solid #FCDDBF;display:flex;align-items:center;justify-content:center;font-size:62px;line-height:1;flex-shrink:0;overflow:hidden}
-.usk-img-box img{width:100%;height:100%;object-fit:cover;display:block}
+.usk-img-box{width:200px;height:180px;border-radius:20px;background:#FFF0E6;border:1.5px solid #FCDDBF;display:flex;align-items:center;justify-content:center;font-size:62px;line-height:1;flex-shrink:0;overflow:hidden}
+.usk-img-box img{width:100%;height:100%;object-fit:contain;display:block}
 .usk-word-hint{font-family:'Fredoka',sans-serif;font-size:17px;font-weight:600;color:var(--us-purple-dark);text-align:center}
 
 /* ── listen button ── */
@@ -210,7 +210,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .usk-page{padding:12px}
     .usk-stage{border-radius:26px;padding:14px}
     .usk-card-inner{border-radius:22px;padding:16px}
-    .usk-img-box{width:120px;height:104px;font-size:54px}
+    .usk-img-box{width:160px;height:140px;font-size:54px}
     .usk-slot,.usk-chip{width:44px;height:54px;font-size:22px}
     .usk-controls{display:grid;grid-template-columns:1fr;gap:9px}
     .usk-btn{width:100%}
