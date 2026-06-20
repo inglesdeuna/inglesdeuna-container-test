@@ -337,10 +337,14 @@ function uskRender(){
         const img = document.createElement('img');
         img.src = w.image;
         img.alt = w.word || '';
-        img.onerror = () => { imgBox.innerHTML = ''; imgBox.textContent = w.emoji || '📷'; };
+        img.onerror = () => { imgBox.innerHTML = ''; imgBox.textContent = w.emoji || ''; imgBox.style.display = w.emoji ? '' : 'none'; };
         imgBox.appendChild(img);
+        imgBox.style.display = '';
+    } else if (w.emoji) {
+        imgBox.textContent = w.emoji;
+        imgBox.style.display = '';
     } else {
-        imgBox.textContent = w.emoji || '📷';
+        imgBox.style.display = 'none';
     }
 
     document.getElementById('uskHint').textContent  = w.hint  || '';
