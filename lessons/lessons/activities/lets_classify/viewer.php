@@ -68,7 +68,7 @@ if ($activityId === '' && !empty($activity['id'])) {
 
 $viewerTitle  = (string)($activity['title']        ?? "Let's Classify");
 $instructions = (string)($activity['instructions'] ?? '');
-$labelMode    = (string)($activity['label_mode']   ?? 'both');   // image | name | both
+$labelMode    = (string)($activity['label_mode']   ?? 'both');
 $categories   = is_array($activity['categories'])  ? array_values($activity['categories']) : [];
 $items        = is_array($activity['items'])        ? array_values($activity['items'])      : [];
 
@@ -111,7 +111,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 
 /* page scaffold */
 .lc-page{width:100%;flex:1;min-height:0;overflow:hidden;padding:clamp(8px,1.5vw,20px);box-sizing:border-box;background:#fff;display:flex;flex-direction:column}
-.lc-app{width:min(1180px,100%);margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0}
+.lc-app{width:min(1040px,100%);margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0}
 
 /* topbar */
 .lc-topbar{height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
@@ -127,18 +127,18 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-stage{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(10px,1.5vw,18px);box-shadow:0 8px 40px rgba(127,119,221,.12);box-sizing:border-box;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 
 /* ── SINGLE GRID LAYOUT ── */
-.lc-layout{display:grid;grid-template-columns:minmax(260px,.42fr) minmax(0,1fr);grid-template-areas:"pool cats";gap:16px;align-items:stretch;flex:1;min-height:0;overflow:hidden}
+.lc-layout{display:grid;grid-template-columns:minmax(240px,.36fr) minmax(0,1fr);grid-template-areas:"pool cats";gap:16px;align-items:stretch;flex:1;min-height:0;overflow:hidden}
 .lc-col-pool{grid-area:pool;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden;background:#FAFAFE;border:2px dashed #E5E1FA;border-radius:22px;padding:12px;box-sizing:border-box}
 .lc-col-pool.drag-over,.lc-col-pool:has(.lc-pool.drag-over){border-color:var(--lc-purple);background:#F7F5FF;box-shadow:0 0 0 4px rgba(127,119,221,.10)}
-.lc-col-cats{grid-area:cats;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;overflow:auto;padding:1px 3px 1px 1px}
+.lc-col-cats{grid-area:cats;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;overflow:auto;padding:1px 3px 1px 1px}
 
 /* ── CATEGORY CARDS / DROP ZONES ── */
-.lc-cat-card{position:relative;border-radius:22px;overflow:hidden;min-height:clamp(188px,24vw,280px);background:linear-gradient(135deg,#7F77DD,#534AB7);box-shadow:0 7px 26px rgba(0,0,0,.14);transition:box-shadow .15s,outline-color .1s,transform .12s;cursor:default;user-select:none;display:flex;flex-direction:column}
+.lc-cat-card{position:relative;border-radius:22px;overflow:hidden;min-height:clamp(174px,18vw,230px);background:linear-gradient(135deg,#7F77DD,#534AB7);box-shadow:0 7px 26px rgba(0,0,0,.14);transition:box-shadow .15s,outline-color .1s,transform .12s;cursor:default;user-select:none;display:flex;flex-direction:column}
 .lc-cat-card.drag-over{box-shadow:0 10px 40px rgba(127,119,221,.46);outline:3px solid var(--lc-purple);outline-offset:2px;transform:translateY(-1px)}
 .lc-cat-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .lc-cat-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.10) 0%,rgba(0,0,0,.42) 48%,rgba(0,0,0,.68) 100%);pointer-events:none}
 .lc-cat-name-badge{position:relative;z-index:3;margin:10px;align-self:center;max-width:calc(100% - 20px);padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--lc-purple-dark);font-family:'Fredoka',sans-serif;font-size:clamp(15px,2vw,22px);font-weight:700;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none}
-.lc-cat-chips-area{position:relative;z-index:4;display:flex;align-content:flex-start;align-items:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin:8px 10px 10px;padding:12px;min-height:118px;flex:1;border:2px dashed rgba(255,255,255,.62);border-radius:18px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);box-sizing:border-box;pointer-events:none}
+.lc-cat-chips-area{position:relative;z-index:4;display:flex;align-content:flex-start;align-items:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin:8px 10px 10px;padding:12px;min-height:112px;flex:1;border:2px dashed rgba(255,255,255,.62);border-radius:18px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);box-sizing:border-box;pointer-events:none}
 .lc-cat-chips-area::before{content:'Drop answers here';position:absolute;inset:auto 0 50%;transform:translateY(50%);text-align:center;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.04em;color:rgba(255,255,255,.78);pointer-events:none}
 .lc-cat-chips-area:has(.lc-chip-sticker)::before{display:none}
 
@@ -214,7 +214,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .lc-layout{grid-template-columns:1fr;grid-template-areas:"pool" "cats";overflow:auto}
     .lc-col-pool{min-height:190px;overflow:visible}
     .lc-pool{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));overflow:visible;max-height:none}
-    .lc-col-cats{overflow:visible;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+    .lc-col-cats{overflow:visible;grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media(max-width:660px){
     html,body{overflow:auto}
@@ -381,10 +381,6 @@ function hasVisibleImage(item) {
 
 function chipTypeClass(item) {
     return hasVisibleImage(item) ? 'has-image' : 'text-only';
-}
-
-function itemById(itemId) {
-    return LC_ITEMS_SRC.find(item => parseInt(item.id, 10) === parseInt(itemId, 10));
 }
 
 /* ── Pool chip ── */
