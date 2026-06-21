@@ -133,24 +133,25 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-col-cats{grid-area:cats;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-content:start;overflow:auto;padding:1px 3px 1px 1px}
 
 /* ── CATEGORY CARDS / DROP ZONES ── */
-.lc-cat-card{position:relative;border-radius:22px;overflow:hidden;min-height:clamp(174px,18vw,230px);background:linear-gradient(135deg,#7F77DD,#534AB7);box-shadow:0 7px 26px rgba(0,0,0,.14);transition:box-shadow .15s,outline-color .1s,transform .12s;cursor:default;user-select:none;display:flex;flex-direction:column}
+.lc-cat-card{position:relative;border-radius:22px;overflow:hidden;min-height:clamp(210px,24vw,300px);background:linear-gradient(135deg,#7F77DD,#534AB7);box-shadow:0 7px 26px rgba(0,0,0,.14);transition:box-shadow .15s,outline-color .1s,transform .12s;cursor:default;user-select:none;display:flex;flex-direction:column}
 .lc-cat-card.drag-over{box-shadow:0 10px 40px rgba(127,119,221,.46);outline:3px solid var(--lc-purple);outline-offset:2px;transform:translateY(-1px)}
 .lc-cat-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
 .lc-cat-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.10) 0%,rgba(0,0,0,.42) 48%,rgba(0,0,0,.68) 100%);pointer-events:none}
 .lc-cat-name-badge{position:relative;z-index:3;margin:10px;align-self:center;max-width:calc(100% - 20px);padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--lc-purple-dark);font-family:'Fredoka',sans-serif;font-size:clamp(15px,2vw,22px);font-weight:700;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none}
-.lc-cat-chips-area{position:relative;z-index:4;display:flex;align-content:flex-start;align-items:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin:8px 10px 10px;padding:12px;min-height:112px;flex:1;border:2px dashed rgba(255,255,255,.62);border-radius:18px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);box-sizing:border-box;pointer-events:none}
+.lc-cat-chips-area{position:relative;z-index:4;display:flex;align-content:flex-start;align-items:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:6px;margin:8px 10px 10px;padding:8px;min-height:138px;flex:1;border:2px dashed rgba(255,255,255,.62);border-radius:18px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);box-sizing:border-box;pointer-events:none;overflow-y:auto;overflow-x:hidden}
+.lc-cat-chips-area::-webkit-scrollbar{width:6px}.lc-cat-chips-area::-webkit-scrollbar-thumb{background:rgba(255,255,255,.55);border-radius:999px}
 .lc-cat-chips-area::before{content:'Drop answers here';position:absolute;inset:auto 0 50%;transform:translateY(50%);text-align:center;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.04em;color:rgba(255,255,255,.78);pointer-events:none}
 .lc-cat-chips-area:has(.lc-chip-sticker)::before{display:none}
 
 /* placed chips: aligned, not floating */
-.lc-chip-sticker{position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.26);cursor:grab;background:#fff;transition:box-shadow .12s,border-color .12s,transform .12s;box-sizing:border-box;touch-action:none}
-.lc-chip-sticker:hover{box-shadow:0 7px 20px rgba(0,0,0,.34);transform:translateY(-2px)}
+.lc-chip-sticker{position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:12px;overflow:hidden;border:2px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.22);cursor:grab;background:#fff;transition:box-shadow .12s,border-color .12s,transform .12s;box-sizing:border-box;touch-action:none;max-width:100%}
+.lc-chip-sticker:hover{box-shadow:0 7px 20px rgba(0,0,0,.30);transform:translateY(-1px)}
 .lc-chip-sticker:active{cursor:grabbing}
 .lc-chip-sticker.dragging{opacity:.45;transform:scale(.94)}
 .lc-chip-sticker.has-image{width:clamp(76px,8vw,96px);height:clamp(76px,8vw,96px)}
-.lc-chip-sticker.text-only{width:min(100%,260px);min-height:54px;padding:10px 14px}
+.lc-chip-sticker.text-only{width:100%;min-height:auto;padding:7px 10px;flex:0 0 100%}
 .lc-chip-sticker img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;background:#fff}
-.lc-chip-sticker .lc-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.45vw,16px);font-weight:900;text-align:center;line-height:1.25;pointer-events:none;color:var(--lc-ink);overflow-wrap:anywhere}
+.lc-chip-sticker .lc-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(11px,1.08vw,13px);font-weight:900;text-align:center;line-height:1.14;pointer-events:none;color:var(--lc-ink);white-space:normal;overflow-wrap:break-word;word-break:normal;hyphens:auto}
 .lc-chip-sticker.has-image .lc-chip-lbl{position:absolute;bottom:0;left:0;right:0;background:rgba(30,27,58,.76);color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lc-chip-sticker.is-correct{border-color:var(--lc-green);cursor:default}
 .lc-chip-sticker.is-wrong{border-color:var(--lc-red)}
@@ -169,9 +170,9 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-pool-chip:active{cursor:grabbing;transform:translateY(1px)}
 .lc-pool-chip.dragging{opacity:.4;transform:scale(.95)}
 .lc-pool-chip.has-image{aspect-ratio:1;flex-direction:column}
-.lc-pool-chip.text-only{grid-column:span 2;min-height:58px;padding:12px 14px}
+.lc-pool-chip.text-only{grid-column:1/-1;min-height:auto;padding:8px 10px}
 .lc-pool-chip img{width:100%;height:100%;min-height:0;object-fit:contain;border-radius:8px;pointer-events:none;background:#fff}
-.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.5vw,16px);font-weight:900;color:var(--lc-ink);pointer-events:none;line-height:1.25;text-align:center;max-width:100%;overflow-wrap:anywhere;flex-shrink:0}
+.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(11px,1.08vw,13px);font-weight:900;color:var(--lc-ink);pointer-events:none;line-height:1.14;text-align:center;max-width:100%;white-space:normal;overflow-wrap:break-word;hyphens:auto;flex-shrink:0}
 .lc-pool-chip.has-image .lc-pool-chip-lbl{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* score grid */
@@ -223,7 +224,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     .lc-pool{grid-template-columns:repeat(3,1fr)}
     .lc-pool-chip.text-only{grid-column:1/-1}
     .lc-col-cats{grid-template-columns:1fr}
-    .lc-cat-card{min-height:210px}
+    .lc-cat-card{min-height:240px}
     .lc-controls{flex-direction:column;gap:8px}
     .lc-btn{width:100%}
     .lc-score-grid{grid-template-columns:1fr}
