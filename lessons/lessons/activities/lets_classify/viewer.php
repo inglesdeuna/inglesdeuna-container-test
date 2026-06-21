@@ -101,6 +101,7 @@ $catPalette = [
     --lc-purple-soft:#EEEDFE;--lc-lila:#EDE9FA;--lc-muted:#9B94BE;
     --lc-green:#16a34a;--lc-green-soft:#f0fdf4;--lc-green-dark:#15803d;
     --lc-red:#ef4444;--lc-red-soft:#fef2f2;--lc-red-dark:#b91c1c;
+    --lc-ink:#1E1B3A;
 }
 html,body{width:100%;height:100%;overflow:hidden}
 body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
@@ -110,7 +111,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 
 /* page scaffold */
 .lc-page{width:100%;flex:1;min-height:0;overflow:hidden;padding:clamp(8px,1.5vw,20px);box-sizing:border-box;background:#fff;display:flex;flex-direction:column}
-.lc-app{width:min(1120px,100%);margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0}
+.lc-app{width:min(1180px,100%);margin:0 auto;display:flex;flex-direction:column;flex:1;min-height:0}
 
 /* topbar */
 .lc-topbar{height:28px;display:flex;align-items:center;justify-content:center;margin-bottom:2px}
@@ -125,100 +126,53 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 /* stage card */
 .lc-stage{background:#fff;border:1px solid #F0EEF8;border-radius:28px;padding:clamp(10px,1.5vw,18px);box-shadow:0 8px 40px rgba(127,119,221,.12);box-sizing:border-box;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column}
 
-/* ── TWO-COLUMN LAYOUT ── */
-.lc-layout{display:flex;gap:18px;align-items:stretch;flex:1;min-height:0;overflow:hidden}
-.lc-col-cats{flex:0 0 62%;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden}
-.lc-col-pool{flex:1;min-width:0;position:static;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+/* ── SINGLE GRID LAYOUT ── */
+.lc-layout{display:grid;grid-template-columns:minmax(260px,.42fr) minmax(0,1fr);grid-template-areas:"pool cats";gap:16px;align-items:stretch;flex:1;min-height:0;overflow:hidden}
+.lc-col-pool{grid-area:pool;min-width:0;display:flex;flex-direction:column;gap:10px;overflow:hidden;background:#FAFAFE;border:2px dashed #E5E1FA;border-radius:22px;padding:12px;box-sizing:border-box}
+.lc-col-pool.drag-over,.lc-col-pool:has(.lc-pool.drag-over){border-color:var(--lc-purple);background:#F7F5FF;box-shadow:0 0 0 4px rgba(127,119,221,.10)}
+.lc-col-cats{grid-area:cats;min-width:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;overflow:auto;padding:1px 3px 1px 1px}
 
-/* ── CATEGORY CARDS (big, full color) ── */
-.lc-cat-card{
-    position:relative;border-radius:20px;overflow:hidden;
-    flex:1;
-    min-height:clamp(80px,10vw,140px);
-    background:linear-gradient(135deg,#7F77DD,#534AB7);
-    box-shadow:0 6px 28px rgba(0,0,0,.16);
-    transition:box-shadow .15s,outline-color .1s;
-    cursor:default;user-select:none
-}
-.lc-cat-card.drag-over{
-    box-shadow:0 10px 40px rgba(127,119,221,.55);
-    outline:3px solid var(--lc-purple);outline-offset:2px
-}
-.lc-cat-bg-img{
-    position:absolute;inset:0;width:100%;height:100%;
-    object-fit:cover;display:block;pointer-events:none
-}
-.lc-cat-gradient{
-    position:absolute;inset:0;
-    background:linear-gradient(to bottom,rgba(0,0,0,.06) 0%,rgba(0,0,0,.55) 100%);
-    pointer-events:none
-}
-.lc-cat-name-badge{
-    position:absolute;bottom:0;left:0;right:0;
-    padding:36px 16px 14px;z-index:3;
-    color:#fff;font-family:'Fredoka',sans-serif;
-    font-size:clamp(16px,2.2vw,24px);font-weight:700;
-    text-align:center;text-shadow:0 2px 10px rgba(0,0,0,.55);
-    pointer-events:none
-}
-/* chips stickered absolutely on the category card */
-.lc-cat-chips-area{
-    position:absolute;inset:0;z-index:4;pointer-events:none
-}
-.lc-chip-sticker{
-    position:absolute;
-    pointer-events:auto;
-    transform:translate(-50%,-50%);
-    width:68px;height:68px;
-    border-radius:11px;overflow:hidden;
-    border:3px solid #fff;
-    box-shadow:0 4px 14px rgba(0,0,0,.32);
-    cursor:grab;background:#fff;
-    transition:box-shadow .12s,border-color .12s,transform .12s
-}
-.lc-chip-sticker:hover{box-shadow:0 6px 20px rgba(0,0,0,.4);transform:translate(-50%,-50%) scale(1.08)}
+/* ── CATEGORY CARDS / DROP ZONES ── */
+.lc-cat-card{position:relative;border-radius:22px;overflow:hidden;min-height:clamp(188px,24vw,280px);background:linear-gradient(135deg,#7F77DD,#534AB7);box-shadow:0 7px 26px rgba(0,0,0,.14);transition:box-shadow .15s,outline-color .1s,transform .12s;cursor:default;user-select:none;display:flex;flex-direction:column}
+.lc-cat-card.drag-over{box-shadow:0 10px 40px rgba(127,119,221,.46);outline:3px solid var(--lc-purple);outline-offset:2px;transform:translateY(-1px)}
+.lc-cat-bg-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.lc-cat-gradient{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.10) 0%,rgba(0,0,0,.42) 48%,rgba(0,0,0,.68) 100%);pointer-events:none}
+.lc-cat-name-badge{position:relative;z-index:3;margin:10px;align-self:center;max-width:calc(100% - 20px);padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.92);color:var(--lc-purple-dark);font-family:'Fredoka',sans-serif;font-size:clamp(15px,2vw,22px);font-weight:700;text-align:center;box-shadow:0 6px 18px rgba(0,0,0,.18);pointer-events:none}
+.lc-cat-chips-area{position:relative;z-index:4;display:flex;align-content:flex-start;align-items:flex-start;justify-content:flex-start;flex-wrap:wrap;gap:8px;margin:8px 10px 10px;padding:12px;min-height:118px;flex:1;border:2px dashed rgba(255,255,255,.62);border-radius:18px;background:rgba(255,255,255,.18);backdrop-filter:blur(2px);box-sizing:border-box;pointer-events:none}
+.lc-cat-chips-area::before{content:'Drop answers here';position:absolute;inset:auto 0 50%;transform:translateY(50%);text-align:center;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.04em;color:rgba(255,255,255,.78);pointer-events:none}
+.lc-cat-chips-area:has(.lc-chip-sticker)::before{display:none}
+
+/* placed chips: aligned, not floating */
+.lc-chip-sticker{position:relative;pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:6px;border-radius:14px;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.26);cursor:grab;background:#fff;transition:box-shadow .12s,border-color .12s,transform .12s;box-sizing:border-box;touch-action:none}
+.lc-chip-sticker:hover{box-shadow:0 7px 20px rgba(0,0,0,.34);transform:translateY(-2px)}
 .lc-chip-sticker:active{cursor:grabbing}
-.lc-chip-sticker.dragging{opacity:.45;transform:translate(-50%,-50%) scale(.92)}
-.lc-chip-sticker img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
-.lc-chip-sticker .lc-chip-lbl{
-    position:absolute;bottom:0;left:0;right:0;
-    background:rgba(0,0,0,.58);color:#fff;
-    font-size:9px;font-weight:900;text-align:center;
-    padding:3px 4px;line-height:1.2;pointer-events:none;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-}
+.lc-chip-sticker.dragging{opacity:.45;transform:scale(.94)}
+.lc-chip-sticker.has-image{width:clamp(76px,8vw,96px);height:clamp(76px,8vw,96px)}
+.lc-chip-sticker.text-only{width:min(100%,260px);min-height:54px;padding:10px 14px}
+.lc-chip-sticker img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;background:#fff}
+.lc-chip-sticker .lc-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.45vw,16px);font-weight:900;text-align:center;line-height:1.25;pointer-events:none;color:var(--lc-ink);overflow-wrap:anywhere}
+.lc-chip-sticker.has-image .lc-chip-lbl{position:absolute;bottom:0;left:0;right:0;background:rgba(30,27,58,.76);color:#fff;font-size:10px;padding:4px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lc-chip-sticker.is-correct{border-color:var(--lc-green);cursor:default}
 .lc-chip-sticker.is-wrong{border-color:var(--lc-red)}
-.lc-chip-sticker .lc-result-icon{
-    position:absolute;top:3px;right:4px;
-    font-size:13px;line-height:1;display:none
-}
-.lc-chip-sticker.is-correct .lc-result-icon,
-.lc-chip-sticker.is-wrong .lc-result-icon{display:block}
+.lc-chip-sticker .lc-result-icon{position:absolute;top:4px;right:5px;font-size:14px;line-height:1;display:none;filter:drop-shadow(0 1px 2px rgba(0,0,0,.28))}
+.lc-chip-sticker.is-correct .lc-result-icon,.lc-chip-sticker.is-wrong .lc-result-icon{display:block}
 
-/* ── POOL COLUMN (right) ── */
-.lc-pool-label{font-family:'Nunito',sans-serif;font-size:11px;font-weight:900;color:#9B94BE;letter-spacing:.08em;text-transform:uppercase}
-.lc-pool{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
-    padding:4px 2px;
-}
-.lc-pool.drag-over .lc-pool-inner{border-color:var(--lc-purple);background:#F9F9FF}
-.lc-pool-empty-hint{color:#9B94BE;font-size:13px;font-weight:700;padding:18px 0;text-align:center;grid-column:1/-1}
+/* ── POOL AREA ── */
+.lc-pool-label{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.08em;text-transform:uppercase;text-align:center}
+.lc-pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));grid-auto-flow:dense;gap:8px;align-content:start;overflow:auto;padding:2px;min-height:0;flex:1}
+.lc-pool.drag-over{background:#F9F9FF;border-radius:16px;box-shadow:inset 0 0 0 2px var(--lc-purple)}
+.lc-pool-empty-hint{color:#9B94BE;font-size:13px;font-weight:800;padding:18px 8px;text-align:center;grid-column:1/-1}
+
 /* individual pool chip */
-.lc-pool-chip{
-    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-    padding:6px;background:#fff;
-    border:2px solid #EDE9FA;border-bottom-width:3px;
-    border-radius:10px;cursor:grab;user-select:none;
-    aspect-ratio:1;min-width:0;
-    box-shadow:0 3px 10px rgba(0,0,0,.1);
-    transition:transform .12s,box-shadow .12s,border-color .12s
-}
+.lc-pool-chip{display:flex;align-items:center;justify-content:center;gap:6px;padding:8px;background:#fff;border:2px solid #EDE9FA;border-bottom-width:4px;border-radius:14px;cursor:grab;user-select:none;min-width:0;box-shadow:0 3px 10px rgba(0,0,0,.09);transition:transform .12s,box-shadow .12s,border-color .12s;box-sizing:border-box;touch-action:none}
 .lc-pool-chip:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(0,0,0,.16);border-color:var(--lc-purple)}
 .lc-pool-chip:active{cursor:grabbing;transform:translateY(1px)}
 .lc-pool-chip.dragging{opacity:.4;transform:scale(.95)}
-.lc-pool-chip img{width:100%;flex:1;min-height:0;object-fit:contain;border-radius:0;pointer-events:none}
-.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:10px;font-weight:800;color:#1E1B3A;pointer-events:none;line-height:1.2;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0}
+.lc-pool-chip.has-image{aspect-ratio:1;flex-direction:column}
+.lc-pool-chip.text-only{grid-column:span 2;min-height:58px;padding:12px 14px}
+.lc-pool-chip img{width:100%;height:100%;min-height:0;object-fit:contain;border-radius:8px;pointer-events:none;background:#fff}
+.lc-pool-chip .lc-pool-chip-lbl{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.5vw,16px);font-weight:900;color:var(--lc-ink);pointer-events:none;line-height:1.25;text-align:center;max-width:100%;overflow-wrap:anywhere;flex-shrink:0}
+.lc-pool-chip.has-image .lc-pool-chip-lbl{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* score grid */
 .lc-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
@@ -253,13 +207,23 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .lc-completed-btn.back{background:#F0EEF8;color:var(--lc-purple-dark)}
 
 /* ghost for touch drag */
-#lc-ghost{position:fixed;pointer-events:none;z-index:9999;display:none;width:68px;height:68px;border-radius:11px;box-shadow:0 8px 28px rgba(127,119,221,.3);opacity:.92;overflow:hidden;background:#fff}
+#lc-ghost{position:fixed;pointer-events:none;z-index:9999;display:none;min-width:76px;max-width:220px;min-height:58px;border-radius:14px;box-shadow:0 8px 28px rgba(127,119,221,.3);opacity:.92;overflow:hidden;background:#fff;border:2px solid #fff}
+#lc-ghost img{width:100%;height:100%;object-fit:contain;background:#fff}
 
+@media(max-width:900px){
+    .lc-layout{grid-template-columns:1fr;grid-template-areas:"pool" "cats";overflow:auto}
+    .lc-col-pool{min-height:190px;overflow:visible}
+    .lc-pool{grid-template-columns:repeat(auto-fill,minmax(90px,1fr));overflow:visible;max-height:none}
+    .lc-col-cats{overflow:visible;grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+}
 @media(max-width:660px){
-    .lc-layout{flex-direction:column;overflow-y:auto}
-    .lc-col-cats{flex:unset;width:100%;overflow:visible}
-    .lc-col-pool{position:static;width:100%;overflow-y:visible}
+    html,body{overflow:auto}
+    .lc-page{overflow:auto}
+    .lc-stage{overflow:visible}
     .lc-pool{grid-template-columns:repeat(3,1fr)}
+    .lc-pool-chip.text-only{grid-column:1/-1}
+    .lc-col-cats{grid-template-columns:1fr}
+    .lc-cat-card{min-height:210px}
     .lc-controls{flex-direction:column;gap:8px}
     .lc-btn{width:100%}
     .lc-score-grid{grid-template-columns:1fr}
@@ -282,7 +246,13 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
     <div class="lc-stage" id="lc-stage">
         <div class="lc-layout" id="lc-layout">
 
-            <!-- LEFT: category cards (big, full color) -->
+            <!-- Items pool inside the same main grid -->
+            <div class="lc-col-pool" id="lc-col-pool">
+                <div class="lc-pool-label">Sort these items</div>
+                <div class="lc-pool" id="lc-pool"></div>
+            </div>
+
+            <!-- Category zones inside the same main grid -->
             <div class="lc-col-cats" id="lc-col-cats">
                 <?php foreach ($categories as $idx => $cat):
                     $catId    = (int)($cat['id']    ?? 0);
@@ -304,12 +274,6 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
                     <div class="lc-cat-chips-area" id="lc-chips-<?php echo $catId; ?>"></div>
                 </div>
                 <?php endforeach; ?>
-            </div>
-
-            <!-- RIGHT: items pool -->
-            <div class="lc-col-pool" id="lc-col-pool">
-                <div class="lc-pool-label">Sort these items</div>
-                <div class="lc-pool" id="lc-pool"></div>
             </div>
         </div>
 
@@ -368,7 +332,7 @@ const LC_RETURN_TO  = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 const LC_ACT_ID     = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 
 /* ── state ── */
-// placement[itemId] = null (pool) | { catId, x, y } (stickered on category at x%,y%)
+// placement[itemId] = null (pool) | { catId } (placed in category grid)
 let placement = {};
 let checked   = false;
 let correct   = 0;
@@ -376,6 +340,7 @@ let wrong     = 0;
 
 /* ── DOM refs ── */
 const poolEl      = document.getElementById('lc-pool');
+const poolColEl   = document.getElementById('lc-col-pool');
 const scoreGridEl = document.getElementById('lc-score-grid');
 const sCorrectEl  = document.getElementById('lc-s-correct');
 const sWrongEl    = document.getElementById('lc-s-wrong');
@@ -397,7 +362,7 @@ const winSound    = document.getElementById('lc-win-sound');
 const doneSound   = document.getElementById('lc-done-sound');
 const itemAudio   = document.getElementById('lc-item-audio');
 
-const CHIP_HALF = 34; // half of 68px chip
+const GHOST_HALF = 42;
 
 function initPlacement() {
     placement = {};
@@ -410,16 +375,28 @@ function escHtml(str) {
         .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-/* ── Pool chip (right column) ── */
+function hasVisibleImage(item) {
+    return Boolean(item.image && LC_LABEL_MODE !== 'name');
+}
+
+function chipTypeClass(item) {
+    return hasVisibleImage(item) ? 'has-image' : 'text-only';
+}
+
+function itemById(itemId) {
+    return LC_ITEMS_SRC.find(item => parseInt(item.id, 10) === parseInt(itemId, 10));
+}
+
+/* ── Pool chip ── */
 function buildPoolChip(item) {
     const el = document.createElement('div');
-    el.className = 'lc-pool-chip';
+    el.className = 'lc-pool-chip ' + chipTypeClass(item);
     el.dataset.itemId = item.id;
     el.dataset.catId  = item.category_id;
     el.draggable = true;
 
     let inner = '';
-    if (item.image && LC_LABEL_MODE !== 'name') {
+    if (hasVisibleImage(item)) {
         inner += `<img src="${escHtml(item.image)}" alt="${escHtml(item.name)}" loading="lazy">`;
     }
     if (LC_LABEL_MODE !== 'image' || !item.image) {
@@ -437,17 +414,15 @@ function buildPoolChip(item) {
     return el;
 }
 
-/* ── Sticker chip (on category) ── */
+/* ── Placed chip ── */
 function buildStickerChip(item, pos) {
     const el = document.createElement('div');
-    el.className = 'lc-chip-sticker';
+    el.className = 'lc-chip-sticker ' + chipTypeClass(item);
     el.dataset.itemId = item.id;
     el.dataset.catId  = item.category_id;
-    el.style.left = pos.x + '%';
-    el.style.top  = pos.y + '%';
 
     let inner = '';
-    if (item.image && LC_LABEL_MODE !== 'name') {
+    if (hasVisibleImage(item)) {
         inner += `<img src="${escHtml(item.image)}" alt="${escHtml(item.name)}" loading="lazy">`;
     }
     if (LC_LABEL_MODE === 'name' || LC_LABEL_MODE === 'both') {
@@ -476,12 +451,12 @@ function render() {
     poolEl.innerHTML = '';
     const poolItems = LC_ITEMS_SRC.filter(i => placement[i.id] === null);
     if (poolItems.length === 0) {
-        poolEl.innerHTML = '<span class="lc-pool-empty-hint">All items placed ✓</span>';
+        poolEl.innerHTML = '<span class="lc-pool-empty-hint">All items placed ✓<br><small>Drag any answer back here to change it.</small></span>';
     } else {
         poolItems.forEach(item => poolEl.appendChild(buildPoolChip(item)));
     }
 
-    /* category sticker areas */
+    /* category chip areas */
     LC_CATS.forEach(cat => {
         const area = document.getElementById('lc-chips-' + cat.id);
         if (!area) return;
@@ -495,12 +470,8 @@ function render() {
     setupDropZones();
 }
 
-/* ── Drop position helper ── */
-function calcDropPos(catEl, clientX, clientY) {
-    const rect = catEl.getBoundingClientRect();
-    const x = Math.max(CHIP_HALF, Math.min(rect.width  - CHIP_HALF, clientX - rect.left));
-    const y = Math.max(CHIP_HALF, Math.min(rect.height - CHIP_HALF, clientY - rect.top));
-    return { catId: parseInt(catEl.dataset.cat, 10), x: (x / rect.width) * 100, y: (y / rect.height) * 100 };
+function createPlacement(catEl) {
+    return { catId: parseInt(catEl.dataset.cat, 10) };
 }
 
 /* ── Drop zones ── */
@@ -516,19 +487,28 @@ function setupDropZones() {
             if (checked) return;
             const itemId = parseInt(e.dataTransfer.getData('text/plain'), 10);
             if (isNaN(itemId)) return;
-            placement[itemId] = calcDropPos(catEl, e.clientX, e.clientY);
+            placement[itemId] = createPlacement(catEl);
             render();
         };
     });
 
-    poolEl.ondragover  = e => { e.preventDefault(); poolEl.classList.add('drag-over'); };
-    poolEl.ondragleave = e => { if (!poolEl.contains(e.relatedTarget)) poolEl.classList.remove('drag-over'); };
-    poolEl.ondrop = e => {
-        e.preventDefault();
-        poolEl.classList.remove('drag-over');
-        const itemId = parseInt(e.dataTransfer.getData('text/plain'), 10);
-        if (!isNaN(itemId) && !checked) { placement[itemId] = null; render(); }
-    };
+    [poolEl, poolColEl].forEach(zone => {
+        if (!zone) return;
+        zone.ondragover  = e => { e.preventDefault(); poolEl.classList.add('drag-over'); poolColEl.classList.add('drag-over'); };
+        zone.ondragleave = e => {
+            if (!zone.contains(e.relatedTarget)) {
+                poolEl.classList.remove('drag-over');
+                poolColEl.classList.remove('drag-over');
+            }
+        };
+        zone.ondrop = e => {
+            e.preventDefault();
+            poolEl.classList.remove('drag-over');
+            poolColEl.classList.remove('drag-over');
+            const itemId = parseInt(e.dataTransfer.getData('text/plain'), 10);
+            if (!isNaN(itemId) && !checked) { placement[itemId] = null; render(); }
+        };
+    });
 }
 
 /* ── Drag events ── */
@@ -556,6 +536,9 @@ function onTouchStart(e) {
     touchItemId = parseInt(el.dataset.itemId, 10);
     touchItemEl = el;
     ghostEl.innerHTML = el.innerHTML;
+    ghostEl.className = el.className.includes('text-only') ? 'text-only' : 'has-image';
+    ghostEl.style.width = el.offsetWidth + 'px';
+    ghostEl.style.height = el.offsetHeight + 'px';
     ghostEl.style.display = 'block';
     moveGhost(e.touches[0]);
     el.classList.add('dragging');
@@ -563,8 +546,10 @@ function onTouchStart(e) {
     document.addEventListener('touchend',  onTouchEnd,  {passive: false});
 }
 function moveGhost(t) {
-    ghostEl.style.left = (t.clientX - CHIP_HALF) + 'px';
-    ghostEl.style.top  = (t.clientY - CHIP_HALF) + 'px';
+    const w = ghostEl.offsetWidth || (GHOST_HALF * 2);
+    const h = ghostEl.offsetHeight || (GHOST_HALF * 2);
+    ghostEl.style.left = (t.clientX - (w / 2)) + 'px';
+    ghostEl.style.top  = (t.clientY - (h / 2)) + 'px';
 }
 function onTouchMove(e) {
     if (!touchItemEl) return;
@@ -578,13 +563,15 @@ function onTouchEnd(e) {
     document.removeEventListener('touchmove', onTouchMove);
     document.removeEventListener('touchend',  onTouchEnd);
     ghostEl.style.display = 'none';
+    ghostEl.innerHTML = '';
+    ghostEl.className = '';
     clearDragOver();
     if (!touchItemEl) return;
     touchItemEl.classList.remove('dragging');
     const t = e.changedTouches[0];
     const catEl = catZoneFromPoint(t.clientX, t.clientY);
     if (catEl && !checked) {
-        placement[touchItemId] = calcDropPos(catEl, t.clientX, t.clientY);
+        placement[touchItemId] = createPlacement(catEl);
     } else if (poolFromPoint(t.clientX, t.clientY) && !checked) {
         placement[touchItemId] = null;
     }
@@ -593,11 +580,11 @@ function onTouchEnd(e) {
     render();
 }
 function clearDragOver() {
-    document.querySelectorAll('.lc-cat-card.drag-over, .lc-pool.drag-over')
+    document.querySelectorAll('.lc-cat-card.drag-over, .lc-pool.drag-over, .lc-col-pool.drag-over')
         .forEach(el => el.classList.remove('drag-over'));
 }
 function zoneFromPoint(x, y) {
-    return catZoneFromPoint(x, y) || (poolFromPoint(x, y) ? poolEl : null);
+    return catZoneFromPoint(x, y) || (poolFromPoint(x, y) ? poolColEl : null);
 }
 function catZoneFromPoint(x, y) {
     return [...document.querySelectorAll('.lc-cat-card')].find(z => {
@@ -606,7 +593,7 @@ function catZoneFromPoint(x, y) {
     }) || null;
 }
 function poolFromPoint(x, y) {
-    const r = poolEl.getBoundingClientRect();
+    const r = poolColEl.getBoundingClientRect();
     return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
 }
 
