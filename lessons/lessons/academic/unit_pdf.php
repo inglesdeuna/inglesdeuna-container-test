@@ -272,8 +272,79 @@ $html = ob_get_clean();
 
 $printFontCss = <<<'CSS'
 
-/* Print font override: keep header/background colours, make worksheet content readable. */
+/* Print layout + typography override: keep header/background colours, make worksheet printable. */
+@page {
+  size: auto;
+  margin: 14mm 12mm 18mm 12mm;
+}
+
 @media print {
+  html,
+  body {
+    width: auto !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .ws-body {
+    width: 100% !important;
+    max-width: 190mm !important;
+    margin: 0 auto !important;
+    padding: 0 0 8mm 0 !important;
+    overflow: visible !important;
+  }
+
+  .ws-page,
+  .unit-page,
+  .print-page,
+  .worksheet-page,
+  .card-box,
+  .ws-body > * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  .ws-sec {
+    break-inside: auto !important;
+    page-break-inside: auto !important;
+    break-after: auto !important;
+    page-break-after: auto !important;
+    margin-bottom: 9mm !important;
+  }
+
+  .sec-head,
+  .ibox,
+  .ws-qb,
+  .ws-wb,
+  .wp-print-card,
+  .dict-print-item,
+  .fc-card,
+  .mrow,
+  .ws-or,
+  .rc-qb,
+  tr {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  .sec-head {
+    margin-top: 2mm !important;
+  }
+
+  .card-box {
+    padding-bottom: 5mm !important;
+  }
+
   .ws-body,
   .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) {
     color: #000 !important;
