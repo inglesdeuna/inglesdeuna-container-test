@@ -2,16 +2,14 @@
 
 function render_activity_editor($title, $icon, $content) {
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
-    $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 
-    if ($assignment !== '') {
-        $backUrl = '../../academic/teacher_unit.php?assignment=' . urlencode($assignment) . '&unit=' . urlencode($unit);
-    } else {
-        $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
-        if ($source !== '') {
-            $backUrl .= '&source=' . urlencode($source);
-        }
+    // All activity editors return to the unit viewer.
+    // Do not route editor back buttons to assignment/teacher pages; those flows
+    // should still pass through the standard unit activity list.
+    $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
+    if ($source !== '') {
+        $backUrl .= '&source=' . urlencode($source);
     }
 ?>
 <!DOCTYPE html>
