@@ -12,6 +12,18 @@ if ($source === false) {
     die('Worksheet renderer not found.');
 }
 
+// Memory Cards is an interactive-only activity and should not appear in PDF exports.
+$source = str_replace(
+    "$SKIP_TYPES = ['flipbooks','hangman','crossword','coloring','dot_to_dot','tracing'];",
+    "$SKIP_TYPES = ['flipbooks','hangman','crossword','coloring','dot_to_dot','tracing','memory_cards'];",
+    $source
+);
+$source = str_replace(
+    "case 'memory_cards':         $html = ws_memory($data, $actN, $isKey);      break;",
+    "case 'memory_cards':         $actN--; continue 2;",
+    $source
+);
+
 $writingPatch = <<<'PHP'
 function wp_pdf_pick(array $a, array $keys, string $fallback = ''): string {
     foreach ($keys as $key) {
@@ -297,116 +309,27 @@ $printFontCss = <<<'CSS'
 }
 
 /* Print layout + typography override: keep header/background colours, make worksheet printable. */
-@page {
-  size: auto;
-  margin: 14mm 12mm 18mm 12mm;
-}
+@page { size: auto; margin: 14mm 12mm 18mm 12mm; }
 @media print {
-  html, body {
-    width: auto !important;
-    height: auto !important;
-    min-height: auto !important;
-    overflow: visible !important;
-    background: #fff !important;
-  }
-  body {
-    margin: 0 !important;
-    padding: 0 !important;
-    -webkit-print-color-adjust: exact !important;
-    print-color-adjust: exact !important;
-  }
-  .ws-body {
-    width: 100% !important;
-    max-width: 190mm !important;
-    margin: 0 auto !important;
-    padding: 0 0 8mm 0 !important;
-    overflow: visible !important;
-  }
-  .ws-page, .unit-page, .print-page, .worksheet-page, .card-box, .ws-body > * {
-    overflow: visible !important;
-    height: auto !important;
-    max-height: none !important;
-  }
-  .ws-sec {
-    break-inside: auto !important;
-    page-break-inside: auto !important;
-    break-after: auto !important;
-    page-break-after: auto !important;
-    margin-bottom: 9mm !important;
-  }
-  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr {
-    break-inside: avoid !important;
-    page-break-inside: avoid !important;
-  }
+  html, body { width: auto !important; height: auto !important; min-height: auto !important; overflow: visible !important; background: #fff !important; }
+  body { margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  .ws-body { width: 100% !important; max-width: 190mm !important; margin: 0 auto !important; padding: 0 0 8mm 0 !important; overflow: visible !important; }
+  .ws-page, .unit-page, .print-page, .worksheet-page, .card-box, .ws-body > * { overflow: visible !important; height: auto !important; max-height: none !important; }
+  .ws-sec { break-inside: auto !important; page-break-inside: auto !important; break-after: auto !important; page-break-after: auto !important; margin-bottom: 9mm !important; }
+  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr { break-inside: avoid !important; page-break-inside: avoid !important; }
   .sec-head { margin-top: 2mm !important; }
   .card-box { padding-bottom: 5mm !important; }
-  .ws-body,
-  .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) {
-    color: #000 !important;
-    font-size: 12pt !important;
-    line-height: 1.45 !important;
-  }
-  .ws-body :is(.sec-title,.unit-title) {
-    color: #000 !important;
-    font-size: 14pt !important;
-  }
-  .rc-hl {
-    color: #000 !important;
-    font-size: 12pt !important;
-    font-weight: 800 !important;
-    background: #FFF0E6 !important;
-    border-bottom: 2px solid #F97316 !important;
-    padding: 0 2px !important;
-  }
-  .wp-print-card, .wp-answer-key, .dict-answer {
-    border-radius: 12px !important;
-  }
-  .wp-print-card {
-    border: 1.5px solid #DCD7FF !important;
-    background: #fff !important;
-    padding: 12px 14px !important;
-    margin: 12px 0 !important;
-    break-inside: avoid !important;
-  }
-  .wp-print-head {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    margin-bottom: 8px !important;
-  }
-  .wp-prompt-title {
-    color: #000 !important;
-    font-weight: 900 !important;
-    font-size: 12pt !important;
-  }
-  .wp-word-hint {
-    margin-left: auto !important;
-    color: #000 !important;
-    font-size: 12pt !important;
-    font-weight: 700 !important;
-  }
-  .wp-instruction {
-    background: #F8F7FF !important;
-    border-left: 4px solid #7F77DD !important;
-    border-radius: 10px !important;
-    padding: 8px 10px !important;
-    margin: 8px 0 !important;
-    font-weight: 800 !important;
-  }
-  .wp-prompt-box {
-    border: 1.5px solid #EDE9FA !important;
-    border-radius: 12px !important;
-    background: #FAFAFE !important;
-    padding: 10px 12px !important;
-    margin: 8px 0 10px !important;
-    font-weight: 800 !important;
-  }
-  .wp-answer-key, .dict-answer {
-    border: 1.5px solid #9FE1CB !important;
-    background: #F0FDF9 !important;
-    padding: 8px 10px !important;
-    margin-top: 8px !important;
-  }
+  .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
+  .ws-body :is(.sec-title,.unit-title) { color: #000 !important; font-size: 14pt !important; }
+  .rc-hl { color: #000 !important; font-size: 12pt !important; font-weight: 800 !important; background: #FFF0E6 !important; border-bottom: 2px solid #F97316 !important; padding: 0 2px !important; }
+  .wp-print-card, .wp-answer-key, .dict-answer { border-radius: 12px !important; }
+  .wp-print-card { border: 1.5px solid #DCD7FF !important; background: #fff !important; padding: 12px 14px !important; margin: 12px 0 !important; break-inside: avoid !important; }
+  .wp-print-head { display: flex !important; align-items: center !important; gap: 8px !important; margin-bottom: 8px !important; }
+  .wp-prompt-title { color: #000 !important; font-weight: 900 !important; font-size: 12pt !important; }
+  .wp-word-hint { margin-left: auto !important; color: #000 !important; font-size: 12pt !important; font-weight: 700 !important; }
+  .wp-instruction { background: #F8F7FF !important; border-left: 4px solid #7F77DD !important; border-radius: 10px !important; padding: 8px 10px !important; margin: 8px 0 !important; font-weight: 800 !important; }
+  .wp-prompt-box { border: 1.5px solid #EDE9FA !important; border-radius: 12px !important; background: #FAFAFE !important; padding: 10px 12px !important; margin: 8px 0 10px !important; font-weight: 800 !important; }
+  .wp-answer-key, .dict-answer { border: 1.5px solid #9FE1CB !important; background: #F0FDF9 !important; padding: 8px 10px !important; margin-top: 8px !important; }
 }
 CSS;
 
