@@ -26,13 +26,23 @@ case 'memory_cards':         $actN--; continue 2;
 PHP;
 $source = str_replace($memoryCaseNeedle, $memoryCaseReplacement, $source);
 
-$writingPatch = <<<'PHP'
-function wp_pdf_pick(array $a, array $keys, string $fallback = ''): string {
+$sharedPatch = <<<'PHP'
+function pdf_pick(array $a, array $keys, string $fallback = ''): string {
     foreach ($keys as $key) {
         if (isset($a[$key]) && trim((string)$a[$key]) !== '') return trim((string)$a[$key]);
     }
     return $fallback;
 }
+function pdf_img(array $a): string {
+    return pdf_pick($a, ['image','img','picture','photo','url','image_url','media_url','src','question_image','prompt_image']);
+}
+function pdf_img_box(string $url, string $class = 'pdf-act-img'): string {
+    if (trim($url) === '') return '';
+    return '<div class="'.$class.'"><img src="'.h($url).'" alt="" loading="eager"></div>';
+}
+PHP;
+
+$writingPatch = <<<'PHP'
 function wp_pdf_items(array $d): array {
     if (isset($d['items']) && is_array($d['items'])) return array_values($d['items']);
     if (isset($d['questions']) && is_array($d['questions'])) return array_values($d['questions']);
@@ -44,8 +54,8 @@ function wp_pdf_lines(int $lines = 5): string {
 }
 function ws_writing(array $d, int $n, bool $k): string {
     $items = wp_pdf_items($d);
-    $title = wp_pdf_pick($d, ['title'], 'Writing Practice');
-    $desc = wp_pdf_pick($d, ['description','instructions'], 'Read the prompt and write your answer in complete sentences.');
+    $title = pdf_pick($d, ['title'], 'Writing Practice');
+    $desc = pdf_pick($d, ['description','instructions'], 'Read the prompt and write your answer in complete sentences.');
     $out = ws_head($n, 'Writing Practice', $title, $desc, $k, 'card-open wp-card-open');
     if (empty($items)) {
         $out .= '<div class="wp-print-card"><div class="wp-prompt-title">Prompt</div>'.wp_pdf_lines(6).'</div>';
@@ -53,10 +63,10 @@ function ws_writing(array $d, int $n, bool $k): string {
     }
     foreach ($items as $qi => $item) {
         if (!is_array($item)) continue;
-        $instruction = wp_pdf_pick($item, ['instruction','instructions','direction','directions']);
-        $prompt = wp_pdf_pick($item, ['prompt_text','prompt','question','stem','text']);
-        $answer = wp_pdf_pick($item, ['answer','sample_answer','model_answer']);
-        $type = strtolower(wp_pdf_pick($item, ['type'], 'writing'));
+        $instruction = pdf_pick($item, ['instruction','instructions','direction','directions']);
+        $prompt = pdf_pick($item, ['prompt_text','prompt','question','stem','text']);
+        $answer = pdf_pick($item, ['answer','sample_answer','model_answer']);
+        $type = strtolower(pdf_pick($item, ['type'], 'writing'));
         if ($prompt === '' && $instruction === '' && $answer === '') continue;
         $wordHint = '';
         if (preg_match('/paragraph|describe|essay|story|opinion|explain/i', $instruction.' '.$prompt)) {
@@ -69,6 +79,7 @@ function ws_writing(array $d, int $n, bool $k): string {
         $out .= '<div class="wp-print-head"><span class="qnum">'.($qi + 1).'</span><span class="wp-prompt-title">Writing prompt</span>'.$wordHint.'</div>';
         if ($instruction !== '') $out .= '<div class="wp-instruction">'.h($instruction).'</div>';
         if ($prompt !== '') $out .= '<div class="wp-prompt-box">'.nl2br(h($prompt)).'</div>';
+        $out .= pdf_img_box(pdf_img($item), 'pdf-act-img wp-img');
         if ($k && $answer !== '') {
             $out .= '<div class="wp-answer-key"><strong>Sample answer:</strong> '.nl2br(h($answer)).'</div>';
         } elseif (in_array($type, ['fill_sentence','fill_paragraph','listen_write'], true)) {
@@ -94,16 +105,7 @@ function dict_pdf_items(array $d): array {
     return [];
 }
 function dict_pdf_text(array $item): string {
-    foreach (['en','text','sentence','prompt','word','phrase'] as $key) {
-        if (isset($item[$key]) && trim((string)$item[$key]) !== '') return trim((string)$item[$key]);
-    }
-    return '';
-}
-function dict_pdf_img(array $item): string {
-    foreach (['img','image','url','picture'] as $key) {
-        if (isset($item[$key]) && trim((string)$item[$key]) !== '') return trim((string)$item[$key]);
-    }
-    return '';
+    return pdf_pick($item, ['en','text','sentence','prompt','word','phrase','answer']);
 }
 function ws_dictation(array $d, int $n, bool $k): string {
     $items = dict_pdf_items($d);
@@ -117,12 +119,12 @@ function ws_dictation(array $d, int $n, bool $k): string {
     foreach ($items as $i => $item) {
         if (!is_array($item)) $item = ['en' => (string)$item];
         $text = dict_pdf_text($item);
-        $img = dict_pdf_img($item);
+        $img = pdf_img($item);
         $wc = $text !== '' ? count(preg_split('/\s+/', trim($text)) ?: []) : 5;
         $lines = $wc <= 5 ? 3 : ($wc <= 12 ? 4 : 5);
         $out .= '<div class="dict-print-item">';
         $out .= '<div class="dict-print-top"><span class="dict-num">'.($i + 1).'</span><span class="dict-icon">🎧</span><span class="dict-label">Listen and write</span></div>';
-        if ($img !== '') $out .= '<div class="dict-img"><img src="'.h($img).'" alt="dictation '.($i + 1).'" loading="eager"></div>';
+        if ($img !== '') $out .= pdf_img_box($img, 'dict-img');
         if ($k && $text !== '') $out .= '<div class="dict-answer"><strong>Answer:</strong> '.h($text).'</div>';
         $out .= '<div class="dict-lines">'.str_repeat('<div class="dict-line"></div>', $lines).'</div>';
         $out .= '</div>';
@@ -132,13 +134,114 @@ function ws_dictation(array $d, int $n, bool $k): string {
 }
 PHP;
 
-$readingPatch = <<<'PHP'
-function rc_pdf_pick(array $a, array $keys, string $fallback = ''): string {
-    foreach ($keys as $key) {
-        if (isset($a[$key]) && trim((string)$a[$key]) !== '') return trim((string)$a[$key]);
-    }
-    return $fallback;
+$mcPatch = <<<'PHP'
+function mc_pdf_options(array $q): array {
+    $raw = is_array($q['options'] ?? null) ? $q['options'] : [];
+    $out = [];
+    foreach ($raw as $o) $out[] = $o;
+    return $out;
 }
+function mc_pdf_opt_text($o): string {
+    if (is_array($o)) return pdf_pick($o, ['text','label','answer','option','caption','title']);
+    return trim((string)$o);
+}
+function mc_pdf_opt_img($o): string {
+    if (is_array($o)) return pdf_img($o);
+    $s = trim((string)$o);
+    return preg_match('/\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i', $s) || preg_match('/^https?:\/\/.*(cloudinary|uploads|image|img)/i', $s) ? $s : '';
+}
+function ws_mc(array $d, int $n, bool $k): string {
+    $qs = is_array($d['questions'] ?? null) ? $d['questions'] : [];
+    $ltrs = ['A','B','C','D'];
+    $out = ws_head($n, 'Multiple Choice', trim((string)($d['title'] ?? '')), 'Circle the letter of the correct answer.', $k);
+    foreach ($qs as $qi => $q) {
+        if (!is_array($q)) continue;
+        $qt = pdf_pick($q, ['question','stem','prompt','text']);
+        $qtp = $q['question_type'] ?? 'text';
+        $qimg = pdf_img($q);
+        $op = mc_pdf_options($q);
+        $otp = $q['option_type'] ?? '';
+        $ck = (int)($q['correct'] ?? 0);
+        $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>';
+        if ($qtp === 'listen') $out .= '<em class="ws-audio">&#127911; Listen and choose.</em>';
+        else {
+            if ($qt !== '') $out .= h($qt);
+            $out .= pdf_img_box($qimg, 'mc-qimg pdf-act-img');
+        }
+        $out .= '</div>';
+        $hasImageOptions = ($otp === 'image');
+        foreach ($op as $o) { if (mc_pdf_opt_img($o) !== '') { $hasImageOptions = true; break; } }
+        if ($hasImageOptions) {
+            $out .= '<div class="mc-img-opts">';
+            foreach ($op as $oi => $o) {
+                $text = mc_pdf_opt_text($o);
+                $img = mc_pdf_opt_img($o);
+                $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
+                $out .= '<div class="mc-img-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>';
+                if ($img !== '') $out .= '<div class="mc-frame"><img src="'.h($img).'" alt="" loading="eager"></div>';
+                if ($text !== '' && $text !== $img) $out .= '<div class="mc-opt-caption">'.h($text).'</div>';
+                $out .= '</div>';
+            }
+            $out .= '</div>';
+        } else {
+            $out .= '<div class="ws-opts">';
+            foreach ($op as $oi => $o) {
+                $ot = mc_pdf_opt_text($o);
+                if ($ot === '') continue;
+                $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
+                $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
+            }
+            $out .= '</div>';
+        }
+        $out .= '</div>';
+    }
+    return $out.ws_foot();
+}
+PHP;
+
+$dragPatch = <<<'PHP'
+function ws_dragdrop(array $d, int $n, bool $k): string {
+    $blocks = is_array($d['blocks'] ?? null) ? $d['blocks'] : [];
+    $allWords = [];
+    foreach ($blocks as $b) {
+        foreach ((array)($b['missing_words'] ?? []) as $w) {
+            $w = trim((string)$w); if ($w !== '') $allWords[] = $w;
+        }
+    }
+    $bank = array_values(array_unique($allWords));
+    shuffle($bank);
+    $out = ws_head($n, 'Fill in the Blanks', trim((string)($d['title'] ?? '')), $k ? 'Sentences with correct answers shown.' : 'Fill in the blanks using the word bank below.', $k, 'card-open');
+    if (!empty($bank) && !$k) {
+        $out .= '<div class="ws-bank"><span class="ws-blbl">Word Bank:</span>';
+        foreach ($bank as $w) $out .= '<span class="ws-chip">'.h($w).'</span>';
+        $out .= '</div>';
+    }
+    foreach ($blocks as $bi => $bl) {
+        if (!is_array($bl)) continue;
+        $tx = trim((string)($bl['text'] ?? $bl['sentence'] ?? ''));
+        $ms = is_array($bl['missing_words'] ?? null) ? $bl['missing_words'] : [];
+        if ($tx === '' && pdf_img($bl) === '') continue;
+        $out .= '<div class="fill-block">'.pdf_img_box(pdf_img($bl), 'fill-img pdf-act-img');
+        if ($tx !== '') {
+            $out .= '<div class="ws-fr"><span class="ws-fn">'.($bi+1).'.</span><span class="ws-fb">';
+            if ($k) $out .= '<span class="ws-ans">'.h($tx).'</span>';
+            else {
+                $bl2 = $tx;
+                foreach ($ms as $mw) {
+                    $mw = trim((string)$mw); if ($mw === '') continue;
+                    $bl2 = preg_replace('/'.preg_quote($mw,'/').'/', str_repeat('_', max(6, mb_strlen($mw,'UTF-8') + 4)), $bl2, 1);
+                }
+                $out .= h($bl2);
+            }
+            $out .= '</span></div>';
+        }
+        $out .= '</div>';
+    }
+    return $out.ws_foot();
+}
+PHP;
+
+$readingPatch = <<<'PHP'
 function rc_pdf_text(array $d): array {
     if (isset($d['texts']) && is_array($d['texts']) && !empty($d['texts'])) {
         $t = is_array($d['texts'][0]) ? $d['texts'][0] : [];
@@ -168,10 +271,7 @@ function rc_pdf_options(array $q): array {
     $raw = $q['options'] ?? [];
     if (!is_array($raw)) $raw = [];
     $out = [];
-    foreach ($raw as $o) {
-        $txt = trim((string)$o);
-        if ($txt !== '') $out[] = $txt;
-    }
+    foreach ($raw as $o) { $txt = trim((string)$o); if ($txt !== '') $out[] = $txt; }
     return $out;
 }
 function rc_pdf_question_box(string $stem, array $options, int $correct, bool $k, string $feedback = '', int $num = 1): string {
@@ -184,9 +284,7 @@ function rc_pdf_question_box(string $stem, array $options, int $correct, bool $k
             $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65 + $oi)).'</span>'.h($op).'</div>';
         }
         $out .= '</div>';
-    } else {
-        $out .= '<div class="ws-open-lines"><div class="ws-open-line"></div><div class="ws-open-line"></div></div>';
-    }
+    } else $out .= '<div class="ws-open-lines"><div class="ws-open-line"></div><div class="ws-open-line"></div></div>';
     if ($k && $feedback !== '') $out .= '<div class="ws-expl">'.h($feedback).'</div>';
     return $out.'</div>';
 }
@@ -194,9 +292,9 @@ function ws_reading(array $d, int $n, bool $k): string {
     $t = rc_pdf_text($d);
     $mode = strtolower(trim((string)($t['mode'] ?? $d['mode'] ?? 'reading')));
     $isComp = in_array($mode, ['comp','comprehension','reading_comprehension'], true);
-    $title = rc_pdf_pick($t, ['title', 'root_title'], rc_pdf_pick($d, ['title'], 'Reading Comprehension'));
-    $genre = rc_pdf_pick($t, ['genre'], 'Reading text');
-    $body = rc_pdf_pick($t, ['body','text','passage','content'], rc_pdf_pick($d, ['body','text','passage','content'], ''));
+    $title = pdf_pick($t, ['title', 'root_title'], pdf_pick($d, ['title'], 'Reading Comprehension'));
+    $genre = pdf_pick($t, ['genre'], 'Reading text');
+    $body = pdf_pick($t, ['body','text','passage','content'], pdf_pick($d, ['body','text','passage','content'], ''));
     $words = is_array($t['words'] ?? null) ? $t['words'] : (is_array($d['words'] ?? null) ? $d['words'] : []);
     $questions = is_array($t['questions'] ?? null) ? $t['questions'] : (is_array($d['questions'] ?? null) ? $d['questions'] : []);
     $wordCount = (int)($t['wordCount'] ?? $d['wordCount'] ?? 0);
@@ -209,17 +307,14 @@ function ws_reading(array $d, int $n, bool $k): string {
         if (empty($questions)) $out .= '<div class="notes-box"></div>';
         else foreach ($questions as $qi => $q) {
             if (!is_array($q)) continue;
-            $out .= rc_pdf_question_box(rc_pdf_pick($q, ['stem','question','prompt'], 'Question '.($qi + 1)), rc_pdf_options($q), (int)($q['correct'] ?? 0), $k, trim((string)($q['feedback'] ?? $q['explanation'] ?? '')), $qi + 1);
+            $out .= rc_pdf_question_box(pdf_pick($q, ['stem','question','prompt'], 'Question '.($qi + 1)), rc_pdf_options($q), (int)($q['correct'] ?? 0), $k, trim((string)($q['feedback'] ?? $q['explanation'] ?? '')), $qi + 1);
         }
     } else {
         $vocabQs = [];
         foreach ($words as $w) {
             if (!is_array($w)) continue;
-            $word = rc_pdf_pick($w, ['word','text','term']);
-            if ($word === '') continue;
-            $options = [];
-            $correctMeaning = rc_pdf_pick($w, ['correct','meaning','definition']);
-            if ($correctMeaning !== '') $options[] = $correctMeaning;
+            $word = pdf_pick($w, ['word','text','term']); if ($word === '') continue;
+            $options = []; $correctMeaning = pdf_pick($w, ['correct','meaning','definition']); if ($correctMeaning !== '') $options[] = $correctMeaning;
             $distractors = is_array($w['distractors'] ?? null) ? $w['distractors'] : [];
             foreach ($distractors as $dist) { $txt = trim((string)$dist); if ($txt !== '') $options[] = $txt; }
             $vocabQs[] = ['word' => $word, 'options' => $options, 'correct' => 0];
@@ -231,6 +326,9 @@ function ws_reading(array $d, int $n, bool $k): string {
 }
 PHP;
 
+$source = str_replace('/* ── VOCABULARY / FLASHCARDS ───────────────────────────────── */', $sharedPatch . "\n\n/* ── VOCABULARY / FLASHCARDS ───────────────────────────────── */", $source);
+$source = preg_replace('/function\s+ws_mc\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── FILL IN THE BLANKS/s', $mcPatch . "\n\n/* ── FILL IN THE BLANKS", $source, 1);
+$source = preg_replace('/function\s+ws_dragdrop\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── WRITING PRACTICE/s', $dragPatch . "\n\n/* ── WRITING PRACTICE", $source, 1);
 $source = preg_replace('/function\s+ws_writing\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── MATCH/s', $writingPatch . "\n\n/* ── MATCH", $source, 1);
 $source = preg_replace('/function\s+ws_dictation\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── PRONUNCIATION/s', $dictationPatch . "\n\n/* ── PRONUNCIATION", $source, 1);
 $source = preg_replace('/function\s+ws_reading\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── BUILD SECTIONS/s', $readingPatch . "\n\n/* ── BUILD SECTIONS", $source, 1);
@@ -243,53 +341,29 @@ $html = ob_get_clean();
 $printFontCss = <<<'CSS'
 
 /* Shared PDF-preview styles for patched activities. */
-.dict-grid {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 12px !important;
-}
-.dict-print-item {
-  border: 1.5px solid #DCD7FF !important;
-  border-radius: 14px !important;
-  background: #fff !important;
-  padding: 10px 12px !important;
-  break-inside: avoid !important;
-  page-break-inside: avoid !important;
-}
-.dict-print-top {
-  display: flex !important;
-  align-items: center !important;
-  gap: 7px !important;
-  margin-bottom: 8px !important;
-}
-.dict-num {
-  width: 24px !important;
-  height: 24px !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  background: #7F77DD !important;
-  color: #fff !important;
-  border-radius: 999px !important;
-  font-size: 11pt !important;
-  font-weight: 900 !important;
-  flex: 0 0 auto !important;
-}
-.dict-label { font-weight: 900 !important; }
-.dict-img {
+.pdf-act-img,
+.mc-qimg,
+.fill-img,
+.dict-img,
+.wp-img {
   width: 44mm !important;
   height: 34mm !important;
   max-width: 100% !important;
   border: 1px solid #EDE9FA !important;
   border-radius: 10px !important;
   overflow: hidden !important;
-  margin: 6px auto 10px !important;
+  margin: 7px auto 10px !important;
   background: #FAFAFE !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
 }
-.dict-img img {
+.pdf-act-img img,
+.mc-qimg img,
+.fill-img img,
+.dict-img img,
+.wp-img img,
+.mc-frame img {
   width: 100% !important;
   height: 100% !important;
   max-width: 100% !important;
@@ -297,18 +371,35 @@ $printFontCss = <<<'CSS'
   object-fit: contain !important;
   display: block !important;
 }
-.dict-lines,
-.wp-write-lines {
+.mc-img-opts {
   display: grid !important;
-  gap: 12px !important;
-  margin-top: 10px !important;
-  clear: both !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
 }
-.dict-line,
-.wp-write-line {
-  height: 20px !important;
-  border-bottom: 1.6px solid #000 !important;
+.mc-img-opt {
+  border: 1.5px solid #EDE9FA !important;
+  border-radius: 12px !important;
+  padding: 8px !important;
+  background: #fff !important;
+  break-inside: avoid !important;
 }
+.mc-frame {
+  width: 38mm !important;
+  height: 30mm !important;
+  margin: 4px auto !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+  background: #FAFAFE !important;
+}
+.mc-opt-caption { font-weight: 800 !important; text-align: center !important; margin-top: 4px !important; }
+.fill-block { break-inside: avoid !important; page-break-inside: avoid !important; margin: 10px 0 !important; }
+.dict-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
+.dict-print-item { border: 1.5px solid #DCD7FF !important; border-radius: 14px !important; background: #fff !important; padding: 10px 12px !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+.dict-print-top { display: flex !important; align-items: center !important; gap: 7px !important; margin-bottom: 8px !important; }
+.dict-num { width: 24px !important; height: 24px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: #7F77DD !important; color: #fff !important; border-radius: 999px !important; font-size: 11pt !important; font-weight: 900 !important; flex: 0 0 auto !important; }
+.dict-label { font-weight: 900 !important; }
+.dict-lines, .wp-write-lines { display: grid !important; gap: 12px !important; margin-top: 10px !important; clear: both !important; }
+.dict-line, .wp-write-line { height: 20px !important; border-bottom: 1.6px solid #000 !important; }
 
 /* Print layout + typography override: keep header/background colours, make worksheet printable. */
 @page { size: auto; margin: 14mm 12mm 18mm 12mm; }
@@ -318,10 +409,10 @@ $printFontCss = <<<'CSS'
   .ws-body { width: 100% !important; max-width: 190mm !important; margin: 0 auto !important; padding: 0 0 8mm 0 !important; overflow: visible !important; }
   .ws-page, .unit-page, .print-page, .worksheet-page, .card-box, .ws-body > * { overflow: visible !important; height: auto !important; max-height: none !important; }
   .ws-sec { break-inside: auto !important; page-break-inside: auto !important; break-after: auto !important; page-break-after: auto !important; margin-bottom: 9mm !important; }
-  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr, .fill-block, .mc-img-opt { break-inside: avoid !important; page-break-inside: avoid !important; }
   .sec-head { margin-top: 2mm !important; }
   .card-box { padding-bottom: 5mm !important; }
-  .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
+  .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,.mc-opt-caption,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
   .ws-body :is(.sec-title,.unit-title) { color: #000 !important; font-size: 14pt !important; }
   .rc-hl { color: #000 !important; font-size: 12pt !important; font-weight: 800 !important; background: #FFF0E6 !important; border-bottom: 2px solid #F97316 !important; padding: 0 2px !important; }
   .wp-print-card, .wp-answer-key, .dict-answer { border-radius: 12px !important; }
