@@ -76,10 +76,16 @@ $source = str_replace(
     $source
 );
 
-$source = str_replace(
-    '<form method="POST">\n          <input type="hidden" name="action" value="save_exam">\n          <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">',
-    '<form method="POST" action="admin_eval.php?tab=editor<?= $currentExamId > 0 ? \'&exam_id=\'.$currentExamId : \'\' ?>">\n          <input type="hidden" name="action" value="save_exam">\n          <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">',
-    $source
-);
+$formNeedle = <<<'HTML'
+        <form method="POST">
+          <input type="hidden" name="action" value="save_exam">
+          <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">
+HTML;
+$formReplacement = <<<'HTML'
+        <form method="POST" action="admin_eval.php?tab=editor<?= $currentExamId > 0 ? '&exam_id='.$currentExamId : '' ?>">
+          <input type="hidden" name="action" value="save_exam">
+          <input type="hidden" name="exam_id" value="<?= $currentExamId ?>">
+HTML;
+$source = str_replace($formNeedle, $formReplacement, $source);
 
 eval('?>' . $source);
