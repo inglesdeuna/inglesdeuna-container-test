@@ -10,29 +10,42 @@ if ($source === false) {
     die('Evaluation admin base file not found.');
 }
 
-$source = str_replace(
-    "if (($_GET['msg'] ?? '') === 'deleted') $msg = 'Examen eliminado.';",
-    "if ((\$_GET['msg'] ?? '') === 'deleted') \$msg = 'Examen eliminado.';\nif ((\$_GET['msg'] ?? '') === 'link_saved') \$msg = 'Link generado correctamente.';",
-    $source
-);
+$flashNeedle = <<<'PHP'
+if (($_GET['msg'] ?? '') === 'deleted') $msg = 'Examen eliminado.';
+PHP;
+$flashReplacement = <<<'PHP'
+if (($_GET['msg'] ?? '') === 'deleted') $msg = 'Examen eliminado.';
+if (($_GET['msg'] ?? '') === 'link_saved') $msg = 'Link generado correctamente.';
+PHP;
+$source = str_replace($flashNeedle, $flashReplacement, $source);
 
-$source = str_replace(
-    "        \$msg = 'Link de grupo generado.';\n        \$tab = 'links';",
-    "        header('Location: admin_eval.php?tab=links&exam_id=' . \$examId . '&msg=link_saved');\n        exit;",
-    $source
-);
+$groupLinkNeedle = <<<'PHP'
+        $msg = 'Link de grupo generado.';
+        $tab = 'links';
+PHP;
+$groupLinkReplacement = <<<'PHP'
+        header('Location: admin_eval.php?tab=links&exam_id=' . $examId . '&msg=link_saved');
+        exit;
+PHP;
+$source = str_replace($groupLinkNeedle, $groupLinkReplacement, $source);
 
-$source = str_replace(
-    "        \$msg = 'Link individual generado.';\n        \$tab = 'links';",
-    "        header('Location: admin_eval.php?tab=links&exam_id=' . \$examId . '&msg=link_saved');\n        exit;",
-    $source
-);
+$individualLinkNeedle = <<<'PHP'
+        $msg = 'Link individual generado.';
+        $tab = 'links';
+PHP;
+$individualLinkReplacement = <<<'PHP'
+        header('Location: admin_eval.php?tab=links&exam_id=' . $examId . '&msg=link_saved');
+        exit;
+PHP;
+$source = str_replace($individualLinkNeedle, $individualLinkReplacement, $source);
 
-$source = str_replace(
-    "\$statsLinks       = (int) \$pdo->query(\"SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND uses_count < max_uses\")->fetchColumn();",
-    "\$statsLinks       = (int) \$pdo->query(\"SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND use_count < max_uses\")->fetchColumn();",
-    $source
-);
+$statsNeedle = <<<'PHP'
+$statsLinks       = (int) $pdo->query("SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND uses_count < max_uses")->fetchColumn();
+PHP;
+$statsReplacement = <<<'PHP'
+$statsLinks       = (int) $pdo->query("SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND use_count < max_uses")->fetchColumn();
+PHP;
+$source = str_replace($statsNeedle, $statsReplacement, $source);
 
 $sidebarNeedle = <<<'HTML'
     <button class="es-item <?= $tab==='list'?'active':'' ?>" onclick="showTab('list')">
@@ -64,17 +77,21 @@ $sidebarReplacement = <<<'HTML'
 HTML;
 $source = str_replace($sidebarNeedle, $sidebarReplacement, $source);
 
-$source = str_replace(
-    '<div class="card-head"><h3>Exámenes</h3><button class="btn btn-primary" onclick="showTab(\'editor\')">+ Crear examen</button></div>',
-    '<div class="card-head"><h3>Exámenes</h3><a class="btn btn-primary" href="admin_eval.php?tab=editor">+ Crear examen</a></div>',
-    $source
-);
+$createButtonNeedle = <<<'HTML'
+<div class="card-head"><h3>Exámenes</h3><button class="btn btn-primary" onclick="showTab('editor')">+ Crear examen</button></div>
+HTML;
+$createButtonReplacement = <<<'HTML'
+<div class="card-head"><h3>Exámenes</h3><a class="btn btn-primary" href="admin_eval.php?tab=editor">+ Crear examen</a></div>
+HTML;
+$source = str_replace($createButtonNeedle, $createButtonReplacement, $source);
 
-$source = str_replace(
-    '<a class="btn btn-secondary btn-sm" href="eval_results.php?exam_id=<?= $ex[\'id\'] ?>">Resultados</a>',
-    '<a class="btn btn-secondary btn-sm" href="admin_eval.php?tab=results&exam_id=<?= $ex[\'id\'] ?>">Resultados</a>',
-    $source
-);
+$resultsNeedle = <<<'HTML'
+<a class="btn btn-secondary btn-sm" href="eval_results.php?exam_id=<?= $ex['id'] ?>">Resultados</a>
+HTML;
+$resultsReplacement = <<<'HTML'
+<a class="btn btn-secondary btn-sm" href="admin_eval.php?tab=results&exam_id=<?= $ex['id'] ?>">Resultados</a>
+HTML;
+$source = str_replace($resultsNeedle, $resultsReplacement, $source);
 
 $formNeedle = <<<'HTML'
         <form method="POST">
