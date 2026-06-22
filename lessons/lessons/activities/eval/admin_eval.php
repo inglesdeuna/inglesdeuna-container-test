@@ -39,14 +39,6 @@ $individualLinkReplacement = <<<'PHP'
 PHP;
 $source = str_replace($individualLinkNeedle, $individualLinkReplacement, $source);
 
-$statsNeedle = <<<'PHP'
-$statsLinks       = (int) $pdo->query("SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND uses_count < max_uses")->fetchColumn();
-PHP;
-$statsReplacement = <<<'PHP'
-$statsLinks       = (int) $pdo->query("SELECT COUNT(*) FROM eval_links WHERE (expires_at IS NULL OR expires_at > NOW()) AND use_count < max_uses")->fetchColumn();
-PHP;
-$source = str_replace($statsNeedle, $statsReplacement, $source);
-
 $sidebarNeedle = <<<'HTML'
     <button class="es-item <?= $tab==='list'?'active':'' ?>" onclick="showTab('list')">
       <i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes</button>
