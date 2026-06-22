@@ -229,7 +229,7 @@ function ws_dragdrop(array $d, int $n, bool $k): string {
                 $bl2 = $tx;
                 foreach ($ms as $mw) {
                     $mw = trim((string)$mw); if ($mw === '') continue;
-                    $bl2 = preg_replace('/'.preg_quote($mw,'/').'/', str_repeat('_', max(6, mb_strlen($mw,'UTF-8') + 4)), $bl2, 1);
+                    $bl2 = preg_replace('/'.preg_quote($mw,'/').'/', str_repeat('_', max(14, mb_strlen($mw,'UTF-8') + 10)), $bl2, 1);
                 }
                 $out .= h($bl2);
             }
@@ -392,7 +392,49 @@ $printFontCss = <<<'CSS'
   background: #FAFAFE !important;
 }
 .mc-opt-caption { font-weight: 800 !important; text-align: center !important; margin-top: 4px !important; }
-.fill-block { break-inside: avoid !important; page-break-inside: avoid !important; margin: 10px 0 !important; }
+.fill-block {
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+  margin: 12px 0 !important;
+}
+.ws-bank {
+  padding: 10px 12px !important;
+  margin: 10px 0 12px !important;
+  line-height: 1.8 !important;
+}
+.ws-chip {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 24px !important;
+  padding: 5px 11px !important;
+  margin: 3px 4px !important;
+  font-size: 12pt !important;
+}
+.ws-fr {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 8px !important;
+  padding: 9px 12px !important;
+  margin: 8px 0 !important;
+  border: 1.4px solid #EDE9FA !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  break-inside: avoid !important;
+  page-break-inside: avoid !important;
+}
+.ws-fn {
+  min-width: 20px !important;
+  font-weight: 900 !important;
+  color: #7F77DD !important;
+  padding-top: 2px !important;
+}
+.ws-fb {
+  display: block !important;
+  width: 100% !important;
+  line-height: 2.25 !important;
+  word-spacing: 3px !important;
+  letter-spacing: .01em !important;
+}
 .dict-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
 .dict-print-item { border: 1.5px solid #DCD7FF !important; border-radius: 14px !important; background: #fff !important; padding: 10px 12px !important; break-inside: avoid !important; page-break-inside: avoid !important; }
 .dict-print-top { display: flex !important; align-items: center !important; gap: 7px !important; margin-bottom: 8px !important; }
@@ -414,6 +456,7 @@ $printFontCss = <<<'CSS'
   .card-box { padding-bottom: 5mm !important; }
   .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,.mc-opt-caption,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
   .ws-body :is(.sec-title,.unit-title) { color: #000 !important; font-size: 14pt !important; }
+  .ws-fb { line-height: 2.25 !important; }
   .rc-hl { color: #000 !important; font-size: 12pt !important; font-weight: 800 !important; background: #FFF0E6 !important; border-bottom: 2px solid #F97316 !important; padding: 0 2px !important; }
   .wp-print-card, .wp-answer-key, .dict-answer { border-radius: 12px !important; }
   .wp-print-card { border: 1.5px solid #DCD7FF !important; background: #fff !important; padding: 12px 14px !important; margin: 12px 0 !important; break-inside: avoid !important; }
