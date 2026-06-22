@@ -85,6 +85,22 @@ $resultsReplacement = <<<'HTML'
 HTML;
 $source = str_replace($resultsNeedle, $resultsReplacement, $source);
 
+$actionsNeedle = <<<'HTML'
+              <a class="btn btn-primary btn-sm" href="?tab=links&exam_id=<?= $ex['id'] ?>">Enviar</a>
+              <a class="btn btn-secondary btn-sm" href="?tab=editor&exam_id=<?= $ex['id'] ?>">Editar</a>
+              <a class="btn btn-secondary btn-sm" href="eval_results.php?exam_id=<?= $ex['id'] ?>">Resultados</a>
+HTML;
+$actionsReplacement = <<<'HTML'
+              <a class="btn btn-primary btn-sm" href="admin_eval.php?tab=links&exam_id=<?= $ex['id'] ?>">Enviar</a>
+              <?php if (!empty($ex['unit_id'])): ?>
+                <a class="btn btn-purple btn-sm" href="../../academic/unit_view.php?unit=<?= urlencode((string)$ex['unit_id']) ?>" target="_blank">Ver unidad</a>
+              <?php else: ?>
+                <a class="btn btn-secondary btn-sm" href="admin_eval.php?tab=editor&exam_id=<?= $ex['id'] ?>">Editar</a>
+              <?php endif; ?>
+              <a class="btn btn-secondary btn-sm" href="admin_eval.php?tab=results&exam_id=<?= $ex['id'] ?>">Resultados</a>
+HTML;
+$source = str_replace($actionsNeedle, $actionsReplacement, $source);
+
 $formNeedle = <<<'HTML'
         <form method="POST">
           <input type="hidden" name="action" value="save_exam">
