@@ -14,15 +14,17 @@ if ($source === false) {
 
 // Memory Cards is an interactive-only activity and should not appear in PDF exports.
 $source = str_replace(
-    "$SKIP_TYPES = ['flipbooks','hangman','crossword','coloring','dot_to_dot','tracing'];",
-    "$SKIP_TYPES = ['flipbooks','hangman','crossword','coloring','dot_to_dot','tracing','memory_cards'];",
+    '$SKIP_TYPES = [\'flipbooks\',\'hangman\',\'crossword\',\'coloring\',\'dot_to_dot\',\'tracing\'];',
+    '$SKIP_TYPES = [\'flipbooks\',\'hangman\',\'crossword\',\'coloring\',\'dot_to_dot\',\'tracing\',\'memory_cards\'];',
     $source
 );
-$source = str_replace(
-    "case 'memory_cards':         $html = ws_memory($data, $actN, $isKey);      break;",
-    "case 'memory_cards':         $actN--; continue 2;",
-    $source
-);
+$memoryCaseNeedle = <<<'PHP'
+case 'memory_cards':         $html = ws_memory($data, $actN, $isKey);      break;
+PHP;
+$memoryCaseReplacement = <<<'PHP'
+case 'memory_cards':         $actN--; continue 2;
+PHP;
+$source = str_replace($memoryCaseNeedle, $memoryCaseReplacement, $source);
 
 $writingPatch = <<<'PHP'
 function wp_pdf_pick(array $a, array $keys, string $fallback = ''): string {
