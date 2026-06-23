@@ -3,6 +3,7 @@
 function render_activity_editor($title, $icon, $content) {
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
+    $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 
     // Standard flow returns to unit viewer. Exam-builder flow returns to the
     // quiz-from-scratch checklist so the user can continue editing selected blocks.
@@ -15,7 +16,22 @@ function render_activity_editor($title, $icon, $content) {
         if ($examId <= 0 && isset($_SESSION['eval_builder_exam_for_unit'][$unit])) {
             $examId = (int) $_SESSION['eval_builder_exam_for_unit'][$unit];
         }
+        if ($examId <= 0 && $activityId !== '') {
+            try {
+                global $pdo;
+                if (isset($pdo) && $pdo instanceof PDO) {
+                    $ctxStmt = $pdo->prepare('SELECT data FROM activities WHERE id=? LIMIT 1');
+                    $ctxStmt->execute([$activityId]);
+                    $rawData = $ctxStmt->fetchColumn();
+                    $ctxData = is_string($rawData) ? json_decode($rawData, true) : [];
+                    if (is_array($ctxData) && !empty($ctxData['_exam_id'])) {
+                        $examId = (int) $ctxData['_exam_id'];
+                    }
+                }
+            } catch (Throwable $e) {}
+        }
         if ($examId > 0) {
+            $_SESSION['eval_builder_exam_for_unit'][$unit] = $examId;
             $backUrl = '../eval/quiz_from_scratch.php?mode=edit&unit=' . urlencode($unit) . '&exam_id=' . $examId;
         }
     } elseif ($source !== '') {
