@@ -51,7 +51,7 @@ if (!$isPreview && $token !== '') {
     $stmt = $pdo->prepare(
         "SELECT l.*, e.title AS exam_title, e.time_limit_min, e.max_attempts,
                 e.instructions, e.cefr_level AS exam_cefr, e.status AS exam_status,
-                e.modalities
+                e.modalities, e.unit_id AS exam_unit_id
          FROM eval_links l
          JOIN eval_exams e ON e.id = l.exam_id
          WHERE l.token = ?
@@ -106,8 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['start_exam'])) {
             // Add unit_ids so selector can pull activity questions
             // Add assignment_id so qz_build() uses same seed as quiz/viewer
             $examUnitIds = [];
-            if (!empty($exam['unit_id'])) {
-                $examUnitIds = [(int) $exam['unit_id']];
+            if (!empty($link['exam_unit_id'])) {
+                $examUnitIds = [(int) $link['exam_unit_id']];
             }
             $examConfig  = [
                 'exam_id'         => $examId,
@@ -289,7 +289,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $re
         // ── Sync to student_quiz_state + student_unit_results ─────────────
         // So the result appears in teacher_course.php dashboard and student_quiz.php
         // exactly like a regular unit quiz result.
-        $unitIdForSync = (int) ($exam['unit_id'] ?? 0);
+        $unitIdForSync = (int) ($link['exam_unit_id'] ?? 0);
         if ($unitIdForSync > 0) {
             // Resolve student_id — use doc as surrogate when no session
             $syncStudentId = trim((string) ($_SESSION['student_id'] ?? ''));
