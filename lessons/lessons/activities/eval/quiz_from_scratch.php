@@ -48,6 +48,11 @@ if ($examId > 0) {
     if ($exam && $unitId === '') $unitId = trim((string)($exam['unit_id'] ?? ''));
 }
 
+$unitRows = [];
+try {
+    $unitRows = $pdo->query('SELECT id, name FROM units ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
+} catch (Throwable $e) {}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = rq('action');
 
@@ -65,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'create_exam') {
         $title = rq('title');
+        if ($unitId === '') $unitId = rq('unit_id');
         $selected = $_POST['types'] ?? [];
         if (!is_array($selected)) $selected = [];
         $selected = array_values(array_filter($selected, fn($t) => isset($scoreableTypes[$t])));
@@ -108,11 +114,6 @@ if ($unitId !== '') {
     $unit = $s->fetch(PDO::FETCH_ASSOC);
 }
 
-$unitRows = [];
-try {
-    $unitRows = $pdo->query('SELECT id, name FROM units ORDER BY name')->fetchAll(PDO::FETCH_ASSOC);
-} catch (Throwable $e) {}
-
 $activities = [];
 if ($examId > 0 && $unitId !== '') {
     $s = $pdo->prepare('SELECT id,type,data,position FROM activities WHERE unit_id=? ORDER BY position,id');
@@ -144,8 +145,8 @@ $showSelectBlocks = (!$showAssignUnit && ($mode !== 'edit' || !$exam || !$activi
 <?php if ($showAssignUnit): ?>
 <form method="POST" class="card"><input type="hidden" name="action" value="assign_unit"><input type="hidden" name="exam_id" value="<?= $examId ?>"><div class="fg"><label>Selecciona la unidad para este examen</label><select name="unit_id" required><option value="">— Selecciona unidad —</option><?php foreach ($unitRows as $u): ?><option value="<?= h((string)$u['id']) ?>"><?= h($u['name']) ?></option><?php endforeach; ?></select></div><button class="btn primary" type="submit">Continuar a bloques evaluables →</button></form>
 <?php elseif ($showSelectBlocks): ?>
-<form method="POST" class="card"><input type="hidden" name="action" value="create_exam"><input type="hidden" name="unit" value="<?= h($unitId) ?>"><input type="hidden" name="exam_id" value="<?= $examId ?>"><div class="fg"><label>Nombre del examen</label><input type="text" name="title" required value="<?= h($exam['title'] ?? (($unit['name'] ?? 'Unidad') . ' - Quiz')) ?>"></div><div class="grid"><?php foreach ($scoreableTypes as $type=>$cfg): $editorPath = realpath(__DIR__ . '/' . $cfg['editor']); if (!$editorPath || !is_file($editorPath)) continue; ?><div class="type-row"><label><input type="checkbox" name="types[]" value="<?= h($type) ?>"> <?= h($cfg['label']) ?></label><input class="qty" type="number" name="qty[<?= h($type) ?>]" value="1" min="1" max="9"></div><?php endforeach; ?></div><div class="actions"><button class="btn primary" type="submit">Preparar editores →</button></div></form>
+<form method="POST" class="card"><input type="hidden" name="action" value="create_exam"><input type="hidden" name="unit" value="<?= h($unitId) ?>"><input type="hidden" name="exam_id" value="<?= $examId ?>"><div class="fg"><label>Nombre del examen</label><input type="text" name="title" required value="<?= h($exam['title'] ?? (($unit['name'] ?? 'Unidad') . ' - Quiz')) ?>"></div><?php if ($unitId === ''): ?><div class="fg"><label>Unidad asociada</label><select name="unit_id" required><option value="">— Selecciona unidad —</option><?php foreach ($unitRows as $u): ?><option value="<?= h((string)$u['id']) ?>"><?= h($u['name']) ?></option><?php endforeach; ?></select></div><?php else: ?><div class="msg">Unidad seleccionada: <?= h($unit['name'] ?? $unitId) ?></div><?php endif; ?><div class="grid"><?php foreach ($scoreableTypes as $type=>$cfg): $editorPath = realpath(__DIR__ . '/' . $cfg['editor']); if (!$editorPath || !is_file($editorPath)) continue; ?><div class="type-row"><label><input type="checkbox" name="types[]" value="<?= h($type) ?>"> <?= h($cfg['label']) ?></label><input class="qty" type="number" name="qty[<?= h($type) ?>]" value="1" min="1" max="9"></div><?php endforeach; ?></div><div class="actions"><button class="btn primary" type="submit">Preparar editores →</button></div></form>
 <?php else: ?>
-<div class="card"><h2 style="font-family:Fredoka,Arial,sans-serif;color:var(--blue2);margin-top:0">Bloques del examen</h2><?php foreach ($activities as $i=>$act): $cfg=$scoreableTypes[$act['type']]??null; if(!$cfg)continue; $url=$cfg['editor'].'?unit='.urlencode($unitId).'&id='.urlencode((string)$act['id']).'&source=eval_builder&exam_id='.$examId; ?><div class="edit-row"><div><div class="edit-title"><?= $i+1 ?>. <?= h($cfg['label']) ?></div><div class="small">Actividad #<?= h((string)$act['id']) ?> · edita y guarda este bloque</div></div><a class="btn orange" href="<?= h($url) ?>">Abrir editor →</a></div><?php endforeach; ?><div class="actions"><a class="btn primary" href="eval_viewer.php?preview=1&exam_id=<?= $examId ?>" target="_blank">Preview online</a><a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank">Preview impreso</a><a class="btn green" href="admin_eval.php?tab=editor&exam_id=<?= $examId ?>">Admin Evaluaciones</a></div></div>
+<div class="card"><h2 style="font-family:Fredoka,Arial,sans-serif;color:var(--blue2);margin-top:0">Bloques del examen</h2><?php foreach ($activities as $i=>$act): $cfg=$scoreableTypes[$act['type']]??null; if(!$cfg)continue; $url=$cfg['editor'].'?unit='.urlencode($unitId).'&id='.urlencode((string)$act['id']).'&source=eval_builder&exam_id='.$examId; ?><div class="edit-row"><div><div class="edit-title"><?= $i+1 ?>. <?= h($cfg['label']) ?></div><div class="small">Actividad #<?= h((string)$act['id']) ?> · edita y guarda este bloque</div></div><a class="btn orange" href="<?= h($url) ?>">Abrir editor →</a></div><?php endforeach; ?><div class="actions"><a class="btn primary" href="eval_viewer.php?preview=1&exam_id=<?= $examId ?>" target="_blank">Preview online</a><a class="btn" href="quiz_print.php?exam_id=<?= $examId ?>&mode=student" target="_blank">Preview impreso</a><a class="btn green" href="admin_eval.php?tab=editor&exam_id=<?= $examId ?>">Admin Evaluaciones</a><a class="btn orange" href="quiz_from_scratch.php?mode=select&unit=<?= urlencode($unitId) ?>&exam_id=<?= $examId ?>">Agregar más bloques</a></div></div>
 <?php endif; ?>
 </div></body></html>
