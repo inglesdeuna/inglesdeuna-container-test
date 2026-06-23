@@ -4,11 +4,21 @@ function render_activity_editor($title, $icon, $content) {
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 
-    // All activity editors return to the unit viewer.
-    // Do not route editor back buttons to assignment/teacher pages; those flows
-    // should still pass through the standard unit activity list.
+    // Standard flow returns to unit viewer. Exam-builder flow returns to the
+    // quiz-from-scratch checklist so the user can continue editing selected blocks.
     $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
-    if ($source !== '') {
+    if ($source === 'eval_builder' && $unit !== '') {
+        $examId = 0;
+        if (isset($_GET['exam_id'])) {
+            $examId = (int) $_GET['exam_id'];
+        }
+        if ($examId <= 0 && isset($_SESSION['eval_builder_exam_for_unit'][$unit])) {
+            $examId = (int) $_SESSION['eval_builder_exam_for_unit'][$unit];
+        }
+        if ($examId > 0) {
+            $backUrl = '../eval/quiz_from_scratch.php?mode=edit&unit=' . urlencode($unit) . '&exam_id=' . $examId;
+        }
+    } elseif ($source !== '') {
         $backUrl .= '&source=' . urlencode($source);
     }
 ?>
@@ -67,6 +77,19 @@ function render_activity_editor($title, $icon, $content) {
             color: #fff;
         }
 
+        .builder-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            color: #c2410c;
+            padding: 9px 13px;
+            border-radius: 999px;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
         .editor-card {
             max-width: 1100px;
             margin: 0 auto;
@@ -108,6 +131,9 @@ function render_activity_editor($title, $icon, $content) {
             <i class="fas fa-arrow-left"></i>
             Volver
         </a>
+        <?php if ($source === 'eval_builder'): ?>
+            <span class="builder-pill"><i class="fas fa-file-pen"></i> Bloque de examen desde cero</span>
+        <?php endif; ?>
     </div>
 
     <div class="editor-card">
