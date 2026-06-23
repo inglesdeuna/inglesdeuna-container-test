@@ -2,9 +2,6 @@
 /**
  * admin_eval.php
  * Thin wrapper around the stable admin_eval_base.php view.
- * - Removes the create-exam shortcut from the "Todos los examenes" list tab.
- * - Makes the exam configuration card collapsible in the editor tab.
- * - Routes exam-from-zero editing to the activity/block builder instead of the manual question modal.
  */
 ob_start();
 require __DIR__ . '/admin_eval_base.php';
@@ -15,7 +12,6 @@ $html = str_replace(
     '<div class="card-head"><h3>Exámenes</h3></div>',
     $html
 );
-
 $html = str_replace(
     '<div class="card-head"><h3>Examenes</h3><button class="btn btn-primary" onclick="showTab(\'editor\')">+ Crear examen</button></div>',
     '<div class="card-head"><h3>Examenes</h3></div>',
@@ -35,6 +31,11 @@ $collapseAssets = <<<'HTML'
 .config-collapsible-card:not(.is-collapsed) .config-toggle-btn .open-label{display:none;}
 .config-collapsible-card:not(.is-collapsed) .config-toggle-btn .close-label{display:inline;}
 .builder-primary-btn{display:inline-flex;align-items:center;gap:7px;background:#F97316!important;color:#fff!important;border-color:#F97316!important;}
+.eval-editor-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+.eval-editor-actions a{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;text-decoration:none;font-weight:800;font-size:12.5px;border:1.5px solid #EDE9FA;background:#fff;color:#534AB7;}
+.eval-editor-actions .online{background:#7F77DD;color:#fff;border-color:#7F77DD;}
+.eval-editor-actions .print{background:#fff;color:#374151;}
+.eval-editor-actions .blocks{background:#F97316;color:#fff;border-color:#F97316;}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
@@ -51,10 +52,18 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 
   if (editor && currentExamId) {
+    if (!editor.querySelector('.eval-editor-actions')) {
+      var actions = document.createElement('div');
+      actions.className = 'eval-editor-actions';
+      actions.innerHTML = '<a class="online" target="_blank" href="eval_viewer.php?preview=1&exam_id=' + currentExamId + '">Preview online</a>' +
+                          '<a class="print" target="_blank" href="quiz_print.php?exam_id=' + currentExamId + '&mode=student">Preview impreso</a>' +
+                          '<a class="blocks" href="quiz_from_scratch.php?mode=edit&exam_id=' + currentExamId + '">Actividades del examen</a>';
+      editor.insertBefore(actions, editor.firstChild);
+    }
     editor.querySelectorAll('button').forEach(function(btn){
       var txt = (btn.textContent || '').trim().toLowerCase();
-      if (txt.indexOf('agregar pregunta') !== -1) {
-        btn.textContent = '+ Actividades del Hub';
+      if (txt.indexOf('agregar pregunta') !== -1 || txt.indexOf('actividades del hub') !== -1) {
+        btn.textContent = '+ Actividades del examen';
         btn.onclick = function(e){
           e.preventDefault();
           window.location.href = 'quiz_from_scratch.php?mode=edit&exam_id=' + currentExamId;
@@ -103,5 +112,4 @@ document.addEventListener('DOMContentLoaded', function(){
 HTML;
 
 $html = str_replace('</body>', $collapseAssets . "\n</body>", $html);
-
 echo $html;
