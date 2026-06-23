@@ -96,7 +96,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pdo->prepare('UPDATE eval_exams SET title=? WHERE id=?')->execute([$title, $examId]);
             }
 
-            // Standalone exams use an internal container, never an academic unit.
             if ($unitId === '' || strpos($unitId, 'eval_exam_') !== 0) {
                 $unitId = ensure_exam_activity_unit($pdo, $examId, $title);
             }
@@ -128,9 +127,15 @@ $activities = [];
 if ($examId > 0 && $unitId !== '') {
     $s = $pdo->prepare('SELECT id,type,data,position FROM activities WHERE unit_id=? ORDER BY position,id');
     $s->execute([$unitId]);
+    $isInternalExamUnit = ($unitId === ('eval_exam_' . $examId));
     foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $row) {
+        if (!isset($scoreableTypes[$row['type']])) continue;
+        if ($isInternalExamUnit) {
+            $activities[] = $row;
+            continue;
+        }
         $data = is_string($row['data'] ?? null) ? json_decode($row['data'], true) : ($row['data'] ?? []);
-        if (isset($scoreableTypes[$row['type']]) && is_array($data) && (int)($data['_exam_id'] ?? 0) === $examId) $activities[] = $row;
+        if (is_array($data) && (int)($data['_exam_id'] ?? 0) === $examId) $activities[] = $row;
     }
 }
 
