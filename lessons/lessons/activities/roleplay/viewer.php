@@ -189,18 +189,18 @@ window.RP_HAS_SAVED_PAYLOAD = <?= json_encode($hasSavedPayload) ?>;
     return Math.max(0, Math.min(100, score));
   }
   function scoreTurn(ans, turn, pronFromSpeech) {
-    const expected = sameAsHintRequired(turn) ? (turn.hint || '') : (turn.ideal || turn.hint || '');
+    const exactMode = sameAsHintRequired(turn);
+    const expected = exactMode ? (turn.hint || '') : (turn.ideal || turn.hint || '');
     const aw = cleanWords(ans), ew = cleanWords(expected), aset = new Set(aw);
     let matched = 0;
     ew.forEach(w => { if (aset.has(w)) matched++; });
     const wordScore = ew.length ? Math.round((matched / ew.length) * 100) : (ans.trim() ? 70 : 0);
-    const grammar = grammarScore(ans);
+    const grammar = exactMode ? 100 : grammarScore(ans);
     const pronunciation = typeof pronFromSpeech === 'number' ? Math.max(0, Math.min(100, Math.round(pronFromSpeech))) : Math.round((wordScore * 0.75) + (grammar * 0.25));
-    const exactMode = sameAsHintRequired(turn);
     const overall = exactMode ? Math.round((wordScore + pronunciation) / 2) : Math.round((wordScore + pronunciation + grammar) / 3);
-    let improve = exactMode ? 'Target answer comes from the hint. ' : 'Target answer comes from the model sentence. ';
-    improve += 'Words matched: ' + matched + '/' + ew.length + '. ';
-    improve += 'Pronunciation: ' + pronunciation + '%. Grammar: ' + grammar + '%. ';
+    let improve = exactMode ? 'Fixed answer mode: grammar is not counted. Target answer comes from the hint. ' : 'Free answer mode: grammar is counted. Target answer comes from the model sentence. ';
+    improve += 'Words matched: ' + matched + '/' + ew.length + '. Pronunciation: ' + pronunciation + '%. ';
+    if (!exactMode) improve += 'Grammar: ' + grammar + '%. ';
     improve += 'Target: ' + (expected || 'No target configured.');
     return {accuracy: Math.round(wordScore / 10), fluency: Math.round(pronunciation / 10), vocab: Math.round(grammar / 10), wordScore, pronunciation, grammar, overall: Math.round(overall / 10), overallPct: overall, matched, total: ew.length, exactMode, improve};
   }
@@ -215,10 +215,14 @@ window.RP_HAS_SAVED_PAYLOAD = <?= json_encode($hasSavedPayload) ?>;
     u.pitch = 1;
     window.speechSynthesis.speak(u);
   }
+  function scoreChips(sc) {
+    if (!sc) return '';
+    return '<div class="rp-chip"><b>' + h(sc.wordScore) + '%</b><span>Words</span></div><div class="rp-chip"><b>' + h(sc.pronunciation) + '%</b><span>Pronunciation</span></div>' + (sc.exactMode ? '' : '<div class="rp-chip"><b>' + h(sc.grammar) + '%</b><span>Grammar</span></div>') + '<div class="rp-chip"><b>' + h(sc.overallPct) + '%</b><span>Total</span></div>';
+  }
   function player() { return '<div class="rp-app">' + header() + '<div class="rp-scroll"><div class="rp-wrap">' + turns.map((t, i) => turnCard(t, i)).join('') + '</div></div></div>'; }
   function turnCard(t, i) {
     const isDone = i < completed, active = i === completed, locked = i > completed, ans = answers[i] || '', sc = scores[i] || null, show = shownAnswers[i];
-    return '<section class="rp-card ' + (locked ? 'locked' : '') + '"><div class="rp-card-head"><div class="rp-avatar">👨‍🍳</div><div class="rp-turn-label ' + (active ? 'active' : '') + '">TURN ' + (i + 1) + ' · ' + (isDone ? '✓ completed' : active ? 'active' : '🔒 locked') + '</div></div><div class="rp-block"><div class="rp-mini">' + h(scene.agentRole || 'Agent') + '<button type="button" class="rp-listen" data-action="listen-agent" data-index="' + i + '">🔊 Listen</button></div><div class="rp-bubble">' + h(t.agent || '...') + '</div></div>' + (isDone ? '<div class="rp-said"><div class="rp-mini">You said</div><div>' + h(ans) + '</div></div><div class="rp-model"><div class="rp-mini" style="color:#1D9E75">Target answer</div><div>' + h(sc && sc.exactMode ? (t.hint || '') : (t.ideal || 'No model answer configured.')) + '</div></div><div class="rp-improve"><div class="rp-mini" style="color:#F97316">Feedback</div><div>' + h(sc ? sc.improve : 'Good work.') + '</div></div><div class="rp-score-row"><div class="rp-chip"><b>' + h(sc ? sc.wordScore : 0) + '%</b><span>Words</span></div><div class="rp-chip"><b>' + h(sc ? sc.pronunciation : 0) + '%</b><span>Pronunciation</span></div><div class="rp-chip"><b>' + h(sc ? sc.grammar : 0) + '%</b><span>Grammar</span></div><div class="rp-chip"><b>' + h(sc ? sc.overallPct : 0) + '%</b><span>Total</span></div></div>' : '') + (active ? '<div class="rp-turn-box"><div class="rp-say-row"><button type="button" class="rp-mic" data-action="mic" data-index="' + i + '">🎙 Now say it</button><span class="rp-hint">Hint: ' + h(t.hint || 'Answer naturally') + '</span></div><textarea class="rp-hidden-input" data-answer="1" placeholder="Speech will appear here. You can also type...">' + h(activeInput) + '</textarea></div>' + (show ? '<div class="rp-model"><div class="rp-mini" style="color:#1D9E75">Model answer</div><div>' + h(t.ideal || 'No model answer configured.') + '</div></div>' : '') + '<div class="rp-actions"><button type="button" class="rp-btn" data-action="show-answer">Show answer</button><button type="button" class="rp-btn rp-primary" data-action="next">' + (i >= turns.length - 1 ? 'Finish' : 'Next') + '</button></div>' : '') + (locked ? '<div class="rp-turn-box disabled"><span class="rp-hint">Complete the previous turn to unlock this one.</span></div>' : '') + '</section>';
+    return '<section class="rp-card ' + (locked ? 'locked' : '') + '"><div class="rp-card-head"><div class="rp-avatar">👨‍🍳</div><div class="rp-turn-label ' + (active ? 'active' : '') + '">TURN ' + (i + 1) + ' · ' + (isDone ? '✓ completed' : active ? 'active' : '🔒 locked') + '</div></div><div class="rp-block"><div class="rp-mini">' + h(scene.agentRole || 'Agent') + '<button type="button" class="rp-listen" data-action="listen-agent" data-index="' + i + '">🔊 Listen</button></div><div class="rp-bubble">' + h(t.agent || '...') + '</div></div>' + (isDone ? '<div class="rp-said"><div class="rp-mini">You said</div><div>' + h(ans) + '</div></div><div class="rp-model"><div class="rp-mini" style="color:#1D9E75">Target answer</div><div>' + h(sc && sc.exactMode ? (t.hint || '') : (t.ideal || 'No model answer configured.')) + '</div></div><div class="rp-improve"><div class="rp-mini" style="color:#F97316">Feedback</div><div>' + h(sc ? sc.improve : 'Good work.') + '</div></div><div class="rp-score-row">' + scoreChips(sc) + '</div>' : '') + (active ? '<div class="rp-turn-box"><div class="rp-say-row"><button type="button" class="rp-mic" data-action="mic" data-index="' + i + '">🎙 Now say it</button><span class="rp-hint">Hint: ' + h(t.hint || 'Answer naturally') + '</span></div><textarea class="rp-hidden-input" data-answer="1" placeholder="Speech will appear here. You can also type...">' + h(activeInput) + '</textarea></div>' + (show ? '<div class="rp-model"><div class="rp-mini" style="color:#1D9E75">Model answer</div><div>' + h(t.ideal || 'No model answer configured.') + '</div></div>' : '') + '<div class="rp-actions"><button type="button" class="rp-btn" data-action="show-answer">Show answer</button><button type="button" class="rp-btn rp-primary" data-action="next">' + (i >= turns.length - 1 ? 'Finish' : 'Next') + '</button></div>' : '') + (locked ? '<div class="rp-turn-box disabled"><span class="rp-hint">Complete the previous turn to unlock this one.</span></div>' : '') + '</section>';
   }
   function completedPage() {
     const avg = scores.length ? Math.round(scores.reduce((a, s) => a + (s.overallPct || 0), 0) / scores.length) : 0;
