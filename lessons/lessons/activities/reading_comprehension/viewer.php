@@ -178,7 +178,13 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     return { title: String(window.RC_SAVED_TITLE || 'Reading Comprehension'), texts: [normalizeText(raw || {})] };
   }
   function text() { if (!state.texts[0]) state.texts[0] = normalizeText({}); return state.texts[0]; }
-  function patchText(patch) { state.texts[0] = Object.assign({}, text(), patch); render(); }
+  function patchText(patch, shouldRender) { state.texts[0] = Object.assign({}, text(), patch); if (shouldRender !== false) render(); }
+  function refreshLivePreview() {
+    const box = root ? root.querySelector('.rc-preview') : null;
+    if (!box) return;
+    const t = text();
+    box.innerHTML = highlight(t.body, t.words);
+  }
   function highlight(body, wordList) {
     let out = h(body || 'Type passage text above to see highlights.').replace(/\n/g, '<br>');
     const terms = (wordList || []).map(w => String(w.word || '').trim()).filter(Boolean).sort((a,b) => b.length - a.length);
@@ -258,9 +264,11 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   root.addEventListener('input', function (e) {
     const el = e.target;
     const t = text();
+    let needsPreviewRefresh = false;
     if (el.dataset.field) {
       const value = el.dataset.field === 'wordCount' ? Number(el.value || 0) : el.value;
-      patchText({ [el.dataset.field]: value });
+      patchText({ [el.dataset.field]: value }, false);
+      needsPreviewRefresh = el.dataset.field === 'body';
     }
     if (el.dataset.word) {
       const i = Number(el.dataset.word);
@@ -271,7 +279,8 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       if (prop === 'correct') words[i].correct = el.value;
       if (prop === 'd0') words[i].distractors[0] = el.value;
       if (prop === 'd1') words[i].distractors[1] = el.value;
-      patchText({ words });
+      patchText({ words }, false);
+      needsPreviewRefresh = prop === 'word';
     }
     if (el.dataset.question) {
       const qi = Number(el.dataset.question);
@@ -280,8 +289,9 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       if (el.dataset.prop === 'stem') questions[qi].stem = el.value;
       if (el.dataset.prop === 'feedback') questions[qi].feedback = el.value;
       if (el.dataset.prop === 'option') questions[qi].options[Number(el.dataset.option)] = el.value;
-      patchText({ questions });
+      patchText({ questions }, false);
     }
+    if (needsPreviewRefresh) refreshLivePreview();
   });
 
   root.addEventListener('click', async function (e) {
