@@ -182,12 +182,12 @@ ob_start();
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 
 <style>
-:root{--us-orange:#F97316;--us-purple:#7F77DD;--us-purple-dark:#534AB7;--us-purple-soft:#EEEDFE;--us-lila:#EDE9FA;--us-muted:#9B94BE;--us-green:#16a34a;--us-green-soft:#f0fdf4;--us-green-dark:#15803d;--us-red:#ef4444;--us-red-soft:#fef2f2;--us-red-dark:#b91c1c}
+:root{--us-orange:#F97316;--us-purple:#7F77DD;--us-purple-dark:#534AB7;--us-purple-soft:#EEEDFE;--us-lila:#EDE9FA;--us-muted:#9B94BE;--us-green:#16a34a;--us-green-soft:#f0fdf4;--us-green-dark:#15[...]
 html,body{width:100%;min-height:100%}
 body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
 .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
 .top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
-.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important}
+.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none![...]
 .us-page{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
 .us-app{width:min(860px,100%);margin:0 auto}
 .us-page.is-completed{align-items:flex-start}
@@ -195,17 +195,17 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
 .us-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
 .us-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
-.us-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px}
+.us-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-s[...]
 .us-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
 .us-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;margin:8px 0 0}
-.us-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:border-box;position:relative}
+.us-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:bor[...]
 .us-stage.is-completed{height:auto;overflow:visible}
 .us-intro{display:none}
-#sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(127,119,221,.13);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-#buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;margin-top:12px;box-shadow:0 4px 14px rgba(127,119,221,.08);transition:border-color .15s,background .15s,box-shadow .15s}
+#sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(1[...]
+#buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;marg[...]
 #buildArea.drag-over{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.12)}
 .us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
-.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;min-height:44px;min-width:68px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:clamp(17px,2.1vw,20px);font-weight:900;letter-spacing:.01em;cursor:grab;user-select:none;border:1.5px solid #CDC7F3;border-bottom-width:4px;box-shadow:0 2px 0 rgba(127,119,221,.18);transition:transform .12s,box-shadow .12s,border-color .12s,background .12s,color .12s}
+.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;min-height:44px;min-width:68px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:clamp(17px,2.1[...]
 .us-chip:active{cursor:grabbing;transform:translateY(1px)}
 .us-chip.bank-chip{background:#fff;color:#4A3FC2;border-color:#BDB5EE;border-bottom-color:#7F77DD}
 .us-chip.bank-chip:hover{transform:translateY(-1px);border-color:#AFA6EA;border-bottom-color:#6A60D4;box-shadow:0 6px 16px rgba(127,119,221,.18)}
@@ -214,7 +214,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-chip.correct-chip{background:var(--us-green-soft);border-color:var(--us-green);border-bottom-color:var(--us-green);color:var(--us-green-dark);box-shadow:none;cursor:default}
 .us-chip.incorrect-chip{background:var(--us-red-soft);border-color:var(--us-red);border-bottom-color:var(--us-red);color:var(--us-red-dark);box-shadow:none;cursor:default}
 #wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
-.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:8px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146px);font-weight:900;font-family:'Nunito','Segoe UI',sans-serif;font-size:13px;line-height:1;box-shadow:0 6px 18px rgba(127,119,221,.18);transition:transform .12s,filter .12s,box-shadow .12s}
+.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:8px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146[...]
 .us-btn:hover,.us-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
 .us-btn:active,.us-completed-button:active{transform:scale(.98)}
 .us-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
@@ -239,7 +239,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .us-completed-text{color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5;margin:0}
 #us-score-text{color:#666!important;font-family:'Nunito',sans-serif!important;font-size:14px!important;font-weight:800!important}
 .us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700}
-@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-stage{border-radius:26px;padding:14px;width:100%}#sentenceBox{border-radius:22px;padding:18px;min-height:260px}#buildArea{border-radius:18px;min-height:74px;padding:12px;gap:10px}.us-chip{padding:11px 14px;min-height:42px;min-width:64px;font-size:clamp(16px,4.4vw,18px)}#wordBank{gap:10px;min-height:58px}.controls{display:grid;grid-template-columns:1fr;gap:9px}.us-score-grid{grid-template-columns:1fr}.us-btn,.us-completed-button{width:100%}}
+.us-counter{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px;color:#9B94BE;text-transform:uppercase;letter-spacing:.1em}
+@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-[...]
 </style>
 
 <div class="us-page" id="us-page">
@@ -249,7 +250,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         </div>
 
         <div class="us-hero">
-            <div class="us-kicker">Activity</div>
+            <div class="us-kicker">Activity <span class="us-counter" id="usCounter">1 / <?= count($sentences) ?></span></div>
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <p>Unscramble the words to form the correct sentence.</p>
         </div>
@@ -309,10 +310,8 @@ const US_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 const US_VOICE_ID = <?= json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE) ?>;
 const US_TTS_URL = 'tts.php';
 
-// Shuffle a portion of sentences if there are more than 1
-const usBlocks = usSentences.length > 1
-    ? usSentences.slice().sort(function () { return Math.random() - 0.5; }).slice(0, Math.max(1, Math.ceil(usSentences.length * 0.75)))
-    : usSentences.slice();
+// Use ALL sentences - no shuffling or filtering
+const usBlocks = usSentences.slice();
 
 let usIndex = 0;
 let usDragged = null;
@@ -355,6 +354,7 @@ const usScoreGridEl = document.getElementById('us-score-grid');
 const usScoreCorrectEl = document.getElementById('us-s-correct');
 const usScoreWrongEl = document.getElementById('us-s-wrong');
 const usScorePctEl = document.getElementById('us-s-pct');
+const usCounterEl = document.getElementById('usCounter');
 
 function usGetScorePercent() {
     const attempts = usCorrectCount + usWrongCount;
@@ -372,6 +372,12 @@ function usUpdateScoreCards(show) {
     if (usScoreWrongEl) usScoreWrongEl.textContent = String(usWrongCount);
     if (usScorePctEl) usScorePctEl.textContent = pct + '%';
     if (usScoreGridEl) usScoreGridEl.classList.toggle('visible', !!usScoreVisible);
+}
+
+function usUpdateCounter() {
+    if (usCounterEl) {
+        usCounterEl.textContent = (usIndex + 1) + ' / ' + usBlocks.length;
+    }
 }
 
 function usPlaySound(audio) {
@@ -600,6 +606,7 @@ function usLoadSentence() {
     usCurrentSentence = typeof block.sentence === 'string' ? block.sentence.trim() : '';
     usListenEnabled = !!block.listen_enabled;
     usSetListenVisible(usListenEnabled);
+    usUpdateCounter();
 
     if (!usCurrentSentence) {
         usFeedback.textContent = 'Empty sentence';
@@ -958,3 +965,4 @@ usLoadSentence();
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '🔀', $content);
+?>
