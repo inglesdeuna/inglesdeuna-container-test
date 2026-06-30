@@ -300,8 +300,8 @@ foreach ($pairs as $pair) {
     );
 }
 
-if (count($cards) > 8) {
-    $cards = array_slice($cards, 0, 8);
+if (count($cards) > 12) {
+    $cards = array_slice($cards, 0, 12);
 }
 
 $totalPairs = (int) floor(count($cards) / 2);
@@ -603,7 +603,7 @@ body{
 .mc-done-track{height:12px;width:min(380px,90%);border-radius:999px;background:#F4F2FD;border:1px solid #E4E1F8;overflow:hidden;}
 .mc-done-fill{height:100%;width:0%;border-radius:999px;background:linear-gradient(90deg,#F97316,#7F77DD);transition:width .8s cubic-bezier(.2,.9,.2,1);}
 .mc-done-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px;}
-.mc-done-btn{border:none;border-radius:999px;padding:13px 28px;min-width:clamp(104px,16vw,140px);font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:#fff;cursor:pointer;background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22);transition:.18s;}
+.mc-done-btn{border:none;border-radius:999px;padding:13px 28px;min-width:clamp(104px,16vw,140px);font-family:'Nunito',sans-serif;font-size:15px;font-weight:900;color:#fff;cursor:pointer;background:#F97316;transition:.18s;}
 .mc-done-btn:hover{transform:translateY(-2px);}
 
 @keyframes mcVanish{
@@ -813,7 +813,7 @@ body{
                 '  </div>' +
                 '  <div class="af-unscored__banner af-unscored__banner--orange">' +
                 '    <div class="af-unscored__banner-icon af-unscored__banner-icon--orange">' +
-                '      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>' +
+                '      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8Z"/></svg>' +
                 '    </div>' +
                 '    <div class="af-unscored__banner-text af-unscored__banner-text--orange">' +
                 '      <span class="af-unscored__banner-title">Memory champion!</span>' +
