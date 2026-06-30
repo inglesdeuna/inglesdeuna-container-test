@@ -494,7 +494,7 @@ function addSentence() {
         <p class="help">Write the complete sentence. Students will drag the scrambled words into the correct order.</p>
 
         <label class="checkbox-row">
-            <input type="hidden" name="listen_enabled[]" value="1">
+            <input type="hidden" name="listen_enabled[]" value="0">
             <input type="checkbox" value="1" checked onchange="syncCheckboxValue(this)">
             Activate Listen for this sentence
         </label>
@@ -526,9 +526,19 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const form = document.getElementById('unscrambleForm');
     if (form) {
-        form.addEventListener('submit', function () {
+        form.addEventListener('submit', function (e) {
             formSubmitted = true;
             formChanged = false;
+            // Ensure all sentence items have their hidden listen_enabled values synced before submit
+            document.querySelectorAll('.sentence-item').forEach(function(item) {
+                const cb = item.querySelector('input[type="checkbox"]');
+                if (cb) {
+                    const hidden = cb.parentElement.querySelector('input[type="hidden"][name="listen_enabled[]"]');
+                    if (hidden) {
+                        hidden.value = cb.checked ? '1' : '0';
+                    }
+                }
+            });
         });
     }
 });
@@ -544,3 +554,4 @@ window.addEventListener('beforeunload', function (e) {
 <?php
 $content = ob_get_clean();
 render_activity_editor('🔀 Unscramble Editor', '🔀', $content);
+?>
