@@ -23,7 +23,7 @@ $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-const MEMORY_MAX_PAIRS = 4;
+const MEMORY_MAX_PAIRS = 6;
 const MEMORY_MAX_BULK_CARDS = 8;
 
 function activities_columns(PDO $pdo): array
@@ -661,7 +661,7 @@ ob_start();
 .memory-label{display:block;font-size:12px;font-weight:800;color:#475569;margin:8px 0 6px;text-transform:uppercase;letter-spacing:.04em}
 .memory-input,.memory-select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px;font-size:14px;background:#fff}
 .memory-file{width:100%}
-.memory-preview{margin-top:8px;padding:1mm;border:1px dashed #cbd5e1;background:#fff;border-radius:10px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;overflow:hidden}
+.memory-preview{margin-top:8px;padding:1mm;border:1px dashed #cbd5e1;background:#fff;border-radius:10px;min-height:44px;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:12px;font-weight:700}
 .memory-preview img{max-width:100%;max-height:120px;border-radius:8px;object-fit:contain}
 .memory-tools{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .memory-btn{border:none;border-radius:999px;padding:10px 16px;font-weight:800;cursor:pointer;box-shadow:0 8px 18px rgba(15,23,42,.1)}
@@ -684,7 +684,7 @@ ob_start();
         <input id="activity_title" type="text" name="activity_title" required value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Memory Cards - Unit 1">
     </div>
 
-    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer. Maximum 4 pairs (8 cards).</p>
+    <p class="memory-hint">Create pairs with text/text, image/image, or mixed image/text. Cards are shuffled automatically in the viewer. Maximum 6 pairs (12 cards).</p>
 
     <div class="memory-title-box">
         <label for="bulkCardFiles">Bulk upload up to 8 card images</label>
@@ -765,7 +765,7 @@ ob_start();
 </form>
 
 <script>
-const MAX_PAIRS = 4;
+const MAX_PAIRS = 6;
 const MAX_BULK_CARDS = 8;
 let formChanged = false;
 let formSubmitted = false;
@@ -866,7 +866,7 @@ function addPair() {
     const container = document.getElementById('pairsContainer');
     const index = container.querySelectorAll('.memory-pair').length;
     if (index >= MAX_PAIRS) {
-        alert('Maximum of ' + MAX_PAIRS + ' pairs (8 cards) reached.');
+        alert('Maximum of ' + MAX_PAIRS + ' pairs (12 cards) reached.');
         return;
     }
     const pairId = 'pair_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
