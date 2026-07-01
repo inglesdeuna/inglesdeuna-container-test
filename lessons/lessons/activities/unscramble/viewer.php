@@ -16,12 +16,7 @@ function us_resolve_unit_from_activity_view(PDO $pdo, string $activityId): strin
         return '';
     }
 
-    $stmt = $pdo->prepare("
-        SELECT unit_id
-        FROM activities
-        WHERE id = :id
-        LIMIT 1
-    ");
+    $stmt = $pdo->prepare("SELECT unit_id FROM activities WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -33,16 +28,33 @@ function us_default_title_view(): string
     return 'Unscramble the Sentence';
 }
 
-function us_parse_listen($raw): bool
+function us_parse_bool($raw, bool $default = true): bool
 {
-    if (is_bool($raw)) return $raw;
-    if (is_numeric($raw)) return (int) $raw === 1;
+    if (is_bool($raw)) {
+        return $raw;
+    }
+    if (is_numeric($raw)) {
+        return (int) $raw === 1;
+    }
     if (is_string($raw)) {
         $value = strtolower(trim($raw));
-        if (in_array($value, ['1', 'true', 'yes', 'on'], true)) return true;
-        if (in_array($value, ['0', 'false', 'no', 'off'], true)) return false;
+        if (in_array($value, ['1', 'true', 'yes', 'on'], true)) {
+            return true;
+        }
+        if (in_array($value, ['0', 'false', 'no', 'off'], true)) {
+            return false;
+        }
     }
-    return true;
+    return $default;
+}
+
+function us_words_from_sentence(string $sentence): array
+{
+    $sentence = trim(preg_replace('/\s+/u', ' ', $sentence) ?? $sentence);
+    if ($sentence === '') {
+        return [];
+    }
+    return array_values(array_filter(preg_split('/\s+/u', $sentence) ?: [], static fn ($w): bool => $w !== ''));
 }
 
 function us_normalize_payload_view($rawData): array
@@ -63,41 +75,49 @@ function us_normalize_payload_view($rawData): array
     }
 
     $title = trim((string) ($decoded['title'] ?? ''));
-
-    $voiceId = trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub'));
-    if ($voiceId === '') {
-        $voiceId = 'nzFihrBIvB34imQBuxub';
-    }
+    $voiceId = trim((string) ($decoded['voice_id'] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub';
 
     $sentencesSource = [];
     if (isset($decoded['sentences']) && is_array($decoded['sentences'])) {
         $sentencesSource = $decoded['sentences'];
+    } elseif (isset($decoded['questions']) && is_array($decoded['questions'])) {
+        $sentencesSource = $decoded['questions'];
+    } elseif (isset($decoded['items']) && is_array($decoded['items'])) {
+        $sentencesSource = $decoded['items'];
     }
 
     $sentences = [];
-
     foreach ($sentencesSource as $item) {
-        if (!is_array($item)) {
+        if (is_string($item)) {
+            $sentence = trim($item);
+            $listenEnabled = true;
+        } elseif (is_array($item)) {
+            $sentence = '';
+            if (isset($item['sentence']) && is_string($item['sentence'])) {
+                $sentence = trim($item['sentence']);
+            } elseif (isset($item['text']) && is_string($item['text'])) {
+                $sentence = trim($item['text']);
+            } elseif (isset($item['answer']) && is_string($item['answer'])) {
+                $sentence = trim($item['answer']);
+            } elseif (isset($item['correct']) && is_array($item['correct'])) {
+                $sentence = trim(implode(' ', array_map('strval', $item['correct'])));
+            }
+
+            $listenEnabled = array_key_exists('listen_enabled', $item)
+                ? us_parse_bool($item['listen_enabled'])
+                : (array_key_exists('listen', $item) ? us_parse_bool($item['listen']) : true);
+        } else {
             continue;
         }
 
-        $sentence = '';
-        if (isset($item['sentence']) && is_string($item['sentence'])) {
-            $sentence = trim($item['sentence']);
-        } elseif (isset($item['text']) && is_string($item['text'])) {
-            $sentence = trim($item['text']);
-        }
-
-        if ($sentence === '') {
+        $words = us_words_from_sentence($sentence);
+        if ($sentence === '' || empty($words)) {
             continue;
         }
-
-        $listenEnabled = array_key_exists('listen_enabled', $item)
-            ? us_parse_listen($item['listen_enabled'])
-            : (array_key_exists('listen', $item) ? us_parse_listen($item['listen']) : true);
 
         $sentences[] = [
             'sentence' => $sentence,
+            'words' => $words,
             'listen_enabled' => $listenEnabled,
         ];
     }
@@ -119,28 +139,14 @@ function us_load_activity_view(PDO $pdo, string $activityId, string $unit): arra
     ];
 
     $row = null;
-
     if ($activityId !== '') {
-        $stmt = $pdo->prepare("
-            SELECT id, data
-            FROM activities
-            WHERE id = :id
-              AND type = 'unscramble'
-            LIMIT 1
-        ");
+        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE id = :id AND type = 'unscramble' LIMIT 1");
         $stmt->execute(['id' => $activityId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     if (!$row && $unit !== '') {
-        $stmt = $pdo->prepare("
-            SELECT id, data
-            FROM activities
-            WHERE unit_id = :unit
-              AND type = 'unscramble'
-            ORDER BY id ASC
-            LIMIT 1
-        ");
+        $stmt = $pdo->prepare("SELECT id, data FROM activities WHERE unit_id = :unit AND type = 'unscramble' ORDER BY id ASC LIMIT 1");
         $stmt->execute(['unit' => $unit]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
@@ -179,788 +185,492 @@ if (count($sentences) === 0) {
 ob_start();
 ?>
 
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
-
 <style>
-:root{--us-orange:#F97316;--us-purple:#7F77DD;--us-purple-dark:#534AB7;--us-purple-soft:#EEEDFE;--us-lila:#EDE9FA;--us-muted:#9B94BE;--us-green:#16a34a;--us-green-soft:#f0fdf4;--us-green-dark:#15[...]
-html,body{width:100%;min-height:100%}
-body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
-.activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;min-height:0;display:flex!important;flex-direction:column!important;background:transparent!important}
-.top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
-.viewer-content{flex:1!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;margin:0!important;background:transparent!important;border:none![...]
-.us-page{width:100%;flex:1;min-height:0;overflow-y:auto;padding:clamp(14px,2.5vw,34px);display:flex;align-items:flex-start;justify-content:center;background:#fff;box-sizing:border-box}
-.us-app{width:min(860px,100%);margin:0 auto}
-.us-page.is-completed{align-items:flex-start}
-.us-app.is-completed{width:min(760px,100%)}
-.us-topbar{height:36px;display:flex;align-items:center;justify-content:center;margin-bottom:8px}
-.us-topbar-title{font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
-.us-hero{text-align:center;margin-bottom:clamp(14px,2vw,22px)}
-.us-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-s[...]
-.us-hero h1{font-family:'Fredoka',sans-serif;font-size:clamp(30px,5.5vw,58px);font-weight:700;color:#F97316;margin:0;line-height:1.03}
-.us-hero p{font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,17px);font-weight:800;color:#9B94BE;margin:8px 0 0}
-.us-stage{background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(16px,2.6vw,26px);box-shadow:0 8px 40px rgba(127,119,221,.13);width:min(760px,100%);margin:0 auto;box-sizing:bor[...]
-.us-stage.is-completed{height:auto;overflow:visible}
-.us-intro{display:none}
-#sentenceBox{margin:0 auto;padding:clamp(18px,3vw,28px);background:#fff;border:1px solid #EDE9FA;border-radius:28px;max-width:100%;min-height:clamp(240px,34vh,380px);box-shadow:0 12px 36px rgba(1[...]
-#buildArea{width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;min-height:86px;gap:12px;padding:16px;border-radius:22px;border:2px dashed #EDE9FA;background:#fff;marg[...]
-#buildArea.drag-over{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.12)}
-.us-placeholder{color:#9B94BE;font-size:15px;font-weight:800;font-style:normal;pointer-events:none}
-.us-chip{display:inline-flex;align-items:center;justify-content:center;padding:12px 18px;min-height:44px;min-width:68px;border-radius:10px;font-family:'Nunito',sans-serif;font-size:clamp(17px,2.1[...]
-.us-chip:active{cursor:grabbing;transform:translateY(1px)}
-.us-chip.bank-chip{background:#fff;color:#4A3FC2;border-color:#BDB5EE;border-bottom-color:#7F77DD}
-.us-chip.bank-chip:hover{transform:translateY(-1px);border-color:#AFA6EA;border-bottom-color:#6A60D4;box-shadow:0 6px 16px rgba(127,119,221,.18)}
-.us-chip.built-chip{background:#F8F7FF;color:#4338CA;border-color:#BDB5EE;border-bottom-color:#7F77DD}
-.us-chip.built-chip:hover{transform:translateY(-1px);border-color:#AFA6EA;border-bottom-color:#6A60D4;box-shadow:0 6px 16px rgba(127,119,221,.16)}
-.us-chip.correct-chip{background:var(--us-green-soft);border-color:var(--us-green);border-bottom-color:var(--us-green);color:var(--us-green-dark);box-shadow:none;cursor:default}
-.us-chip.incorrect-chip{background:var(--us-red-soft);border-color:var(--us-red);border-bottom-color:var(--us-red);color:var(--us-red-dark);box-shadow:none;cursor:default}
-#wordBank{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:20px 0 0;min-height:64px}
-.us-btn,.us-completed-button{display:inline-flex;align-items:center;justify-content:center;padding:13px 20px;border:none;border-radius:8px;color:#fff;cursor:pointer;min-width:clamp(104px,16vw,146[...]
-.us-btn:hover,.us-completed-button:hover{filter:brightness(1.07);transform:translateY(-1px)}
-.us-btn:active,.us-completed-button:active{transform:scale(.98)}
-.us-btn-listen{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-bottom:16px}
-.us-btn-show{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
-.us-btn-next{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
-#listenBtn.hidden{display:none}
-#feedback{text-align:center;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;min-height:18px;margin-top:10px;color:#534AB7}
-.good{color:var(--us-green-dark)!important}.bad{color:var(--us-red-dark)!important}
-.us-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-.us-score-grid.visible{display:grid}
-.us-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:14px;padding:12px;text-align:center}
-.us-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:26px;line-height:1}
-.us-score-num.c{color:var(--us-green)}
-.us-score-num.w{color:var(--us-red)}
-.us-score-num.p{color:#7F77DD}
-.us-score-lbl{margin-top:5px;font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.08em}
-.controls{border-top:1px solid #F0EEF8;margin-top:16px;padding-top:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;background:#fff}
-.us-completed-screen{display:none;text-align:center;padding:24px 12px;max-width:520px;margin:0 auto}
-.us-completed-screen.active{display:block}
-.us-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
-.us-completed-title{margin:0;color:#F97316;font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:32px;font-weight:700}
-.us-completed-text{color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5;margin:0}
-#us-score-text{color:#666!important;font-family:'Nunito',sans-serif!important;font-size:14px!important;font-weight:800!important}
-.us-completed-button{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18);margin-top:4px;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700}
-.us-counter{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12px;color:#9B94BE;text-transform:uppercase;letter-spacing:.1em}
-@media(max-width:760px){.us-page{padding:12px}.us-topbar{height:30px;margin-bottom:4px}.us-kicker{padding:5px 11px;font-size:11px;margin-bottom:6px}.us-hero h1{font-size:clamp(26px,8vw,38px)}.us-[...]
+.us2-page{
+    width:100%;
+    min-height:100%;
+    flex:1 1 auto;
+    display:flex;
+    justify-content:center;
+    align-items:flex-start;
+    overflow:auto;
+    background:#fff;
+    padding:clamp(14px,2.5vw,30px);
+    box-sizing:border-box;
+    font-family:'Nunito','Segoe UI',Arial,sans-serif;
+}
+.us2-app{width:min(900px,100%);margin:0 auto;color:#18213a;}
+.us2-top{text-align:center;margin-bottom:14px;}
+.us2-kicker{display:inline-flex;align-items:center;gap:8px;background:#FFF0E6;color:#C2580A;border:1px solid #FCDDBF;border-radius:999px;padding:7px 14px;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;}
+.us2-title{margin:10px 0 4px;font-family:'Fredoka','Trebuchet MS',Arial,sans-serif;font-size:clamp(28px,4.4vw,48px);line-height:1.05;color:#F97316;font-weight:800;}
+.us2-subtitle{margin:0;color:#8b82b7;font-size:clamp(13px,1.6vw,16px);font-weight:800;}
+.us2-card{background:#fff;border:1px solid #F0EEF8;border-radius:30px;padding:clamp(18px,2.6vw,26px);box-shadow:0 12px 38px rgba(127,119,221,.14);}
+.us2-listen-row{text-align:center;margin-bottom:14px;}
+.us2-build{min-height:92px;border:2px dashed #EDE9FA;background:#fff;border-radius:22px;padding:16px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;transition:border-color .15s,background .15s,box-shadow .15s;}
+.us2-build.is-drag{border-color:#7F77DD;background:#FAFAFE;box-shadow:0 8px 24px rgba(127,119,221,.14);}
+.us2-placeholder{color:#9B94BE;font-weight:900;font-size:15px;text-align:center;}
+.us2-bank{min-height:70px;margin:20px 0 0;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:12px;}
+.us2-chip{display:inline-flex;align-items:center;justify-content:center;min-height:44px;min-width:64px;padding:11px 17px;border:2px solid #BDB5EE;border-bottom-color:#7F77DD;border-radius:12px;background:#fff;color:#4A3FC2;font-size:clamp(16px,2vw,20px);font-weight:900;line-height:1;cursor:pointer;user-select:none;box-shadow:0 4px 0 rgba(127,119,221,.42);transition:transform .12s,box-shadow .12s,filter .12s;}
+.us2-chip:hover{transform:translateY(-1px);box-shadow:0 7px 16px rgba(127,119,221,.2),0 4px 0 rgba(127,119,221,.42);}
+.us2-chip:active{transform:translateY(1px);box-shadow:0 2px 0 rgba(127,119,221,.42);}
+.us2-chip.us2-built{background:#F8F7FF;color:#4338CA;}
+.us2-chip.us2-correct{background:#f0fdf4;border-color:#16a34a;color:#166534;box-shadow:none;cursor:default;}
+.us2-chip.us2-wrong{background:#fef2f2;border-color:#ef4444;color:#991b1b;box-shadow:none;cursor:default;}
+.us2-controls{border-top:1px solid #F0EEF8;margin-top:18px;padding-top:16px;display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap;}
+.us2-btn{display:inline-flex;align-items:center;justify-content:center;min-width:126px;padding:12px 18px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:900;font-family:'Nunito','Segoe UI',Arial,sans-serif;cursor:pointer;box-shadow:0 8px 18px rgba(127,119,221,.2);transition:filter .12s,transform .12s;}
+.us2-btn:hover{filter:brightness(1.06);transform:translateY(-1px);}
+.us2-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;filter:none;}
+.us2-purple{background:#7F77DD;}.us2-orange{background:#F97316;box-shadow:0 8px 18px rgba(249,115,22,.24);}.us2-green{background:#16a34a;}
+.us2-feedback{min-height:24px;margin-top:12px;text-align:center;font-size:14px;font-weight:900;color:#534AB7;}
+.us2-feedback.good{color:#166534;}.us2-feedback.bad{color:#991b1b;}
+.us2-score{display:none;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px;}
+.us2-score.is-visible{display:grid;}
+.us2-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:16px;padding:12px;text-align:center;}
+.us2-score-num{font-family:'Fredoka','Trebuchet MS',Arial,sans-serif;font-size:26px;font-weight:800;line-height:1;color:#7F77DD;}
+.us2-score-label{margin-top:4px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:900;color:#9B94BE;}
+.us2-completed{display:none;text-align:center;padding:28px 12px;}
+.us2-completed.is-visible{display:block;}
+.us2-completed-icon{font-size:34px;line-height:1;margin-bottom:8px;}
+.us2-completed-title{margin:0 0 8px;font-family:'Fredoka','Trebuchet MS',Arial,sans-serif;color:#F97316;font-size:34px;font-weight:800;}
+.us2-completed-text{margin:0 0 8px;color:#8b82b7;font-size:15px;font-weight:800;}
+.us2-hidden{display:none!important;}
+body.fullscreen-embedded .us2-page{height:100vh;padding:16px;align-items:center;}
+body.fullscreen-embedded .us2-app{width:min(1040px,100%);}
+body.fullscreen-embedded .us2-title{font-size:clamp(34px,5vw,58px);}
+body.fullscreen-embedded .us2-card{max-height:calc(100vh - 130px);overflow:auto;}
+@media(max-width:720px){.us2-page{padding:12px}.us2-card{border-radius:22px}.us2-score{grid-template-columns:1fr}.us2-btn{width:100%;max-width:280px}.us2-controls{gap:8px}.us2-chip{font-size:16px;padding:10px 14px}}
 </style>
 
-<div class="us-page" id="us-page">
-    <div class="us-app" id="us-app">
-        <div class="us-topbar">
-            <span class="us-topbar-title">Unscramble</span>
+<div class="us2-page" id="us2Page">
+    <div class="us2-app" id="us2App">
+        <div class="us2-top">
+            <div class="us2-kicker">Unscramble <span id="us2Counter">1 / <?= count($sentences) ?></span></div>
+            <h1 class="us2-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1>
+            <p class="us2-subtitle">Unscramble the words to form the correct sentence.</p>
         </div>
 
-        <div class="us-hero">
-            <div class="us-kicker">Activity <span class="us-counter" id="usCounter">1 / <?= count($sentences) ?></span></div>
-            <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p>Unscramble the words to form the correct sentence.</p>
-        </div>
+        <div class="us2-card" id="us2Card">
+            <div id="us2PlayArea">
+                <div class="us2-listen-row">
+                    <button id="us2Listen" class="us2-btn us2-purple" type="button">Listen</button>
+                </div>
 
-        <div class="us-stage" id="us-stage">
-            <div id="sentenceBox">
-                <button id="listenBtn" class="us-btn us-btn-listen" type="button" onclick="usSpeak()">Listen</button>
-                <div id="buildArea">
-                    <span class="us-placeholder" id="buildPlaceholder">Drag words here to build the sentence…</span>
+                <div class="us2-build" id="us2Build" aria-label="Answer area">
+                    <span class="us2-placeholder" id="us2Placeholder">Drag or click words here to build the sentence...</span>
+                </div>
+
+                <div class="us2-bank" id="us2Bank" aria-label="Word bank"></div>
+
+                <div class="us2-controls">
+                    <button id="us2Show" class="us2-btn us2-purple" type="button">Show Answer</button>
+                    <button id="us2Next" class="us2-btn us2-orange" type="button">Next</button>
+                </div>
+
+                <div class="us2-feedback" id="us2Feedback"></div>
+
+                <div class="us2-score" id="us2Score">
+                    <div class="us2-score-card"><div class="us2-score-num" id="us2Correct">0</div><div class="us2-score-label">Correct</div></div>
+                    <div class="us2-score-card"><div class="us2-score-num" id="us2Wrong">0</div><div class="us2-score-label">Wrong</div></div>
+                    <div class="us2-score-card"><div class="us2-score-num" id="us2Pct">0%</div><div class="us2-score-label">Score</div></div>
                 </div>
             </div>
 
-            <div id="wordBank"></div>
-
-            <div class="controls">
-                <button class="us-btn us-btn-show" type="button" onclick="usShowAnswer()">Show Answer</button>
-                <button class="us-btn us-btn-next" type="button" onclick="usNextSentence()">Next</button>
-            </div>
-
-            <div id="feedback"></div>
-
-            <div id="us-score-grid" class="us-score-grid">
-                <div class="us-score-card">
-                    <div class="us-score-num c" id="us-s-correct">0</div>
-                    <div class="us-score-lbl">Correct</div>
-                </div>
-                <div class="us-score-card">
-                    <div class="us-score-num w" id="us-s-wrong">0</div>
-                    <div class="us-score-lbl">Wrong</div>
-                </div>
-                <div class="us-score-card">
-                    <div class="us-score-num p" id="us-s-pct">0%</div>
-                    <div class="us-score-lbl">Score</div>
-                </div>
-            </div>
-
-            <div id="us-completed" class="us-completed-screen">
-                <div class="us-completed-icon">✅</div>
-                <h2 class="us-completed-title">Completed!</h2>
-                <p class="us-completed-text" id="us-completed-text"></p>
-                <p class="us-completed-text" id="us-score-text" style="font-weight:900;font-size:15px;color:#534AB7;"></p>
-                <button type="button" class="us-completed-button" id="us-restart" onclick="usRestartActivity()">Restart</button>
+            <div class="us2-completed" id="us2Completed">
+                <div class="us2-completed-icon">✅</div>
+                <h2 class="us2-completed-title">Completed!</h2>
+                <p class="us2-completed-text" id="us2CompletedText"></p>
+                <p class="us2-completed-text" id="us2ScoreText"></p>
+                <button id="us2Restart" class="us2-btn us2-purple" type="button">Restart</button>
             </div>
         </div>
     </div>
 </div>
 
-<audio id="winSound" src="../../hangman/assets/win.mp3" preload="auto"></audio>
-<audio id="loseSound" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
-<audio id="doneSound" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
-<audio id="us-tts-audio" preload="none"></audio>
+<audio id="us2Win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
+<audio id="us2Lose" src="../../hangman/assets/lose.mp3" preload="auto"></audio>
+<audio id="us2Done" src="../../hangman/assets/win (1).mp3" preload="auto"></audio>
+<audio id="us2TtsAudio" preload="none"></audio>
+
 <script>
-const usSentences = <?= json_encode($sentences, JSON_UNESCAPED_UNICODE) ?>;
-const usActivityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
-const US_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
-const US_RETURN_TO = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
-const US_VOICE_ID = <?= json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE) ?>;
-const US_TTS_URL = 'tts.php';
+(function(){
+'use strict';
 
-// Use ALL sentences - no shuffling or filtering
-const usBlocks = usSentences.slice();
+const sentences = <?= json_encode($sentences, JSON_UNESCAPED_UNICODE) ?>;
+const activityTitle = <?= json_encode($viewerTitle, JSON_UNESCAPED_UNICODE) ?>;
+const activityId = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
+const returnTo = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
+const voiceId = <?= json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE) ?>;
+const ttsUrl = 'tts.php';
 
-let usIndex = 0;
-let usDragged = null;
-let usCurrentSentence = '';
-let usCurrentWords = [];
-let usListenEnabled = true;
-let usIsSpeaking = false;
-let usIsPaused = false;
-let usCurrentAudio = null;
-let usCurrentAudioUrl = '';
-let usFinished = false;
-let usBlockFinished = false;
-let usCorrectCount = 0;
-let usWrongCount = 0;
-let usTotalCount = 0;
-let usCheckedBlocks = {};
-let usAttemptsByBlock = {};
-let usScoredByBlock = {};
-let usScoreVisible = false;
-let selectedVoice = null;
+let index = 0;
+let currentWords = [];
+let currentSentence = '';
+let listenEnabled = true;
+let dragged = null;
+let locked = false;
+let scoredThisSentence = false;
+let attemptsThisSentence = 0;
+let correct = 0;
+let wrong = 0;
+let audioUrl = '';
+let currentAudio = null;
+let isSpeaking = false;
+let isPaused = false;
 
-const usBuildArea = document.getElementById('buildArea');
-const usWordBank = document.getElementById('wordBank');
-const usPageEl = document.getElementById('us-page');
-const usAppEl = document.getElementById('us-app');
-const usStageEl = document.getElementById('us-stage');
-const usFeedback = document.getElementById('feedback');
-const usListenBtn = document.getElementById('listenBtn');
-const usWinSound = document.getElementById('winSound');
-const usLoseSound = document.getElementById('loseSound');
-const usDoneSound = document.getElementById('doneSound');
-const usTtsAudio = document.getElementById('us-tts-audio');
-const usSentenceBox = document.getElementById('sentenceBox');
-const usControls = document.querySelector('.controls');
-const usCompletedEl = document.getElementById('us-completed');
-const usCompletedTextEl = document.getElementById('us-completed-text');
-const usScoreTextEl = document.getElementById('us-score-text');
-const usBuildPlaceholder = document.getElementById('buildPlaceholder');
-const usScoreGridEl = document.getElementById('us-score-grid');
-const usScoreCorrectEl = document.getElementById('us-s-correct');
-const usScoreWrongEl = document.getElementById('us-s-wrong');
-const usScorePctEl = document.getElementById('us-s-pct');
-const usCounterEl = document.getElementById('usCounter');
+const playArea = document.getElementById('us2PlayArea');
+const completed = document.getElementById('us2Completed');
+const counter = document.getElementById('us2Counter');
+const build = document.getElementById('us2Build');
+const bank = document.getElementById('us2Bank');
+const placeholder = document.getElementById('us2Placeholder');
+const listenBtn = document.getElementById('us2Listen');
+const showBtn = document.getElementById('us2Show');
+const nextBtn = document.getElementById('us2Next');
+const restartBtn = document.getElementById('us2Restart');
+const feedback = document.getElementById('us2Feedback');
+const score = document.getElementById('us2Score');
+const correctEl = document.getElementById('us2Correct');
+const wrongEl = document.getElementById('us2Wrong');
+const pctEl = document.getElementById('us2Pct');
+const completedText = document.getElementById('us2CompletedText');
+const scoreText = document.getElementById('us2ScoreText');
+const winSound = document.getElementById('us2Win');
+const loseSound = document.getElementById('us2Lose');
+const doneSound = document.getElementById('us2Done');
+const ttsAudio = document.getElementById('us2TtsAudio');
 
-function usGetScorePercent() {
-    const attempts = usCorrectCount + usWrongCount;
-    return attempts > 0 ? Math.round((usCorrectCount / attempts) * 100) : 0;
-}
-
-function usUpdateScoreCards(show) {
-    if (typeof show === 'boolean') {
-        usScoreVisible = show;
+function shuffle(items){
+    const arr = items.slice();
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        const tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
     }
-
-    const pct = usGetScorePercent();
-
-    if (usScoreCorrectEl) usScoreCorrectEl.textContent = String(usCorrectCount);
-    if (usScoreWrongEl) usScoreWrongEl.textContent = String(usWrongCount);
-    if (usScorePctEl) usScorePctEl.textContent = pct + '%';
-    if (usScoreGridEl) usScoreGridEl.classList.toggle('visible', !!usScoreVisible);
+    return arr;
 }
 
-function usUpdateCounter() {
-    if (usCounterEl) {
-        usCounterEl.textContent = (usIndex + 1) + ' / ' + usBlocks.length;
+function playSound(el){
+    if (!el) return;
+    try { el.currentTime = 0; el.play().catch(function(){}); } catch(e) {}
+}
+
+function stopAudio(){
+    if (currentAudio) {
+        try { currentAudio.pause(); currentAudio.currentTime = 0; } catch(e) {}
+        currentAudio = null;
     }
-}
-
-function usPlaySound(audio) {
-    try {
-        audio.pause();
-        audio.currentTime = 0;
-        audio.play();
-    } catch (e) {}
-}
-
-function usPersistScoreSilently(targetUrl) {
-    if (!targetUrl) {
-        return Promise.resolve(false);
+    if (audioUrl) {
+        try { URL.revokeObjectURL(audioUrl); } catch(e) {}
+        audioUrl = '';
     }
-    return fetch(targetUrl, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-    }).then(function (response) {
-        return !!(response && response.ok);
-    }).catch(function () {
-        return false;
-    });
-}
-
-function usNavigateToReturn(targetUrl) {
-    if (!targetUrl) return;
-    try {
-        if (window.top && window.top !== window.self) {
-            window.top.location.href = targetUrl;
-            return;
-        }
-    } catch (e) {}
-    window.location.href = targetUrl;
-}
-
-function usSetListenVisible(visible) {
-    if (visible) {
-        usListenBtn.classList.remove('hidden');
-        usSetListenLabel();
-    } else {
-        usListenBtn.classList.add('hidden');
-        if (usCurrentAudio) {
-            usCurrentAudio.pause();
-            usCurrentAudio.currentTime = 0;
-            usCurrentAudio = null;
-        }
-        if (usCurrentAudioUrl) {
-            try { URL.revokeObjectURL(usCurrentAudioUrl); } catch (e) {}
-            usCurrentAudioUrl = '';
-        }
-        usIsSpeaking = false;
-        usIsPaused = false;
-        usSetListenLabel();
+    if (window.speechSynthesis) {
+        try { window.speechSynthesis.cancel(); } catch(e) {}
     }
+    isSpeaking = false;
+    isPaused = false;
+    setListenLabel();
 }
 
-function usShuffle(list) {
-    return list.slice().sort(function () { return Math.random() - 0.5; });
+function percent(){
+    const total = sentences.length || 1;
+    return Math.round((correct / total) * 100);
 }
 
-function usGetBuiltWords() {
-    const chips = Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip'));
-    return chips.map(function (chip) { return chip.dataset.word || ''; });
+function updateScore(show){
+    if (score) score.classList.toggle('is-visible', !!show);
+    if (correctEl) correctEl.textContent = String(correct);
+    if (wrongEl) wrongEl.textContent = String(wrong);
+    if (pctEl) pctEl.textContent = percent() + '%';
 }
 
-function usUpdatePlaceholder() {
-    if (usBuildPlaceholder) {
-        const hasChips = usBuildArea.querySelectorAll('.built-chip, .correct-chip, .incorrect-chip').length > 0;
-        usBuildPlaceholder.style.display = hasChips ? 'none' : 'inline';
-    }
+function updatePlaceholder(){
+    const hasWords = build.querySelectorAll('.us2-chip').length > 0;
+    if (placeholder) placeholder.classList.toggle('us2-hidden', hasWords);
 }
 
-function usCreateBankChip(word) {
-    const chip = document.createElement('span');
+function builtWords(){
+    return Array.from(build.querySelectorAll('.us2-built,.us2-correct,.us2-wrong')).map(function(chip){ return chip.dataset.word || ''; });
+}
+
+function createChip(word, place){
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = place === 'build' ? 'us2-chip us2-built' : 'us2-chip';
     chip.textContent = word;
-    chip.className = 'us-chip bank-chip';
-    chip.draggable = true;
     chip.dataset.word = word;
+    chip.draggable = true;
 
-    chip.addEventListener('dragstart', function (e) {
-        usDragged = chip;
-        usDragged.dataset.source = 'bank';
-        if (e && e.dataTransfer) {
+    chip.addEventListener('dragstart', function(e){
+        if (locked) return;
+        dragged = chip;
+        chip.dataset.source = place;
+        if (e.dataTransfer) {
             e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', chip.dataset.word || '');
+            e.dataTransfer.setData('text/plain', word);
         }
     });
 
-    chip.addEventListener('click', function () {
-        if (usFinished || usBlockFinished) return;
-        usMoveToBuildArea(chip);
-        setTimeout(usAutoCheck, 40);
+    chip.addEventListener('click', function(){
+        if (locked) return;
+        if (place === 'bank') moveToBuild(chip);
+        else moveToBank(chip);
     });
 
     return chip;
 }
 
-function usCreateBuiltChip(word) {
-    const chip = document.createElement('span');
-    chip.textContent = word;
-    chip.className = 'us-chip built-chip';
-    chip.draggable = true;
-    chip.dataset.word = word;
-
-    chip.addEventListener('dragstart', function (e) {
-        usDragged = chip;
-        usDragged.dataset.source = 'build';
-        if (e && e.dataTransfer) {
-            e.dataTransfer.effectAllowed = 'move';
-            e.dataTransfer.setData('text/plain', chip.dataset.word || '');
-        }
-    });
-
-    chip.addEventListener('click', function () {
-        if (usFinished || usBlockFinished) return;
-        usMoveToBank(chip);
-        usFeedback.textContent = '';
-        usFeedback.className = '';
-    });
-
-    return chip;
-}
-
-function usMoveToBuildArea(chip) {
-    const builtChip = usCreateBuiltChip(chip.dataset.word);
-    usBuildArea.appendChild(builtChip);
+function moveToBuild(chip){
+    build.appendChild(createChip(chip.dataset.word || chip.textContent || '', 'build'));
     chip.remove();
-    usUpdatePlaceholder();
+    updatePlaceholder();
+    window.setTimeout(autoCheck, 40);
 }
 
-function usMoveToBank(chip) {
-    const bankChip = usCreateBankChip(chip.dataset.word);
-    usWordBank.appendChild(bankChip);
+function moveToBank(chip){
+    bank.appendChild(createChip(chip.dataset.word || chip.textContent || '', 'bank'));
     chip.remove();
-    usUpdatePlaceholder();
+    feedback.textContent = '';
+    feedback.className = 'us2-feedback';
+    updatePlaceholder();
 }
 
-// Build area drop support
-usBuildArea.addEventListener('dragover', function (e) {
-    e.preventDefault();
-    usBuildArea.classList.add('drag-over');
-});
-
-usBuildArea.addEventListener('dragleave', function () {
-    usBuildArea.classList.remove('drag-over');
-});
-
-usBuildArea.addEventListener('drop', function (e) {
-    e.preventDefault();
-    usBuildArea.classList.remove('drag-over');
-    if (!usDragged || usFinished || usBlockFinished) return;
-
-    const source = usDragged.dataset.source || 'bank';
-    const word = usDragged.dataset.word || '';
-
-    if (source === 'bank') {
-        const builtChip = usCreateBuiltChip(word);
-        usBuildArea.appendChild(builtChip);
-        usDragged.remove();
-    }
-    // If dragging a built-chip to build area, it moves to the end
-    if (source === 'build') {
-        usBuildArea.appendChild(usDragged);
-    }
-
-    usDragged = null;
-    usUpdatePlaceholder();
-    setTimeout(usAutoCheck, 40);
-});
-
-// Word bank drop support (return chips)
-usWordBank.addEventListener('dragover', function (e) { e.preventDefault(); });
-
-usWordBank.addEventListener('drop', function (e) {
-    e.preventDefault();
-    if (!usDragged || usFinished || usBlockFinished) return;
-
-    const source = usDragged.dataset.source || 'bank';
-
-    if (source === 'build') {
-        const bankChip = usCreateBankChip(usDragged.dataset.word);
-        usWordBank.appendChild(bankChip);
-        usDragged.remove();
-        usUpdatePlaceholder();
-        usFeedback.textContent = '';
-        usFeedback.className = '';
-    }
-
-    usDragged = null;
-});
-
-function usLoadSentence() {
-    if (usCurrentAudio) {
-        usCurrentAudio.pause();
-        usCurrentAudio.currentTime = 0;
-        usCurrentAudio = null;
-    }
-    if (usCurrentAudioUrl) {
-        try { URL.revokeObjectURL(usCurrentAudioUrl); } catch (e) {}
-        usCurrentAudioUrl = '';
-    }
-    usIsSpeaking = false;
-    usIsPaused = false;
-    usDragged = null;
-    usFinished = false;
-    usBlockFinished = false;
-
-    if (usCompletedEl) usCompletedEl.classList.remove('active');
-    if (usPageEl) usPageEl.classList.remove('is-completed');
-    if (usAppEl) usAppEl.classList.remove('is-completed');
-    if (usStageEl) usStageEl.classList.remove('is-completed');
-    if (usSentenceBox) usSentenceBox.style.display = 'block';
-    if (usWordBank) usWordBank.style.display = 'flex';
-    if (usControls) usControls.style.display = 'flex';
-
-    usFeedback.textContent = '';
-    usFeedback.className = '';
-
-    // Clear build area (keep placeholder)
-    Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip, .correct-chip, .incorrect-chip')).forEach(function (c) { c.remove(); });
-    usUpdatePlaceholder();
-    usWordBank.innerHTML = '';
-
-    const block = usBlocks[usIndex] || {};
-    usCurrentSentence = typeof block.sentence === 'string' ? block.sentence.trim() : '';
-    usListenEnabled = !!block.listen_enabled;
-    usSetListenVisible(usListenEnabled);
-    usUpdateCounter();
-
-    if (!usCurrentSentence) {
-        usFeedback.textContent = 'Empty sentence';
-        usFeedback.className = 'bad';
-        return;
-    }
-
-    // Split sentence into words (preserve punctuation attached to words)
-    usCurrentWords = usCurrentSentence.split(/\s+/).filter(function (w) { return w.length > 0; });
-
-    // Shuffle all words into bank
-    usShuffle(usCurrentWords).forEach(function (word) {
-        usWordBank.appendChild(usCreateBankChip(word));
-    });
-}
-
-async function usShowCompleted() {
-    usFinished = true;
-    usBlockFinished = true;
-    if (usCurrentAudio) {
-        usCurrentAudio.pause();
-        usCurrentAudio.currentTime = 0;
-        usCurrentAudio = null;
-    }
-    if (usCurrentAudioUrl) {
-        try { URL.revokeObjectURL(usCurrentAudioUrl); } catch (e) {}
-        usCurrentAudioUrl = '';
-    }
-    usIsSpeaking = false;
-    usIsPaused = false;
-    usFeedback.textContent = '';
-    usFeedback.className = '';
-
-    if (usSentenceBox) usSentenceBox.style.display = 'none';
-    if (usWordBank) usWordBank.style.display = 'none';
-    if (usControls) usControls.style.display = 'none';
-    if (usPageEl) usPageEl.classList.add('is-completed');
-    if (usAppEl) usAppEl.classList.add('is-completed');
-    if (usStageEl) usStageEl.classList.add('is-completed');
-    if (usCompletedEl) usCompletedEl.classList.add('active');
-
-    usPlaySound(usDoneSound);
-
-    const scorePct = usGetScorePercent();
-    const errors = usWrongCount;
-
-    if (usCompletedTextEl) {
-        usCompletedTextEl.textContent = "You've completed " + (usActivityTitle || 'this activity') + '. Great job!';
-    }
-
-    if (usScoreTextEl) {
-        usScoreTextEl.textContent = usCorrectCount + ' correct · ' + usWrongCount + ' wrong · ' + scorePct + '%';
-    }
-
-    if (US_ACTIVITY_ID && US_RETURN_TO) {
-        const joiner = US_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
-        const saveUrl = US_RETURN_TO
-            + joiner + 'activity_percent=' + scorePct
-            + '&activity_errors=' + errors
-            + '&activity_total=' + usTotalCount
-            + '&activity_id=' + encodeURIComponent(US_ACTIVITY_ID)
-            + '&activity_type=unscramble';
-
-        const ok = await usPersistScoreSilently(saveUrl);
-        if (!ok) {
-            usNavigateToReturn(saveUrl);
-        }
-    }
-}
-
-function usRegisterSentenceScore(builtWords) {
-    if (Object.prototype.hasOwnProperty.call(usScoredByBlock, usIndex)) {
-        return;
-    }
-
-    const built = Array.isArray(builtWords) ? builtWords : usGetBuiltWords();
-    const isCorrect = JSON.stringify(built) === JSON.stringify(usCurrentWords);
-    const score = isCorrect ? 1 : 0;
-    usScoredByBlock[usIndex] = score;
-    usCorrectCount += score;
-}
-
-function usCheckSentence() {
-    if (usFinished || usBlockFinished || usCheckedBlocks[usIndex]) return;
-
-    const built = usGetBuiltWords();
-
-    if (built.length < usCurrentWords.length) {
-        usFeedback.textContent = 'Place all words first.';
-        usFeedback.className = 'bad';
-        return;
-    }
-
-    const currentAttempts = (usAttemptsByBlock[usIndex] || 0) + 1;
-    usAttemptsByBlock[usIndex] = currentAttempts;
-
-    const isCorrect = JSON.stringify(built) === JSON.stringify(usCurrentWords);
-
-    if (isCorrect) {
-        usFeedback.textContent = '✔ Correct!';
-        usFeedback.className = 'good';
-        usPlaySound(usWinSound);
-        usCheckedBlocks[usIndex] = true;
-        usRegisterSentenceScore(built);
-        usUpdateScoreCards(true);
-        usBlockFinished = true;
-        // Mark chips green
-        usBuildArea.querySelectorAll('.built-chip').forEach(function (chip) {
-            chip.className = 'us-chip correct-chip';
-            chip.draggable = false;
-        });
-    } else {
-        usWrongCount += 1;
-        usUpdateScoreCards(true);
-        if (currentAttempts >= 2) {
-            usFeedback.textContent = '✘ Incorrect (2/2)';
-            usFeedback.className = 'bad';
-            usPlaySound(usLoseSound);
-            usCheckedBlocks[usIndex] = true;
-            usRegisterSentenceScore(built);
-            usBlockFinished = true;
-            // Mark chips red/green by position
-            const chips = Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip'));
-            chips.forEach(function (chip, i) {
-                if ((built[i] || '') === (usCurrentWords[i] || '')) {
-                    chip.className = 'us-chip correct-chip';
-                } else {
-                    chip.className = 'us-chip incorrect-chip';
-                }
-                chip.draggable = false;
-            });
-        } else {
-            usFeedback.textContent = '✘ Incorrect (1/2) — try again';
-            usFeedback.className = 'bad';
-            usPlaySound(usLoseSound);
-        }
-    }
-}
-
-function usAutoCheck() {
-    if (usFinished || usBlockFinished || usCheckedBlocks[usIndex]) return;
-
-    const built = usGetBuiltWords();
-    if (built.length < usCurrentWords.length) return;
-
-    usCheckSentence();
-}
-
-function usShowAnswer() {
-    if (usFinished || usBlockFinished) return;
-
-    if (!Object.prototype.hasOwnProperty.call(usScoredByBlock, usIndex)) {
-        usWrongCount += 1;
-    }
-
-    const built = usGetBuiltWords();
-    usRegisterSentenceScore(built);
-    usUpdateScoreCards(true);
-    usCheckedBlocks[usIndex] = true;
-
-    // Clear build area
-    Array.prototype.slice.call(usBuildArea.querySelectorAll('.built-chip, .incorrect-chip, .correct-chip')).forEach(function (c) { c.remove(); });
-    usWordBank.innerHTML = '';
-
-    // Place correct words in order
-    usCurrentWords.forEach(function (word) {
-        const chip = document.createElement('span');
-        chip.textContent = word;
-        chip.className = 'us-chip correct-chip';
+function lockChips(clsByIndex){
+    Array.from(build.querySelectorAll('.us2-built')).forEach(function(chip, i){
+        chip.className = 'us2-chip ' + (typeof clsByIndex === 'function' ? clsByIndex(chip, i) : clsByIndex);
         chip.draggable = false;
-        chip.dataset.word = word;
-        usBuildArea.appendChild(chip);
+        chip.disabled = true;
     });
-
-    usUpdatePlaceholder();
-    usFeedback.textContent = 'Correct order shown';
-    usFeedback.className = 'good';
-    usBlockFinished = true;
+    Array.from(bank.querySelectorAll('.us2-chip')).forEach(function(chip){ chip.disabled = true; chip.draggable = false; });
 }
 
-function usNextSentence() {
-    if (usFinished) return;
+function markScore(isCorrect){
+    if (scoredThisSentence) return;
+    scoredThisSentence = true;
+    if (isCorrect) correct += 1;
+    else wrong += 1;
+    updateScore(true);
+}
 
-    usAutoCheck();
+function loadSentence(){
+    stopAudio();
+    locked = false;
+    scoredThisSentence = false;
+    attemptsThisSentence = 0;
+    dragged = null;
+    build.querySelectorAll('.us2-chip').forEach(function(el){ el.remove(); });
+    bank.innerHTML = '';
+    feedback.textContent = '';
+    feedback.className = 'us2-feedback';
 
-    if (!usBlockFinished && !usCheckedBlocks[usIndex]) {
+    const item = sentences[index] || {};
+    currentSentence = String(item.sentence || '').trim();
+    currentWords = Array.isArray(item.words) && item.words.length ? item.words.slice() : currentSentence.split(/\s+/).filter(Boolean);
+    listenEnabled = item.listen_enabled !== false;
+
+    if (counter) counter.textContent = (index + 1) + ' / ' + sentences.length;
+    if (listenBtn) listenBtn.classList.toggle('us2-hidden', !listenEnabled);
+    if (nextBtn) nextBtn.textContent = index >= sentences.length - 1 ? 'Finish' : 'Next';
+
+    shuffle(currentWords).forEach(function(word){ bank.appendChild(createChip(word, 'bank')); });
+    updatePlaceholder();
+}
+
+function check(){
+    if (locked) return false;
+    const built = builtWords();
+    if (built.length < currentWords.length) {
+        feedback.textContent = 'Place all words first.';
+        feedback.className = 'us2-feedback bad';
+        return false;
+    }
+
+    attemptsThisSentence += 1;
+    const ok = JSON.stringify(built) === JSON.stringify(currentWords);
+
+    if (ok) {
+        locked = true;
+        feedback.textContent = 'Correct!';
+        feedback.className = 'us2-feedback good';
+        markScore(true);
+        lockChips('us2-correct');
+        playSound(winSound);
+        return true;
+    }
+
+    playSound(loseSound);
+    if (attemptsThisSentence >= 2) {
+        locked = true;
+        feedback.textContent = 'Incorrect. Review the order and continue.';
+        feedback.className = 'us2-feedback bad';
+        markScore(false);
+        lockChips(function(chip, i){ return (built[i] || '') === (currentWords[i] || '') ? 'us2-correct' : 'us2-wrong'; });
+        return true;
+    }
+
+    feedback.textContent = 'Incorrect. Try again.';
+    feedback.className = 'us2-feedback bad';
+    return false;
+}
+
+function autoCheck(){
+    if (locked) return;
+    if (builtWords().length >= currentWords.length) check();
+}
+
+function showAnswer(){
+    if (locked) return;
+    markScore(false);
+    locked = true;
+    build.querySelectorAll('.us2-chip').forEach(function(el){ el.remove(); });
+    bank.innerHTML = '';
+    currentWords.forEach(function(word){
+        const chip = createChip(word, 'build');
+        chip.className = 'us2-chip us2-correct';
+        chip.draggable = false;
+        chip.disabled = true;
+        build.appendChild(chip);
+    });
+    updatePlaceholder();
+    feedback.textContent = 'Correct order shown.';
+    feedback.className = 'us2-feedback good';
+}
+
+async function persistScore(){
+    if (!activityId || !returnTo) return;
+    const joiner = returnTo.indexOf('?') !== -1 ? '&' : '?';
+    const url = returnTo + joiner
+        + 'activity_percent=' + encodeURIComponent(String(percent()))
+        + '&activity_errors=' + encodeURIComponent(String(wrong))
+        + '&activity_total=' + encodeURIComponent(String(sentences.length))
+        + '&activity_id=' + encodeURIComponent(activityId)
+        + '&activity_type=unscramble';
+    try {
+        await fetch(url, { method:'GET', credentials:'same-origin', cache:'no-store' });
+    } catch(e) {}
+}
+
+function finish(){
+    stopAudio();
+    playArea.classList.add('us2-hidden');
+    completed.classList.add('is-visible');
+    playSound(doneSound);
+    if (completedText) completedText.textContent = "You've completed " + (activityTitle || 'this activity') + '.';
+    if (scoreText) scoreText.textContent = correct + ' correct · ' + wrong + ' wrong · ' + percent() + '%';
+    persistScore();
+}
+
+function next(){
+    if (!locked) {
+        const attempted = check();
+        if (!attempted) return;
+    }
+    if (index >= sentences.length - 1) {
+        finish();
         return;
     }
-
-    usRegisterSentenceScore();
-
-    if (usIndex >= usBlocks.length - 1) {
-        usShowCompleted();
-        return;
-    }
-
-    usIndex += 1;
-    usLoadSentence();
+    index += 1;
+    loadSentence();
 }
 
-function usRestartActivity() {
-    usIndex = 0;
-    usCorrectCount = 0;
-    usWrongCount = 0;
-    usTotalCount = usBlocks.length;
-    usCheckedBlocks = {};
-    usAttemptsByBlock = {};
-    usScoredByBlock = {};
-    usScoreVisible = false;
-    usUpdateScoreCards(false);
-    usLoadSentence();
+function restart(){
+    stopAudio();
+    index = 0;
+    correct = 0;
+    wrong = 0;
+    playArea.classList.remove('us2-hidden');
+    completed.classList.remove('is-visible');
+    updateScore(false);
+    loadSentence();
 }
 
-/* ── Web Speech API fallback ── */
-var usBrowserTTS = (function () {
-    var preferred = ['zira','samantha','karen','aria','jenny','emma','ava','google us english'];
-    var cache = null;
+function setListenLabel(){
+    if (!listenBtn) return;
+    if (isPaused) listenBtn.textContent = 'Resume';
+    else if (isSpeaking) listenBtn.textContent = 'Pause';
+    else listenBtn.textContent = 'Listen';
+}
 
-    function loadVoices(cb) {
-        if (!window.speechSynthesis) return;
-        var v = window.speechSynthesis.getVoices();
-        if (v && v.length) { cache = v; cb(v); return; }
-        if (window.speechSynthesis.onvoiceschanged !== undefined) {
-            window.speechSynthesis.onvoiceschanged = function () {
-                cache = window.speechSynthesis.getVoices();
-                if (cache.length) cb(cache);
-            };
-        }
-    }
+function browserSpeak(text){
+    if (!window.speechSynthesis) return;
+    try { window.speechSynthesis.cancel(); } catch(e) {}
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.9;
+    u.pitch = 1.02;
+    u.onend = function(){ isSpeaking = false; isPaused = false; setListenLabel(); };
+    isSpeaking = true;
+    isPaused = false;
+    setListenLabel();
+    window.speechSynthesis.speak(u);
+}
 
-    function pickVoice(voices) {
-        var pool = voices.filter(function (v) { return String(v.lang).toLowerCase().indexOf('en') === 0; });
-        if (!pool.length) pool = voices;
-        for (var i = 0; i < preferred.length; i++) {
-            for (var j = 0; j < pool.length; j++) {
-                if ((pool[j].name + ' ' + pool[j].voiceURI).toLowerCase().indexOf(preferred[i]) !== -1) return pool[j];
-            }
-        }
-        return pool[0] || null;
-    }
+function speak(){
+    if (!listenEnabled || !currentSentence) return;
 
-    function speak(text) {
-        if (!window.speechSynthesis) return;
-        window.speechSynthesis.cancel();
-        function run(voices) {
-            var u = new SpeechSynthesisUtterance(text);
-            u.lang = 'en-US'; u.rate = 0.88; u.pitch = 1.05; u.volume = 1;
-            var voice = pickVoice(voices);
-            if (voice) u.voice = voice;
-            u.onend = function () { usIsSpeaking = false; usIsPaused = false; usSetListenLabel(); };
-            window.speechSynthesis.speak(u);
-            usIsSpeaking = true; usIsPaused = false; usSetListenLabel();
-        }
-        if (cache && cache.length) run(cache);
-        else loadVoices(run);
-    }
-
-    if (window.speechSynthesis) loadVoices(function () {});
-    return { speak: speak };
-})();
-
-function usSpeak() {
-    if (!usListenEnabled) return;
-    if (!usCurrentSentence || String(usCurrentSentence).trim() === '') return;
-
-    if (usCurrentAudio) {
-        if (!usCurrentAudio.paused) {
-            usCurrentAudio.pause();
-            usIsSpeaking = true;
-            usIsPaused = true;
-            usSetListenLabel();
+    if (currentAudio) {
+        if (!currentAudio.paused) {
+            currentAudio.pause();
+            isSpeaking = true;
+            isPaused = true;
+            setListenLabel();
         } else {
-            usCurrentAudio.play().then(function () {
-                usIsSpeaking = true;
-                usIsPaused = false;
-                usSetListenLabel();
-            }).catch(function () {});
+            currentAudio.play().then(function(){ isSpeaking = true; isPaused = false; setListenLabel(); }).catch(function(){});
         }
         return;
     }
 
-    usIsSpeaking = true;
-    usIsPaused = false;
-    usListenBtn.textContent = '...';
-    usListenBtn.disabled = true;
+    isSpeaking = true;
+    isPaused = false;
+    setListenLabel();
+    listenBtn.disabled = true;
 
     const fd = new FormData();
-    fd.append('text', usCurrentSentence);
-    fd.append('voice_id', US_VOICE_ID || 'nzFihrBIvB34imQBuxub');
+    fd.append('text', currentSentence);
+    fd.append('voice_id', voiceId || 'nzFihrBIvB34imQBuxub');
 
-    fetch(US_TTS_URL, { method: 'POST', body: fd, credentials: 'same-origin' })
-        .then(function (res) {
-            if (!res.ok) throw new Error('TTS error ' + res.status);
-            return res.blob();
+    fetch(ttsUrl, { method:'POST', body:fd, credentials:'same-origin' })
+        .then(function(res){ if (!res.ok) throw new Error('TTS ' + res.status); return res.blob(); })
+        .then(function(blob){
+            audioUrl = URL.createObjectURL(blob);
+            currentAudio = ttsAudio || new Audio();
+            currentAudio.src = audioUrl;
+            currentAudio.onended = function(){ stopAudio(); };
+            currentAudio.onpause = function(){ if (currentAudio && currentAudio.currentTime < (currentAudio.duration || Infinity)) { isSpeaking = true; isPaused = true; setListenLabel(); } };
+            return currentAudio.play();
         })
-        .then(function (blob) {
-            usCurrentAudioUrl = URL.createObjectURL(blob);
-            usCurrentAudio = usTtsAudio || new Audio();
-            usCurrentAudio.src = usCurrentAudioUrl;
-
-            usCurrentAudio.onended = function () {
-                usIsSpeaking = false;
-                usIsPaused = false;
-                usSetListenLabel();
-                if (usCurrentAudioUrl) {
-                    try { URL.revokeObjectURL(usCurrentAudioUrl); } catch (e) {}
-                    usCurrentAudioUrl = '';
-                }
-                usCurrentAudio = null;
-            };
-
-            usCurrentAudio.onpause = function () {
-                if (usCurrentAudio && usCurrentAudio.currentTime < (usCurrentAudio.duration || Infinity)) {
-                    usIsSpeaking = true;
-                    usIsPaused = true;
-                    usSetListenLabel();
-                }
-            };
-
-            usCurrentAudio.play().then(function () {
-                usIsSpeaking = true;
-                usIsPaused = false;
-                usSetListenLabel();
-            }).catch(function () {
-                usIsSpeaking = false;
-                usIsPaused = false;
-                usSetListenLabel();
-            });
-        })
-        .catch(function () {
-            /* ElevenLabs failed — fall back to browser Web Speech API */
-            usListenBtn.disabled = false;
-            usBrowserTTS.speak(usCurrentSentence);
-        })
-        .finally(function () {
-            usListenBtn.disabled = false;
-        });
+        .catch(function(){ browserSpeak(currentSentence); })
+        .finally(function(){ listenBtn.disabled = false; });
 }
 
-function usSetListenLabel() {
-    if (!usListenBtn) return;
-    if (usIsPaused) {
-        usListenBtn.textContent = 'Resume';
-    } else if (usIsSpeaking) {
-        usListenBtn.textContent = 'Pause';
-    } else {
-        usListenBtn.textContent = 'Listen';
-    }
-}
+build.addEventListener('dragover', function(e){ e.preventDefault(); build.classList.add('is-drag'); });
+build.addEventListener('dragleave', function(){ build.classList.remove('is-drag'); });
+build.addEventListener('drop', function(e){
+    e.preventDefault();
+    build.classList.remove('is-drag');
+    if (!dragged || locked) return;
+    const source = dragged.dataset.source || 'bank';
+    if (source === 'bank') moveToBuild(dragged);
+    else build.appendChild(dragged);
+    dragged = null;
+    updatePlaceholder();
+    window.setTimeout(autoCheck, 40);
+});
 
-// Init
-usTotalCount = usBlocks.length;
-usUpdateScoreCards(false);
-usLoadSentence();
+bank.addEventListener('dragover', function(e){ e.preventDefault(); });
+bank.addEventListener('drop', function(e){
+    e.preventDefault();
+    if (!dragged || locked) return;
+    if ((dragged.dataset.source || '') === 'build') moveToBank(dragged);
+    dragged = null;
+});
+
+listenBtn.addEventListener('click', speak);
+showBtn.addEventListener('click', showAnswer);
+nextBtn.addEventListener('click', next);
+restartBtn.addEventListener('click', restart);
+
+updateScore(false);
+loadSentence();
+})();
 </script>
 <?php
 $content = ob_get_clean();
