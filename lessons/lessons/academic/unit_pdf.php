@@ -18,13 +18,11 @@ $source = str_replace(
     '$SKIP_TYPES = [\'flipbooks\',\'hangman\',\'crossword\',\'coloring\',\'dot_to_dot\',\'tracing\',\'memory_cards\'];',
     $source
 );
-$memoryCaseNeedle = <<<'PHP'
-case 'memory_cards':         $html = ws_memory($data, $actN, $isKey);      break;
-PHP;
-$memoryCaseReplacement = <<<'PHP'
-case 'memory_cards':         $actN--; continue 2;
-PHP;
-$source = str_replace($memoryCaseNeedle, $memoryCaseReplacement, $source);
+$source = str_replace(
+    "case 'memory_cards':         \$html = ws_memory(\$data, \$actN, \$isKey);      break;",
+    "case 'memory_cards':         \$actN--; continue 2;",
+    $source
+);
 
 $sharedPatch = <<<'PHP'
 function pdf_pick(array $a, array $keys, string $fallback = ''): string {
@@ -40,6 +38,10 @@ function pdf_img_box(string $url, string $class = 'pdf-act-img'): string {
     if (trim($url) === '') return '';
     return '<div class="'.$class.'"><img src="'.h($url).'" alt="" loading="eager"></div>';
 }
+function pdf_lines(int $lines = 5, string $class = 'wp-write-lines'): string {
+    $lines = max(2, min(10, $lines));
+    return '<div class="'.$class.'">'.str_repeat('<div class="wp-write-line"></div>', $lines).'</div>';
+}
 PHP;
 
 $writingPatch = <<<'PHP'
@@ -49,8 +51,7 @@ function wp_pdf_items(array $d): array {
     return [];
 }
 function wp_pdf_lines(int $lines = 5): string {
-    $lines = max(3, min(9, $lines));
-    return '<div class="wp-write-lines">'.str_repeat('<div class="wp-write-line"></div>', $lines).'</div>';
+    return pdf_lines($lines, 'wp-write-lines');
 }
 function ws_writing(array $d, int $n, bool $k): string {
     $items = wp_pdf_items($d);
@@ -68,13 +69,8 @@ function ws_writing(array $d, int $n, bool $k): string {
         $answer = pdf_pick($item, ['answer','sample_answer','model_answer']);
         $type = strtolower(pdf_pick($item, ['type'], 'writing'));
         if ($prompt === '' && $instruction === '' && $answer === '') continue;
-        $wordHint = '';
-        if (preg_match('/paragraph|describe|essay|story|opinion|explain/i', $instruction.' '.$prompt)) {
-            $lines = 7;
-            $wordHint = '<span class="wp-word-hint">Use complete sentences.</span>';
-        } else {
-            $lines = 5;
-        }
+        $lines = preg_match('/paragraph|describe|essay|story|opinion|explain/i', $instruction.' '.$prompt) ? 7 : 5;
+        $wordHint = $lines >= 7 ? '<span class="wp-word-hint">Use complete sentences.</span>' : '';
         $out .= '<div class="wp-print-card">';
         $out .= '<div class="wp-print-head"><span class="qnum">'.($qi + 1).'</span><span class="wp-prompt-title">Writing prompt</span>'.$wordHint.'</div>';
         if ($instruction !== '') $out .= '<div class="wp-instruction">'.h($instruction).'</div>';
@@ -326,13 +322,86 @@ function ws_reading(array $d, int $n, bool $k): string {
 }
 PHP;
 
+$roleplayPatch = <<<'PHP'
+function rp_pdf_scene(array $d): array {
+    $scene = isset($d['scene']) && is_array($d['scene']) ? $d['scene'] : $d;
+    return [
+        'title' => pdf_pick($scene, ['title'], pdf_pick($d, ['title'], 'Roleplay')),
+        'scenario' => pdf_pick($scene, ['scenario','description','instructions'], pdf_pick($d, ['description','instructions','scenario'], '')),
+        'agentRole' => pdf_pick($scene, ['agentRole','agent_role','teacherRole','teacher_role'], 'Agent'),
+        'studentRole' => pdf_pick($scene, ['studentRole','student_role','learnerRole','learner_role'], 'Student'),
+        'level' => pdf_pick($scene, ['level'], pdf_pick($d, ['level'], '')),
+    ];
+}
+function rp_pdf_turns(array $d): array {
+    foreach (['turns','dialogue','dialogs','lines','items'] as $key) {
+        if (isset($d[$key]) && is_array($d[$key])) return array_values($d[$key]);
+    }
+    return [];
+}
+function rp_pdf_text($turn, array $keys): string {
+    if (is_string($turn)) return trim($turn);
+    if (!is_array($turn)) return '';
+    return pdf_pick($turn, $keys);
+}
+function ws_roleplay(array $d, int $n, bool $k): string {
+    $scene = rp_pdf_scene($d);
+    $turns = rp_pdf_turns($d);
+    $title = $scene['title'] !== '' ? $scene['title'] : 'Roleplay';
+    $instr = 'Read the description. Practice the dialogue with a partner. Use the lines below for the class activity.';
+    $out = ws_head($n, 'Roleplay Activity', $title, $instr, $k, 'card-open rp-pdf-open');
+
+    $out .= '<div class="rp-pdf-scene">';
+    if ($scene['scenario'] !== '') {
+        $out .= '<div class="rp-pdf-desc"><span class="rp-pdf-label">Description</span>'.nl2br(h($scene['scenario'])).'</div>';
+    }
+    $out .= '<div class="rp-pdf-roles">';
+    $out .= '<div><span class="rp-pdf-label">Agent role</span><strong>'.h($scene['agentRole']).'</strong></div>';
+    $out .= '<div><span class="rp-pdf-label">Student role</span><strong>'.h($scene['studentRole']).'</strong></div>';
+    if ($scene['level'] !== '') $out .= '<div><span class="rp-pdf-label">Level</span><strong>'.h($scene['level']).'</strong></div>';
+    $out .= '</div></div>';
+
+    $out .= '<div class="rp-pdf-dialogue">';
+    if (empty($turns)) {
+        $out .= '<div class="rp-pdf-turn"><div class="rp-pdf-line agent"><span>'.h($scene['agentRole']).'</span></div><div class="rp-pdf-line student"><span>'.h($scene['studentRole']).'</span></div></div>';
+    } else {
+        foreach ($turns as $i => $turn) {
+            $agent = rp_pdf_text($turn, ['agent','teacherLine','teacher_line','agentLine','agent_line','prompt','question']);
+            $student = rp_pdf_text($turn, ['ideal','studentLine','student_line','answer','model','model_answer','hint']);
+            $hint = rp_pdf_text($turn, ['hint','support','cue']);
+            $criteria = rp_pdf_text($turn, ['criteria','objective']);
+            if ($agent === '' && $student === '' && $hint === '') continue;
+            $out .= '<div class="rp-pdf-turn">';
+            $out .= '<div class="rp-pdf-turn-num">'.($i + 1).'</div>';
+            if ($agent !== '') $out .= '<div class="rp-pdf-line agent"><span>'.h($scene['agentRole']).':</span> '.nl2br(h($agent)).'</div>';
+            if ($student !== '') {
+                $studentLabel = $k ? 'Model '.$scene['studentRole'] : $scene['studentRole'];
+                $out .= '<div class="rp-pdf-line student"><span>'.h($studentLabel).':</span> '.nl2br(h($student)).'</div>';
+            } elseif ($hint !== '') {
+                $out .= '<div class="rp-pdf-line student"><span>'.h($scene['studentRole']).':</span> '.nl2br(h($hint)).'</div>';
+            }
+            if ($k && $criteria !== '') $out .= '<div class="rp-pdf-criteria"><strong>Criteria:</strong> '.h($criteria).'</div>';
+            $out .= '</div>';
+        }
+    }
+    $out .= '</div>';
+
+    $out .= '<div class="rp-pdf-class"><span class="rp-pdf-label">Class activity</span><p>Write your own answers or notes for the roleplay.</p>'.pdf_lines(6, 'rp-pdf-lines').'</div>';
+    return $out.ws_foot();
+}
+PHP;
+
 $source = str_replace('/* ── VOCABULARY / FLASHCARDS ───────────────────────────────── */', $sharedPatch . "\n\n/* ── VOCABULARY / FLASHCARDS ───────────────────────────────── */", $source);
 $source = preg_replace('/function\s+ws_mc\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── FILL IN THE BLANKS/s', $mcPatch . "\n\n/* ── FILL IN THE BLANKS", $source, 1);
 $source = preg_replace('/function\s+ws_dragdrop\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── WRITING PRACTICE/s', $dragPatch . "\n\n/* ── WRITING PRACTICE", $source, 1);
 $source = preg_replace('/function\s+ws_writing\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── MATCH/s', $writingPatch . "\n\n/* ── MATCH", $source, 1);
 $source = preg_replace('/function\s+ws_dictation\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── PRONUNCIATION/s', $dictationPatch . "\n\n/* ── PRONUNCIATION", $source, 1);
-$source = preg_replace('/function\s+ws_reading\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── BUILD SECTIONS/s', $readingPatch . "\n\n/* ── BUILD SECTIONS", $source, 1);
-$source = str_replace("case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;", "case 'reading':\n        case 'reading_activity':\n        case 'reading_comprehension_new':\n        case 'reading_comprehension_v2':\n        case 'reading_comp':\n        case 'rc':\n        case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;", $source);
+$source = preg_replace('/function\s+ws_reading\s*\(array\s+\$d,\s*int\s+\$n,\s*bool\s+\$k\):\s*string\s*\{.*?\n\}\n\n\/\* ── BUILD SECTIONS/s', $readingPatch . "\n\n" . $roleplayPatch . "\n\n/* ── BUILD SECTIONS", $source, 1);
+$source = str_replace(
+    "case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;",
+    "case 'reading':\n        case 'reading_activity':\n        case 'reading_comprehension_new':\n        case 'reading_comprehension_v2':\n        case 'reading_comp':\n        case 'rc':\n        case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;\n        case 'roleplay':\n        case 'roleplay_activity':\n        case 'roleplay_kids':         \$html = ws_roleplay(\$data, \$actN, \$isKey); break;",
+    $source
+);
 
 ob_start();
 eval('?>' . $source);
@@ -371,77 +440,38 @@ $printFontCss = <<<'CSS'
   object-fit: contain !important;
   display: block !important;
 }
-.mc-img-opts {
-  display: grid !important;
-  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-}
-.mc-img-opt {
-  border: 1.5px solid #EDE9FA !important;
-  border-radius: 12px !important;
-  padding: 8px !important;
-  background: #fff !important;
-  break-inside: avoid !important;
-}
-.mc-frame {
-  width: 38mm !important;
-  height: 30mm !important;
-  margin: 4px auto !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
-  background: #FAFAFE !important;
-}
+.mc-img-opts { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+.mc-img-opt { border: 1.5px solid #EDE9FA !important; border-radius: 12px !important; padding: 8px !important; background: #fff !important; break-inside: avoid !important; }
+.mc-frame { width: 38mm !important; height: 30mm !important; margin: 4px auto !important; border-radius: 8px !important; overflow: hidden !important; background: #FAFAFE !important; }
 .mc-opt-caption { font-weight: 800 !important; text-align: center !important; margin-top: 4px !important; }
-.fill-block {
-  break-inside: avoid !important;
-  page-break-inside: avoid !important;
-  margin: 12px 0 !important;
-}
-.ws-bank {
-  padding: 10px 12px !important;
-  margin: 10px 0 12px !important;
-  line-height: 1.8 !important;
-}
-.ws-chip {
-  display: inline-flex !important;
-  align-items: center !important;
-  min-height: 24px !important;
-  padding: 5px 11px !important;
-  margin: 3px 4px !important;
-  font-size: 12pt !important;
-}
-.ws-fr {
-  display: flex !important;
-  align-items: flex-start !important;
-  gap: 8px !important;
-  padding: 9px 12px !important;
-  margin: 8px 0 !important;
-  border: 1.4px solid #EDE9FA !important;
-  border-radius: 12px !important;
-  background: #fff !important;
-  break-inside: avoid !important;
-  page-break-inside: avoid !important;
-}
-.ws-fn {
-  min-width: 20px !important;
-  font-weight: 900 !important;
-  color: #7F77DD !important;
-  padding-top: 2px !important;
-}
-.ws-fb {
-  display: block !important;
-  width: 100% !important;
-  line-height: 2.25 !important;
-  word-spacing: 3px !important;
-  letter-spacing: .01em !important;
-}
+.fill-block { break-inside: avoid !important; page-break-inside: avoid !important; margin: 12px 0 !important; }
+.ws-bank { padding: 10px 12px !important; margin: 10px 0 12px !important; line-height: 1.8 !important; }
+.ws-chip { display: inline-flex !important; align-items: center !important; min-height: 24px !important; padding: 5px 11px !important; margin: 3px 4px !important; font-size: 12pt !important; }
+.ws-fr { display: flex !important; align-items: flex-start !important; gap: 8px !important; padding: 9px 12px !important; margin: 8px 0 !important; border: 1.4px solid #EDE9FA !important; border-radius: 12px !important; background: #fff !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+.ws-fn { min-width: 20px !important; font-weight: 900 !important; color: #7F77DD !important; padding-top: 2px !important; }
+.ws-fb { display: block !important; width: 100% !important; line-height: 2.25 !important; word-spacing: 3px !important; letter-spacing: .01em !important; }
 .dict-grid { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 12px !important; }
 .dict-print-item { border: 1.5px solid #DCD7FF !important; border-radius: 14px !important; background: #fff !important; padding: 10px 12px !important; break-inside: avoid !important; page-break-inside: avoid !important; }
 .dict-print-top { display: flex !important; align-items: center !important; gap: 7px !important; margin-bottom: 8px !important; }
 .dict-num { width: 24px !important; height: 24px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: #7F77DD !important; color: #fff !important; border-radius: 999px !important; font-size: 11pt !important; font-weight: 900 !important; flex: 0 0 auto !important; }
 .dict-label { font-weight: 900 !important; }
-.dict-lines, .wp-write-lines { display: grid !important; gap: 12px !important; margin-top: 10px !important; clear: both !important; }
+.dict-lines, .wp-write-lines, .rp-pdf-lines { display: grid !important; gap: 12px !important; margin-top: 10px !important; clear: both !important; }
 .dict-line, .wp-write-line { height: 20px !important; border-bottom: 1.6px solid #000 !important; }
+.rp-pdf-scene { border: 1.5px solid #DCD7FF !important; border-radius: 14px !important; background: #fff !important; padding: 12px 14px !important; margin: 0 0 12px !important; break-inside: avoid !important; }
+.rp-pdf-desc { font-weight: 800 !important; line-height: 1.5 !important; margin-bottom: 10px !important; }
+.rp-pdf-label { display: block !important; color: #7F77DD !important; font-size: 9pt !important; font-weight: 900 !important; text-transform: uppercase !important; letter-spacing: .08em !important; margin-bottom: 4px !important; }
+.rp-pdf-roles { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; gap: 8px !important; }
+.rp-pdf-roles > div { border: 1.4px solid #EDE9FA !important; border-radius: 10px !important; padding: 8px 10px !important; background: #FAFAFE !important; }
+.rp-pdf-dialogue { display: grid !important; gap: 10px !important; margin: 12px 0 !important; }
+.rp-pdf-turn { position: relative !important; border: 1.5px solid #EDE9FA !important; border-radius: 14px !important; background: #fff !important; padding: 10px 12px 10px 42px !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+.rp-pdf-turn-num { position: absolute !important; left: 10px !important; top: 10px !important; width: 23px !important; height: 23px !important; border-radius: 999px !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: #F97316 !important; color: #fff !important; font-weight: 900 !important; }
+.rp-pdf-line { line-height: 1.55 !important; margin: 4px 0 !important; }
+.rp-pdf-line span { font-weight: 900 !important; color: #000 !important; }
+.rp-pdf-line.agent { border-left: 4px solid #7F77DD !important; padding-left: 9px !important; }
+.rp-pdf-line.student { border-left: 4px solid #F97316 !important; padding-left: 9px !important; }
+.rp-pdf-criteria { margin-top: 6px !important; padding: 7px 9px !important; border-radius: 9px !important; background: #F0FDF9 !important; border: 1px solid #9FE1CB !important; font-size: 10.5pt !important; }
+.rp-pdf-class { border: 1.5px dashed #7F77DD !important; border-radius: 14px !important; padding: 12px 14px !important; margin-top: 12px !important; background: #FBFAFF !important; break-inside: avoid !important; page-break-inside: avoid !important; }
+.rp-pdf-class p { margin: 0 !important; font-weight: 800 !important; }
 
 /* Print layout + typography override: keep header/background colours, make worksheet printable. */
 @page { size: auto; margin: 14mm 12mm 18mm 12mm; }
@@ -451,10 +481,10 @@ $printFontCss = <<<'CSS'
   .ws-body { width: 100% !important; max-width: 190mm !important; margin: 0 auto !important; padding: 0 0 8mm 0 !important; overflow: visible !important; }
   .ws-page, .unit-page, .print-page, .worksheet-page, .card-box, .ws-body > * { overflow: visible !important; height: auto !important; max-height: none !important; }
   .ws-sec { break-inside: auto !important; page-break-inside: auto !important; break-after: auto !important; page-break-after: auto !important; margin-bottom: 9mm !important; }
-  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr, .fill-block, .mc-img-opt { break-inside: avoid !important; page-break-inside: avoid !important; }
+  .sec-head, .ibox, .ws-qb, .ws-wb, .wp-print-card, .dict-print-item, .fc-card, .mrow, .ws-or, .rc-qb, tr, .fill-block, .mc-img-opt, .rp-pdf-scene, .rp-pdf-turn, .rp-pdf-class { break-inside: avoid !important; page-break-inside: avoid !important; }
   .sec-head { margin-top: 2mm !important; }
   .card-box { padding-bottom: 5mm !important; }
-  .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,.mc-opt-caption,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
+  .ws-body, .ws-body :is(.unit-sub,.instr-row,.itxt,.ws-qt,.ws-opt,.ws-expl,.ws-chip,.ws-fr,.ws-fill-prompt,.ws-wi,.ws-ma,.mrow,.ml,.mn,.ws-or,.dt-num,.rc-text,.rc-text *,.rc-meta,.fc-word,.tc-w,.wp-instruction,.wp-prompt-box,.wp-answer-key,.dict-label,.dict-answer,.mc-opt-caption,.rp-pdf-desc,.rp-pdf-roles,.rp-pdf-roles *,.rp-pdf-line,.rp-pdf-line *,.rp-pdf-class,.rp-pdf-class p,table.ws-tbl,table.ws-tbl td,table.ws-tbl th) { color: #000 !important; font-size: 12pt !important; line-height: 1.45 !important; }
   .ws-body :is(.sec-title,.unit-title) { color: #000 !important; font-size: 14pt !important; }
   .ws-fb { line-height: 2.25 !important; }
   .rc-hl { color: #000 !important; font-size: 12pt !important; font-weight: 800 !important; background: #FFF0E6 !important; border-bottom: 2px solid #F97316 !important; padding: 0 2px !important; }
