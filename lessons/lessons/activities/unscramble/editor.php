@@ -270,8 +270,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $sanitized = [];
 
-    foreach ($sentenceTexts as $i => $textRaw) {
-        $sentence = trim((string) $textRaw);
+    // Process ALL sentences, not just non-empty ones - preserve count
+    $maxCount = max(count($sentenceIds), count($sentenceTexts));
+    
+    for ($i = 0; $i < $maxCount; $i++) {
+        $sentence = trim((string) ($sentenceTexts[$i] ?? ''));
+        
+        // Skip only if the text is completely empty
         if ($sentence === '') {
             continue;
         }
