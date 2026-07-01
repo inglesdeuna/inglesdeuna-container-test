@@ -7,13 +7,11 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 require_once __DIR__ . '/../../core/_activity_editor_template.php';
 
-// Block student access to editor
-if (isset($_SESSION['student_logged']) && $_SESSION['student_logged']) {
+if (!empty($_SESSION['student_logged'])) {
     header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
     exit;
 }
 
-// Accept admin OR teacher session
 $isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
 if (!$isLoggedIn) {
     header('Location: /lessons/lessons/academic/login.php');
@@ -25,842 +23,231 @@ $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
 $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
 $assignment = isset($_GET['assignment']) ? trim((string) $_GET['assignment']) : '';
 
-function activities_columns(PDO $pdo): array
+function fc_columns(PDO $pdo): array
 {
     static $cache = null;
-
-    if (is_array($cache)) {
-        return $cache;
-    }
-
-    $cache = array();
-
-    $stmt = $pdo->query(
-        "SELECT column_name
-         FROM information_schema.columns
-         WHERE table_schema = 'public'
-           AND table_name = 'activities'"
-    );
-
+    if (is_array($cache)) return $cache;
+    $cache = [];
+    $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='activities'");
     foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-        if (isset($row['column_name'])) {
-            $cache[] = (string) $row['column_name'];
-        }
+        if (isset($row['column_name'])) $cache[] = (string) $row['column_name'];
     }
-
     return $cache;
 }
 
-function resolve_unit_from_activity(PDO $pdo, string $activityId): string
+function fc_default_title(): string { return 'Flashcards'; }
+function fc_title(string $title): string { $title = trim($title); return $title !== '' ? $title : fc_default_title(); }
+
+function fc_resolve_unit(PDO $pdo, string $activityId): string
 {
-    if ($activityId === '') {
-        return '';
+    if ($activityId === '') return '';
+    $cols = fc_columns($pdo);
+    foreach (['unit_id', 'unit'] as $col) {
+        if (!in_array($col, $cols, true)) continue;
+        $stmt = $pdo->prepare("SELECT {$col} FROM activities WHERE id=:id LIMIT 1");
+        $stmt->execute(['id' => $activityId]);
+        $val = $stmt->fetchColumn();
+        if ($val !== false && trim((string) $val) !== '') return (string) $val;
     }
-
-    $columns = activities_columns($pdo);
-
-    if (in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit_id
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit_id'])) {
-            return (string) $row['unit_id'];
-        }
-    }
-
-    if (in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT unit
-             FROM activities
-             WHERE id = :id
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if ($row && isset($row['unit'])) {
-            return (string) $row['unit'];
-        }
-    }
-
     return '';
 }
 
-function default_flashcards_title(): string
+function fc_normalize($raw): array
 {
-    return 'Flashcards';
+    $decoded = is_string($raw) && trim($raw) !== '' ? json_decode($raw, true) : (is_array($raw) ? $raw : []);
+    if (!is_array($decoded)) $decoded = [];
+    $title = fc_title((string)($decoded['title'] ?? ''));
+    $src = isset($decoded['cards']) && is_array($decoded['cards']) ? $decoded['cards'] : (array_is_list($decoded) ? $decoded : []);
+    $cards = [];
+    foreach ($src as $item) {
+        if (!is_array($item)) continue;
+        $text = trim((string)($item['text'] ?? $item['word'] ?? $item['english_text'] ?? ''));
+        $cards[] = [
+            'id' => trim((string)($item['id'] ?? uniqid('flashcard_'))),
+            'text' => $text,
+            'word' => $text,
+            'english_text' => trim((string)($item['english_text'] ?? '')),
+            'spanish_text' => trim((string)($item['spanish_text'] ?? '')),
+            'image' => trim((string)($item['image'] ?? '')),
+            'back_image' => trim((string)($item['back_image'] ?? '')),
+            'voice_id' => trim((string)($item['voice_id'] ?? 'nzFihrBIvB34imQBuxub')),
+            'audio' => trim((string)($item['audio'] ?? '')),
+            'example' => trim((string)($item['example'] ?? '')),
+            'ipa' => trim((string)($item['ipa'] ?? '')),
+            'meaning' => trim((string)($item['meaning'] ?? '')),
+        ];
+    }
+    return ['title' => $title, 'cards' => $cards];
 }
 
-function normalize_flashcards_title(string $title): string
+function fc_encode(string $title, array $cards): string
 {
-    $title = trim($title);
-    return $title !== '' ? $title : default_flashcards_title();
+    return json_encode(['title' => fc_title($title), 'cards' => array_values($cards)], JSON_UNESCAPED_UNICODE);
 }
 
-function normalize_flashcards_payload($rawData): array
+function fc_load(PDO $pdo, string $unit, string $activityId): array
 {
-    $default = array(
-        'title' => default_flashcards_title(),
-        'cards' => array(),
-    );
-
-    if ($rawData === null || $rawData === '') {
-        return $default;
-    }
-
-    $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
-    if (!is_array($decoded)) {
-        return $default;
-    }
-
-    $title = '';
-    $cardsSource = $decoded;
-
-    if (isset($decoded['title'])) {
-        $title = trim((string) $decoded['title']);
-    }
-
-    if (isset($decoded['cards']) && is_array($decoded['cards'])) {
-        $cardsSource = $decoded['cards'];
-    }
-
-    $cards = array();
-
-    if (is_array($cardsSource)) {
-        foreach ($cardsSource as $item) {
-            if (!is_array($item)) {
-                continue;
-            }
-
-            $cards[] = array(
-                'id' => isset($item['id']) ? trim((string) $item['id']) : uniqid('flashcard_'),
-                'english_text' => isset($item['english_text']) ? trim((string) $item['english_text']) : '',
-                'spanish_text' => isset($item['spanish_text']) ? trim((string) $item['spanish_text']) : '',
-                'text' => isset($item['text']) ? trim((string) $item['text']) : '',
-                'image' => isset($item['image']) ? trim((string) $item['image']) : '',
-                'back_image' => isset($item['back_image']) ? trim((string) $item['back_image']) : '',
-                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : 'nzFihrBIvB34imQBuxub',
-                'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
-            );
-        }
-    }
-
-    return array(
-        'title' => normalize_flashcards_title($title),
-        'cards' => $cards,
-    );
-}
-
-function encode_flashcards_payload(array $payload): string
-{
-    return json_encode(
-        array(
-            'title' => normalize_flashcards_title(isset($payload['title']) ? (string) $payload['title'] : ''),
-            'cards' => isset($payload['cards']) && is_array($payload['cards']) ? array_values($payload['cards']) : array(),
-        ),
-        JSON_UNESCAPED_UNICODE
-    );
-}
-
-function load_flashcards_activity(PDO $pdo, string $unit, string $activityId): array
-{
-    $columns = activities_columns($pdo);
-
-    $selectFields = array('id');
-    if (in_array('data', $columns, true)) {
-        $selectFields[] = 'data';
-    }
-    if (in_array('content_json', $columns, true)) {
-        $selectFields[] = 'content_json';
-    }
-    if (in_array('title', $columns, true)) {
-        $selectFields[] = 'title';
-    }
-    if (in_array('name', $columns, true)) {
-        $selectFields[] = 'name';
-    }
-
-    $fallback = array(
-        'id' => '',
-        'title' => default_flashcards_title(),
-        'cards' => array(),
-    );
-
+    $cols = fc_columns($pdo);
+    $fields = ['id'];
+    foreach (['data','content_json','title','name'] as $c) if (in_array($c, $cols, true)) $fields[] = $c;
     $row = null;
-
     if ($activityId !== '') {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE id = :id
-               AND type = 'flashcards'
-             LIMIT 1"
-        );
-        $stmt->execute(array('id' => $activityId));
+        $stmt = $pdo->prepare('SELECT '.implode(',', $fields)." FROM activities WHERE id=:id AND type='flashcards' LIMIT 1");
+        $stmt->execute(['id' => $activityId]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
-
-    if (!$row && in_array('unit_id', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit_id = :unit
-               AND type = 'flashcards'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
-        $stmt->execute(array('unit' => $unit));
+    foreach (['unit_id','unit'] as $col) {
+        if ($row || $unit === '' || !in_array($col, $cols, true)) continue;
+        $stmt = $pdo->prepare('SELECT '.implode(',', $fields)." FROM activities WHERE {$col}=:unit AND type='flashcards' ORDER BY id ASC LIMIT 1");
+        $stmt->execute(['unit' => $unit]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
     }
-
-    if (!$row && in_array('unit', $columns, true)) {
-        $stmt = $pdo->prepare(
-            "SELECT " . implode(', ', $selectFields) . "
-             FROM activities
-             WHERE unit = :unit
-               AND type = 'flashcards'
-             ORDER BY id ASC
-             LIMIT 1"
-        );
-        $stmt->execute(array('unit' => $unit));
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
-    if (!$row) {
-        return $fallback;
-    }
-
-    $rawData = null;
-    if (isset($row['data'])) {
-        $rawData = $row['data'];
-    } elseif (isset($row['content_json'])) {
-        $rawData = $row['content_json'];
-    }
-
-    $payload = normalize_flashcards_payload($rawData);
-
-    $columnTitle = '';
-    if (isset($row['title']) && trim((string) $row['title']) !== '') {
-        $columnTitle = trim((string) $row['title']);
-    } elseif (isset($row['name']) && trim((string) $row['name']) !== '') {
-        $columnTitle = trim((string) $row['name']);
-    }
-
-    if ($columnTitle !== '') {
-        $payload['title'] = $columnTitle;
-    }
-
-    return array(
-        'id' => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_flashcards_title((string) $payload['title']),
-        'cards' => isset($payload['cards']) && is_array($payload['cards']) ? $payload['cards'] : array(),
-    );
+    if (!$row) return ['id' => '', 'title' => fc_default_title(), 'cards' => []];
+    $payload = fc_normalize($row['data'] ?? ($row['content_json'] ?? ''));
+    $dbTitle = trim((string)($row['title'] ?? $row['name'] ?? ''));
+    if ($dbTitle !== '') $payload['title'] = $dbTitle;
+    $payload['id'] = (string)($row['id'] ?? '');
+    return $payload;
 }
 
-function save_flashcards_activity(PDO $pdo, string $unit, string $activityId, string $title, array $cards): string
+function fc_save(PDO $pdo, string $unit, string $activityId, string $title, array $cards): string
 {
-    $columns = activities_columns($pdo);
-    $title = normalize_flashcards_title($title);
-    $json = encode_flashcards_payload(array(
-        'title' => $title,
-        'cards' => $cards,
-    ));
-
-    $hasUnitId = in_array('unit_id', $columns, true);
-    $hasUnit = in_array('unit', $columns, true);
-    $hasData = in_array('data', $columns, true);
-    $hasContentJson = in_array('content_json', $columns, true);
-    $hasId = in_array('id', $columns, true);
-    $hasTitle = in_array('title', $columns, true);
-    $hasName = in_array('name', $columns, true);
-
+    $cols = fc_columns($pdo);
+    $json = fc_encode($title, $cards);
     $targetId = $activityId;
-
     if ($targetId === '') {
-        if ($hasUnitId) {
-            $stmt = $pdo->prepare(
-                "SELECT id
-                 FROM activities
-                 WHERE unit_id = :unit
-                   AND type = 'flashcards'
-                 ORDER BY id ASC
-                 LIMIT 1"
-            );
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
-        }
-
-        if ($targetId === '' && $hasUnit) {
-            $stmt = $pdo->prepare(
-                "SELECT id
-                 FROM activities
-                 WHERE unit = :unit
-                   AND type = 'flashcards'
-                 ORDER BY id ASC
-                 LIMIT 1"
-            );
-            $stmt->execute(array('unit' => $unit));
-            $targetId = trim((string) $stmt->fetchColumn());
+        foreach (['unit_id','unit'] as $col) {
+            if ($targetId !== '' || !in_array($col, $cols, true)) continue;
+            $stmt = $pdo->prepare("SELECT id FROM activities WHERE {$col}=:unit AND type='flashcards' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $targetId = trim((string)$stmt->fetchColumn());
         }
     }
-
+    $params = ['title' => fc_title($title), 'data' => $json, 'id' => $targetId];
     if ($targetId !== '') {
-        $setParts = array();
-        $params = array('id' => $targetId);
-
-        if ($hasData) {
-            $setParts[] = 'data = :data';
-            $params['data'] = $json;
-        }
-
-        if ($hasContentJson) {
-            $setParts[] = 'content_json = :content_json';
-            $params['content_json'] = $json;
-        }
-
-        if ($hasTitle) {
-            $setParts[] = 'title = :title';
-            $params['title'] = $title;
-        }
-
-        if ($hasName) {
-            $setParts[] = 'name = :name';
-            $params['name'] = $title;
-        }
-
-        if (!empty($setParts)) {
-            $stmt = $pdo->prepare(
-                "UPDATE activities
-                 SET " . implode(', ', $setParts) . "
-                 WHERE id = :id
-                   AND type = 'flashcards'"
-            );
-            $stmt->execute($params);
-        }
-
+        $sets = [];
+        if (in_array('data', $cols, true)) $sets[] = 'data=:data';
+        if (in_array('content_json', $cols, true)) $sets[] = 'content_json=:data';
+        if (in_array('title', $cols, true)) $sets[] = 'title=:title';
+        if (in_array('name', $cols, true)) $sets[] = 'name=:title';
+        $stmt = $pdo->prepare('UPDATE activities SET '.implode(',', $sets)." WHERE id=:id AND type='flashcards'");
+        $stmt->execute($params);
         return $targetId;
     }
-
-    $insertColumns = array();
-    $insertValues = array();
-    $params = array();
-
-    $newId = '';
-    if ($hasId) {
-        $newId = md5(random_bytes(16));
-        $insertColumns[] = 'id';
-        $insertValues[] = ':id';
-        $params['id'] = $newId;
-    }
-
-    if ($hasUnitId) {
-        $insertColumns[] = 'unit_id';
-        $insertValues[] = ':unit_id';
-        $params['unit_id'] = $unit;
-    } elseif ($hasUnit) {
-        $insertColumns[] = 'unit';
-        $insertValues[] = ':unit';
-        $params['unit'] = $unit;
-    }
-
-    $insertColumns[] = 'type';
-    $insertValues[] = "'flashcards'";
-
-    if ($hasData) {
-        $insertColumns[] = 'data';
-        $insertValues[] = ':data';
-        $params['data'] = $json;
-    }
-
-    if ($hasContentJson) {
-        $insertColumns[] = 'content_json';
-        $insertValues[] = ':content_json';
-        $params['content_json'] = $json;
-    }
-
-    if ($hasTitle) {
-        $insertColumns[] = 'title';
-        $insertValues[] = ':title';
-        $params['title'] = $title;
-    }
-
-    if ($hasName) {
-        $insertColumns[] = 'name';
-        $insertValues[] = ':name';
-        $params['name'] = $title;
-    }
-
-    $stmt = $pdo->prepare(
-        "INSERT INTO activities (" . implode(', ', $insertColumns) . ")
-         VALUES (" . implode(', ', $insertValues) . ")"
-    );
-    $stmt->execute($params);
-
+    $newId = md5(random_bytes(16));
+    $insertCols = []; $insertVals = []; $insertParams = [];
+    if (in_array('id', $cols, true)) { $insertCols[] = 'id'; $insertVals[] = ':id'; $insertParams['id'] = $newId; }
+    if (in_array('unit_id', $cols, true)) { $insertCols[] = 'unit_id'; $insertVals[] = ':unit'; $insertParams['unit'] = $unit; }
+    elseif (in_array('unit', $cols, true)) { $insertCols[] = 'unit'; $insertVals[] = ':unit'; $insertParams['unit'] = $unit; }
+    $insertCols[] = 'type'; $insertVals[] = "'flashcards'";
+    if (in_array('data', $cols, true)) { $insertCols[] = 'data'; $insertVals[] = ':data'; $insertParams['data'] = $json; }
+    if (in_array('content_json', $cols, true)) { $insertCols[] = 'content_json'; $insertVals[] = ':data'; $insertParams['data'] = $json; }
+    if (in_array('title', $cols, true)) { $insertCols[] = 'title'; $insertVals[] = ':title'; $insertParams['title'] = fc_title($title); }
+    if (in_array('name', $cols, true)) { $insertCols[] = 'name'; $insertVals[] = ':title'; $insertParams['title'] = fc_title($title); }
+    $stmt = $pdo->prepare('INSERT INTO activities ('.implode(',', $insertCols).') VALUES ('.implode(',', $insertVals).')');
+    $stmt->execute($insertParams);
     return $newId;
 }
 
-if ($unit === '' && $activityId !== '') {
-    $unit = resolve_unit_from_activity($pdo, $activityId);
-}
+if ($unit === '' && $activityId !== '') $unit = fc_resolve_unit($pdo, $activityId);
+if ($unit === '') die('Unit not specified');
 
-if ($unit === '') {
-    die('Unit not specified');
-}
-
-$activity = load_flashcards_activity($pdo, $unit, $activityId);
-$cards = isset($activity['cards']) && is_array($activity['cards']) ? $activity['cards'] : array();
-$activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_flashcards_title();
-
-if ($activityId === '' && !empty($activity['id'])) {
-    $activityId = (string) $activity['id'];
-}
+$activity = fc_load($pdo, $unit, $activityId);
+$cards = is_array($activity['cards'] ?? null) ? $activity['cards'] : [];
+$activityTitle = (string)($activity['title'] ?? fc_default_title());
+if ($activityId === '' && !empty($activity['id'])) $activityId = (string)$activity['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
-    $texts = isset($_POST['text']) && is_array($_POST['text']) ? $_POST['text'] : array();
-    $images = isset($_POST['image_existing']) && is_array($_POST['image_existing']) ? $_POST['image_existing'] : array();
-    $audios = isset($_POST['audio']) && is_array($_POST['audio']) ? $_POST['audio'] : array();
-    $voiceIds = isset($_POST['voice_id']) && is_array($_POST['voice_id']) ? $_POST['voice_id'] : array();
-    $ids = isset($_POST['card_id']) && is_array($_POST['card_id']) ? $_POST['card_id'] : array();
-    $imageFiles = isset($_FILES['image_file']) ? $_FILES['image_file'] : null;
-    $backImages = isset($_POST['back_image_existing']) && is_array($_POST['back_image_existing']) ? $_POST['back_image_existing'] : array();
-    $backImageFiles = isset($_FILES['back_image_file']) ? $_FILES['back_image_file'] : null;
-
-    $sanitized = array();
-
-    foreach ($texts as $i => $textRaw) {
-        $text = trim((string) $textRaw);
-        $image = isset($images[$i]) ? trim((string) $images[$i]) : '';
-        $backImage = isset($backImages[$i]) ? trim((string) $backImages[$i]) : '';
-        $audio = isset($audios[$i]) ? trim((string) $audios[$i]) : '';
-        $voiceId = isset($voiceIds[$i]) ? trim((string) $voiceIds[$i]) : 'nzFihrBIvB34imQBuxub';
-        if ($voiceId === '' || !preg_match('/^[A-Za-z0-9]+$/', $voiceId)) $voiceId = 'nzFihrBIvB34imQBuxub';
-        $cardId = isset($ids[$i]) && trim((string) $ids[$i]) !== '' ? trim((string) $ids[$i]) : uniqid('flashcard_');
-
-        if (
-            $imageFiles &&
-            isset($imageFiles['name'][$i]) &&
-            $imageFiles['name'][$i] !== '' &&
-            isset($imageFiles['tmp_name'][$i]) &&
-            $imageFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedImage = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
-            if ($uploadedImage) {
-                $image = $uploadedImage;
-            }
+    $title = trim((string)($_POST['activity_title'] ?? ''));
+    $texts = is_array($_POST['text'] ?? null) ? $_POST['text'] : [];
+    $examples = is_array($_POST['example'] ?? null) ? $_POST['example'] : [];
+    $ipas = is_array($_POST['ipa'] ?? null) ? $_POST['ipa'] : [];
+    $meanings = is_array($_POST['meaning'] ?? null) ? $_POST['meaning'] : [];
+    $images = is_array($_POST['image_existing'] ?? null) ? $_POST['image_existing'] : [];
+    $backImages = is_array($_POST['back_image_existing'] ?? null) ? $_POST['back_image_existing'] : [];
+    $audios = is_array($_POST['audio'] ?? null) ? $_POST['audio'] : [];
+    $voiceIds = is_array($_POST['voice_id'] ?? null) ? $_POST['voice_id'] : [];
+    $ids = is_array($_POST['card_id'] ?? null) ? $_POST['card_id'] : [];
+    $imageFiles = $_FILES['image_file'] ?? null;
+    $backImageFiles = $_FILES['back_image_file'] ?? null;
+    $out = [];
+    foreach ($texts as $i => $raw) {
+        $text = trim((string)$raw);
+        $image = trim((string)($images[$i] ?? ''));
+        $backImage = trim((string)($backImages[$i] ?? ''));
+        if ($imageFiles && !empty($imageFiles['tmp_name'][$i])) {
+            $up = upload_to_cloudinary($imageFiles['tmp_name'][$i]);
+            if ($up) $image = $up;
         }
-
-        if (
-            $backImageFiles &&
-            isset($backImageFiles['name'][$i]) &&
-            $backImageFiles['name'][$i] !== '' &&
-            isset($backImageFiles['tmp_name'][$i]) &&
-            $backImageFiles['tmp_name'][$i] !== ''
-        ) {
-            $uploadedBackImage = upload_to_cloudinary($backImageFiles['tmp_name'][$i]);
-            if ($uploadedBackImage) {
-                $backImage = $uploadedBackImage;
-            }
+        if ($backImageFiles && !empty($backImageFiles['tmp_name'][$i])) {
+            $up = upload_to_cloudinary($backImageFiles['tmp_name'][$i]);
+            if ($up) $backImage = $up;
         }
-
-        if ($text === '' && $image === '' && $backImage === '') {
-            continue;
-        }
-
-        $sanitized[] = array(
-            'id' => $cardId,
+        $example = trim((string)($examples[$i] ?? ''));
+        $ipa = trim((string)($ipas[$i] ?? ''));
+        $meaning = trim((string)($meanings[$i] ?? ''));
+        if ($text === '' && $image === '' && $backImage === '' && $ipa === '' && $meaning === '' && $example === '') continue;
+        $out[] = [
+            'id' => trim((string)($ids[$i] ?? '')) ?: uniqid('flashcard_'),
             'text' => $text,
+            'word' => $text,
             'image' => $image,
             'back_image' => $backImage,
-            'voice_id' => $voiceId,
-            'audio' => $audio,
-        );
+            'example' => $example,
+            'ipa' => $ipa,
+            'meaning' => $meaning,
+            'voice_id' => trim((string)($voiceIds[$i] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
+            'audio' => trim((string)($audios[$i] ?? '')),
+        ];
     }
-
-    $savedActivityId = save_flashcards_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
-
-    $params = array(
-        'unit=' . urlencode($unit),
-        'saved=1'
-    );
-
-    if ($savedActivityId !== '') {
-        $params[] = 'id=' . urlencode($savedActivityId);
-    } elseif ($activityId !== '') {
-        $params[] = 'id=' . urlencode($activityId);
-    }
-
-    if ($assignment !== '') {
-        $params[] = 'assignment=' . urlencode($assignment);
-    }
-
-    if ($source !== '') {
-        $params[] = 'source=' . urlencode($source);
-    }
-
-    header('Location: editor.php?' . implode('&', $params));
+    $savedId = fc_save($pdo, $unit, $activityId, $title, $out);
+    $params = ['unit='.urlencode($unit), 'saved=1', 'id='.urlencode($savedId)];
+    if ($assignment !== '') $params[] = 'assignment='.urlencode($assignment);
+    if ($source !== '') $params[] = 'source='.urlencode($source);
+    header('Location: editor.php?'.implode('&', $params));
     exit;
 }
 
 ob_start();
 ?>
 <style>
-.flashcards-form{
-    max-width:900px;
-    margin:0 auto;
-    text-align:left;
-}
-
-.title-box{
-    background:#f9fafb;
-    padding:14px;
-    margin-bottom:14px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-}
-
-.title-box label{
-    display:block;
-    font-weight:700;
-    margin-bottom:8px;
-}
-
-.title-box input{
-    width:100%;
-    padding:10px 12px;
-    border-radius:8px;
-    border:1px solid #ccc;
-    font-size:15px;
-}
-
-.card-item{
-    background:#f9fafb;
-    padding:14px;
-    margin-bottom:12px;
-    border-radius:12px;
-    border:1px solid #e5e7eb;
-}
-
-.card-item label{
-    display:block;
-    font-weight:700;
-    margin-bottom:6px;
-}
-
-.card-item input[type="text"],
-.card-item input[type="file"]{
-    width:100%;
-    padding:10px;
-    border:1px solid #d1d5db;
-    border-radius:8px;
-    margin:0 0 12px 0;
-    box-sizing:border-box;
-}
-
-.image-preview{
-    display:block;
-    max-width:120px;
-    max-height:120px;
-    object-fit:contain;
-    border-radius:10px;
-    border:1px solid #d1d5db;
-    background:#fff;
-    margin-bottom:10px;
-}
-
-.toolbar-row{
-    display:flex;
-    gap:10px;
-    flex-wrap:wrap;
-    justify-content:center;
-    margin-top:8px;
-}
-
-.btn-add{
-    background:#16a34a;
-    color:#fff;
-    padding:10px 14px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-}
-.save-btn{
-    background:linear-gradient(180deg,#0d9488,#0f766e);
-    color:#fff;
-    padding:10px 20px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:800;
-    font-family:'Nunito','Segoe UI',sans-serif;
-    font-size:15px;
-    transition:transform .15s ease, filter .15s ease;
-    box-shadow:0 2px 8px rgba(13,148,136,.22);
-}
-.save-btn:hover{
-    filter:brightness(1.07);
-    transform:translateY(-1px);
-}
-
-.btn-remove{
-    background:#ef4444;
-    color:#fff;
-    border:none;
-    padding:8px 12px;
-    border-radius:8px;
-    cursor:pointer;
-    font-weight:700;
-}
-
-.fc-tts-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;margin-bottom:8px}
-.fc-tts-row select{min-width:220px;padding:10px;border:1px solid #d1d5db;border-radius:8px}
-.fc-tts-btn{background:#1E9A7A;color:#fff;border:none;border-radius:999px;padding:11px 18px;font-size:12px;font-weight:900;cursor:pointer}
-.fc-tts-status{font-size:12px;font-weight:800;min-height:18px;margin-bottom:8px}
-.fc-tts-preview{display:flex;align-items:center;gap:10px;margin-bottom:10px}.fc-tts-preview audio{flex:1;height:36px}.fc-tts-remove{background:none;border:none;color:#E24B4A;font-size:11px;font-weight:900;cursor:pointer}
-.fc-tts-status.stale{color:#b45309}
+.flashcards-form{max-width:940px;margin:0 auto;text-align:left;font-family:'Nunito','Segoe UI',sans-serif}.title-box,.card-item{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 6px 18px rgba(15,23,42,.04)}label{display:block;font-weight:800;margin:8px 0 6px;color:#1f2937}.title-box input,.card-item input[type=text],.card-item input[type=file],.card-item select{width:100%;padding:10px 12px;border:1px solid #d1d5db;border-radius:9px;font-size:14px;box-sizing:border-box}.ipa-meaning-row{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;align-items:end;margin:8px 0 12px}.autofill-btn,.btn-autofill-all{background:#7F77DD;color:#fff;border:0;border-radius:999px;padding:10px 14px;font-weight:900;cursor:pointer}.btn-autofill-all{background:#F97316}.toolbar-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.btn-add{background:#16a34a;color:#fff}.save-btn{background:#0d9488;color:#fff}.btn-remove{background:#ef4444;color:#fff;margin-top:12px}.btn-add,.save-btn,.btn-remove{border:0;border-radius:9px;padding:10px 14px;font-weight:800;cursor:pointer}.image-preview{display:block;max-width:120px;max-height:120px;object-fit:contain;border-radius:10px;border:1px solid #d1d5db;background:#fff;margin-bottom:10px}.small-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status{font-size:12px;font-weight:800;color:#7F77DD;min-height:18px}@media(max-width:760px){.ipa-meaning-row,.small-grid{grid-template-columns:1fr}.autofill-btn{width:100%}}
 </style>
-
-<?php if (isset($_GET['saved'])) { ?>
-    <p style="color:green;font-weight:bold;margin-bottom:15px;">✔ Saved successfully</p>
-<?php } ?>
-
+<?php if (isset($_GET['saved'])) { ?><p style="color:green;font-weight:bold">✔ Saved successfully</p><?php } ?>
 <form class="flashcards-form" id="flashcardsForm" method="post" enctype="multipart/form-data">
-    <div class="title-box">
-        <label for="activity_title">Activity title</label>
-        <input
-            id="activity_title"
-            type="text"
-            name="activity_title"
-            value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>"
-            placeholder="Example: Animals Flashcards"
-            required
-        >
-    </div>
-
-    <div id="cardsContainer">
-        <?php foreach ($cards as $card) { ?>
-            <div class="card-item">
-                <input type="hidden" name="card_id[]" value="<?= htmlspecialchars(isset($card['id']) ? $card['id'] : uniqid('flashcard_'), ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars(isset($card['image']) ? $card['image'] : '', ENT_QUOTES, 'UTF-8') ?>">
-                <input type="hidden" name="audio[]" value="<?= htmlspecialchars(isset($card['audio']) ? $card['audio'] : '', ENT_QUOTES, 'UTF-8') ?>">
-
-                <label>Word / text</label>
-                <input type="text" name="text[]" value="<?= htmlspecialchars(isset($card['text']) ? $card['text'] : '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Write the word">
-
-                <div class="fc-tts-row">
-                    <div>
-                        <label>Voice</label>
-                        <select name="voice_id[]" class="js-fc-voiceid">
-                            <option value="nzFihrBIvB34imQBuxub"<?= ((isset($card['voice_id']) ? $card['voice_id'] : 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub') ? ' selected' : '' ?>>Adult Male (Josh)</option>
-                            <option value="NoOVOzCQFLOvtsMoNcdT"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'NoOVOzCQFLOvtsMoNcdT') ? ' selected' : '' ?>>Adult Female (Lily)</option>
-                            <option value="Nggzl2QAXh3OijoXD116"<?= ((isset($card['voice_id']) ? $card['voice_id'] : '') === 'Nggzl2QAXh3OijoXD116') ? ' selected' : '' ?>>Child (Candy)</option>
-                        </select>
-                    </div>
-                    <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
-                </div>
-                <div class="fc-tts-status js-fc-tts-status"></div>
-                <?php if (!empty($card['audio'])) { ?>
-                    <div class="fc-tts-preview js-fc-tts-preview"><audio src="<?= htmlspecialchars($card['audio'], ENT_QUOTES, 'UTF-8') ?>" controls preload="none"></audio><button type="button" class="fc-tts-remove js-fc-remove-tts">✖ Remove</button></div>
-                <?php } ?>
-
-                <label>Image (optional)</label>
-                <?php if (!empty($card['image'])) { ?>
-                    <img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8') ?>" alt="flashcard-image" class="image-preview">
-                <?php } ?>
-                <input type="file" name="image_file[]" accept="image/*">
-
-                <input type="hidden" name="back_image_existing[]" value="<?= htmlspecialchars($card['back_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-                <label>Back image (optional)</label>
-                <?php if (!empty($card['back_image'])): ?>
-                    <img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" alt="back image preview" class="image-preview">
-                <?php endif; ?>
-                <input type="file" name="back_image_file[]" accept="image/*">
-
-                <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
-            </div>
-        <?php } ?>
-    </div>
-
-    <div class="toolbar-row">
-        <button type="button" class="btn-add" onclick="addCard()">+ Add Card</button>
-        <button type="submit" class="save-btn">💾 Save</button>
-    </div>
-</form>
-
-<script>
-let formChanged = false;
-let formSubmitted = false;
-
-function markChanged() {
-    formChanged = true;
-}
-
-function markCardAudioStale(card) {
-    if (!card) return;
-    var audioInput = card.querySelector('input[name="audio[]"]');
-    var preview = card.querySelector('.js-fc-tts-preview');
-    var statusEl = card.querySelector('.js-fc-tts-status');
-    if (audioInput && audioInput.value) {
-        audioInput.value = '';
-        if (preview) preview.remove();
-        if (statusEl) {
-            statusEl.textContent = 'Voice/text changed. Generate audio again.';
-            statusEl.classList.add('stale');
-        }
-    }
-}
-
-function removeCard(button) {
-    const item = button.closest('.card-item');
-    if (item) {
-        item.remove();
-        markChanged();
-    }
-}
-
-function addCard() {
-    const container = document.getElementById('cardsContainer');
-    const div = document.createElement('div');
-    div.className = 'card-item';
-    div.innerHTML = `
-        <input type="hidden" name="card_id[]" value="flashcard_${Date.now()}_${Math.floor(Math.random() * 1000)}">
-        <input type="hidden" name="image_existing[]" value="">
-        <input type="hidden" name="audio[]" value="">
-
-        <label>Word / text</label>
-        <input type="text" name="text[]" placeholder="Write the word">
-
-        <div class="fc-tts-row">
-            <div>
-                <label>Voice</label>
-                <select name="voice_id[]" class="js-fc-voiceid">
-                    <option value="nzFihrBIvB34imQBuxub">Adult Male (Josh)</option>
-                    <option value="NoOVOzCQFLOvtsMoNcdT">Adult Female (Lily)</option>
-                    <option value="Nggzl2QAXh3OijoXD116">Child (Candy)</option>
-                </select>
-            </div>
-            <button type="button" class="fc-tts-btn js-fc-generate-tts">Generate audio</button>
-        </div>
-        <div class="fc-tts-status js-fc-tts-status"></div>
-
-        <label>Image (optional)</label>
-        <input type="file" name="image_file[]" accept="image/*">
-
-        <input type="hidden" name="back_image_existing[]" value="">
-        <label>Back image (optional)</label>
-        <input type="file" name="back_image_file[]" accept="image/*">
-
+  <div class="title-box"><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required></div>
+  <div class="toolbar-row" style="margin-bottom:14px"><button type="button" class="btn-autofill-all" id="autofillAll">Auto-fill all words</button></div>
+  <div id="cardsContainer">
+    <?php foreach ($cards as $card) { ?>
+      <div class="card-item word-row">
+        <input type="hidden" name="card_id[]" value="<?= htmlspecialchars($card['id'] ?? uniqid('flashcard_'), ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($card['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="back_image_existing[]" value="<?= htmlspecialchars($card['back_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="audio[]" value="<?= htmlspecialchars($card['audio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+        <input type="hidden" name="voice_id[]" value="<?= htmlspecialchars($card['voice_id'] ?? 'nzFihrBIvB34imQBuxub', ENT_QUOTES, 'UTF-8') ?>">
+        <label>Word / text</label><input class="word-input" type="text" name="text[]" value="<?= htmlspecialchars($card['text'] ?? $card['word'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="coral reef">
+        <label>Example sentence (optional)</label><input class="example-input" type="text" name="example[]" value="<?= htmlspecialchars($card['example'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="The coral reef was full of colorful fish.">
+        <div class="ipa-meaning-row"><input class="ipa-input" type="text" name="ipa[]" value="<?= htmlspecialchars($card['ipa'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="/ˈkɒr.əl riːf/"><input class="meaning-input" type="text" name="meaning[]" value="<?= htmlspecialchars($card['meaning'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Short meaning in English"><button type="button" class="autofill-btn">Auto-fill pronunciation &amp; meaning</button></div>
+        <div class="status"></div>
+        <div class="small-grid"><div><label>Image (optional)</label><?php if (!empty($card['image'])) { ?><img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="image_file[]" accept="image/*"></div><div><label>Back image (optional)</label><?php if (!empty($card['back_image'])) { ?><img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="back_image_file[]" accept="image/*"></div></div>
         <button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button>
-    `;
-    container.appendChild(div);
-    bindChangeTracking(div);
-    markChanged();
-}
-
-function bindChangeTracking(scope) {
-    const elements = scope.querySelectorAll('input, textarea, select');
-    elements.forEach(function(el) {
-        el.addEventListener('input', markChanged);
-        el.addEventListener('change', markChanged);
-    });
-}
-
-document.addEventListener('DOMContentLoaded', function () {
-    bindChangeTracking(document);
-
-    document.getElementById('cardsContainer').addEventListener('input', function (e) {
-        if (e.target.matches('input[name="text[]"]')) {
-            markCardAudioStale(e.target.closest('.card-item'));
-        }
-    });
-
-    document.getElementById('cardsContainer').addEventListener('change', function (e) {
-        if (e.target.matches('.js-fc-voiceid')) {
-            markCardAudioStale(e.target.closest('.card-item'));
-        }
-    });
-
-    document.getElementById('cardsContainer').addEventListener('click', function (e) {
-        var generateBtn = e.target.closest('.js-fc-generate-tts');
-        var removeBtn = e.target.closest('.js-fc-remove-tts');
-        if (generateBtn) {
-            var card = generateBtn.closest('.card-item');
-            var textInput = card ? card.querySelector('input[name="text[]"]') : null;
-            var voiceSelect = card ? card.querySelector('.js-fc-voiceid') : null;
-            var statusEl = card ? card.querySelector('.js-fc-tts-status') : null;
-            var audioInput = card ? card.querySelector('input[name="audio[]"]') : null;
-            var text = textInput ? textInput.value.trim() : '';
-            if (!text) { alert('Please enter the word first.'); return; }
-            generateBtn.disabled = true;
-            if (statusEl) { statusEl.textContent = 'Generating...'; statusEl.style.color = ''; }
-            var fd = new FormData();
-            fd.append('text', text);
-            fd.append('voice_id', voiceSelect ? voiceSelect.value : 'nzFihrBIvB34imQBuxub');
-            fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    if (data.error) throw new Error(data.error);
-                    if (audioInput) audioInput.value = data.url;
-                    var old = card.querySelector('.js-fc-tts-preview');
-                    if (old) old.remove();
-                    var preview = document.createElement('div');
-                    preview.className = 'fc-tts-preview js-fc-tts-preview';
-                    preview.innerHTML = '<audio src="' + data.url + '" controls preload="none"></audio><button type="button" class="fc-tts-remove js-fc-remove-tts">✖ Remove</button>';
-                    card.insertBefore(preview, card.querySelector('label:nth-of-type(2)'));
-                    if (statusEl) { statusEl.textContent = 'Audio generated successfully'; statusEl.style.color = '#1D9E75'; }
-                    if (statusEl) statusEl.classList.remove('stale');
-                    markChanged();
-                })
-                .catch(function (err) {
-                    var msg = err && err.message ? err.message : 'Generation failed';
-                    if (statusEl) {
-                        if (/api key not configured/i.test(msg)) {
-                            statusEl.textContent = 'API key missing: this card will use browser voice profile on playback.';
-                            statusEl.style.color = '#b45309';
-                        } else {
-                            statusEl.textContent = '✘ ' + msg;
-                            statusEl.style.color = '#E24B4A';
-                        }
-                    }
-                })
-                .finally(function () { generateBtn.disabled = false; });
-        }
-        if (removeBtn) {
-            var card2 = removeBtn.closest('.card-item');
-            var audioInput2 = card2 ? card2.querySelector('input[name="audio[]"]') : null;
-            var statusEl2 = card2 ? card2.querySelector('.js-fc-tts-status') : null;
-            if (audioInput2) audioInput2.value = '';
-            var preview2 = card2 ? card2.querySelector('.js-fc-tts-preview') : null;
-            if (preview2) preview2.remove();
-            if (statusEl2) { statusEl2.textContent = 'Audio removed.'; statusEl2.style.color = ''; statusEl2.classList.remove('stale'); }
-            markChanged();
-        }
-    });
-
-    const form = document.getElementById('flashcardsForm');
-    if (form) {
-        form.addEventListener('submit', function () {
-            formSubmitted = true;
-            formChanged = false;
-        });
-    }
-});
-
-window.addEventListener('beforeunload', function (e) {
-    if (formChanged && !formSubmitted) {
-        e.preventDefault();
-        e.returnValue = '';
-    }
-});
+      </div>
+    <?php } ?>
+  </div>
+  <div class="toolbar-row"><button type="button" class="btn-add" onclick="addCard()">+ Add Card</button><button type="submit" class="save-btn">💾 Save</button></div>
+</form>
+<script>
+let formChanged=false, formSubmitted=false;
+function markChanged(){formChanged=true}
+function removeCard(btn){const row=btn.closest('.card-item'); if(row){row.remove(); markChanged();}}
+function cardHtml(){return '<div class="card-item word-row"><input type="hidden" name="card_id[]" value="flashcard_'+Date.now()+'_'+Math.floor(Math.random()*1000)+'"><input type="hidden" name="image_existing[]" value=""><input type="hidden" name="back_image_existing[]" value=""><input type="hidden" name="audio[]" value=""><input type="hidden" name="voice_id[]" value="nzFihrBIvB34imQBuxub"><label>Word / text</label><input class="word-input" type="text" name="text[]" placeholder="coral reef"><label>Example sentence (optional)</label><input class="example-input" type="text" name="example[]" placeholder="The coral reef was full of colorful fish."><div class="ipa-meaning-row"><input class="ipa-input" type="text" name="ipa[]" placeholder="/ˈkɒr.əl riːf/"><input class="meaning-input" type="text" name="meaning[]" placeholder="Short meaning in English"><button type="button" class="autofill-btn">Auto-fill pronunciation &amp; meaning</button></div><div class="status"></div><div class="small-grid"><div><label>Image (optional)</label><input type="file" name="image_file[]" accept="image/*"></div><div><label>Back image (optional)</label><input type="file" name="back_image_file[]" accept="image/*"></div></div><button type="button" class="btn-remove" onclick="removeCard(this)">✖ Remove</button></div>'}
+function addCard(){const c=document.getElementById('cardsContainer'); c.insertAdjacentHTML('beforeend', cardHtml()); bindChangeTracking(c.lastElementChild); markChanged();}
+function bindChangeTracking(scope){scope.querySelectorAll('input,select,textarea').forEach(el=>{el.addEventListener('input',markChanged);el.addEventListener('change',markChanged)})}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
+async function autofillRow(row){const word=row.querySelector('.word-input')?.value.trim()||''; const context=row.querySelector('.example-input')?.value.trim()||''; const btn=row.querySelector('.autofill-btn'); const status=row.querySelector('.status'); if(!word){if(status)status.textContent='Enter a word first.'; return false;} if(btn){btn.disabled=true;btn.textContent='Filling...'} if(status)status.textContent='Filling pronunciation and meaning...'; try{const body='word='+encodeURIComponent(word)+'&context='+encodeURIComponent(context); const res=await fetch('/lessons/lessons/api/autofill_word.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,credentials:'same-origin'}); const data=await res.json(); if(!res.ok||data.error) throw new Error(data.error||'Auto-fill failed'); if(data.ipa) row.querySelector('.ipa-input').value=data.ipa; if(data.meaning) row.querySelector('.meaning-input').value=data.meaning; if(status)status.textContent='Auto-fill complete. Review before saving.'; markChanged(); return true;}catch(e){if(status)status.textContent='Auto-fill failed. Type manually.'; alert('Auto-fill failed. You can type the pronunciation and meaning manually.'); return false;}finally{if(btn){btn.disabled=false;btn.textContent='Auto-fill pronunciation & meaning'}}}
+document.addEventListener('DOMContentLoaded',()=>{bindChangeTracking(document); document.getElementById('cardsContainer').addEventListener('click',e=>{const b=e.target.closest('.autofill-btn'); if(b) autofillRow(b.closest('.word-row'));}); document.getElementById('autofillAll').addEventListener('click',async()=>{const rows=[...document.querySelectorAll('.word-row')]; const all=document.getElementById('autofillAll'); all.disabled=true; all.textContent='Filling all...'; for(const row of rows){await autofillRow(row); await sleep(300);} all.disabled=false; all.textContent='Auto-fill all words';}); document.getElementById('flashcardsForm').addEventListener('submit',()=>{formSubmitted=true;formChanged=false});});
+window.addEventListener('beforeunload',e=>{if(formChanged&&!formSubmitted){e.preventDefault();e.returnValue='';}});
 </script>
-
 <?php
 $content = ob_get_clean();
-render_activity_editor('', '', $content);
+render_activity_editor('Flashcards Editor', '🃏', $content);
