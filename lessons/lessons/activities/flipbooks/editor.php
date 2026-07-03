@@ -46,6 +46,11 @@ $payload = [
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
 ];
 
+$existingPdfServeUrl = '';
+if ($payload['pdf_url'] !== '') {
+    $existingPdfServeUrl = '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode($activityId);
+}
+
 $currentFileName = '';
 if ($payload['pdf_url'] !== '') {
     $path = parse_url($payload['pdf_url'], PHP_URL_PATH);
@@ -90,7 +95,7 @@ ob_start();
                     <?php if ($payload['pdf_url'] !== ''): ?>
                         <div class="mt-2">
                             <a
-                                href="<?php echo htmlspecialchars($payload['pdf_url'], ENT_QUOTES, 'UTF-8'); ?>"
+                                href="<?php echo htmlspecialchars($existingPdfServeUrl, ENT_QUOTES, 'UTF-8'); ?>"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 class="btn btn-outline-secondary btn-sm"
