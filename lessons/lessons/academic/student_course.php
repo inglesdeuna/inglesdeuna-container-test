@@ -710,6 +710,7 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
                 'id'        => (string) ($act['id'] ?? ''),
                 'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
                 'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+                'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
             ];
         }
         return false;
@@ -718,7 +719,7 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
 }));
 // -------------------------------------------------------------------------
 
-$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['serve_url'] ?? '') : '';
+$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['download_url'] ?? '') : '';
 
 $total = count($activities);
 
