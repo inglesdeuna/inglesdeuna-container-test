@@ -647,6 +647,7 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
                 'id'        => (string) ($act['id'] ?? ''),
                 'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
                 'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+                'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
             ];
         }
         return false;
@@ -655,7 +656,7 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
 }));
 // -------------------------------------------------------------------------
 
-$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['serve_url'] ?? '') : '';
+$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['download_url'] ?? '') : '';
 
 $mix = activity_mix($activities);
 
@@ -1510,7 +1511,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
                target="_blank"
                rel="noopener noreferrer">View</a>
             <a class="side-worksheet-btn download"
-               href="<?php echo h($_ws['serve_url']); ?>"
+               href="<?php echo h((string) ($_ws['download_url'] ?? '')); ?>"
                download="worksheet.pdf">Download</a>
           </div>
         </div>
@@ -1819,4 +1820,3 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 </script>
 </body>
 </html>
-

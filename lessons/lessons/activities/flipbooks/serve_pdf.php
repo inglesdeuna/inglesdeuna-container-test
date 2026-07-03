@@ -10,6 +10,64 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 
+function safe_pdf_filename(string $pdfUrl): string
+{
+    $path = (string) parse_url($pdfUrl, PHP_URL_PATH);
+    $name = basename($path !== '' ? $path : $pdfUrl);
+    $name = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $name);
+
+    if (!is_string($name) || $name === '' || $name === '.' || $name === '..') {
+        return 'document.pdf';
+    }
+
+    if (!str_ends_with(strtolower($name), '.pdf')) {
+        $name .= '.pdf';
+    }
+
+    return $name;
+}
+
+function resolve_local_pdf_path(string $pdfUrl): ?string
+{
+    $parsedPath = (string) parse_url($pdfUrl, PHP_URL_PATH);
+    $rawPath = $parsedPath !== '' ? $parsedPath : $pdfUrl;
+    $trimmedPath = ltrim($rawPath, '/');
+    $baseName = basename($trimmedPath);
+
+    $allowedBases = array_filter([
+        realpath(__DIR__ . '/uploads/pdfs') ?: null,
+        realpath(__DIR__ . '/../../admin/uploads') ?: null,
+    ]);
+
+    $candidatePaths = [];
+
+    if ($trimmedPath !== '') {
+        $candidatePaths[] = __DIR__ . '/../../../../' . $trimmedPath;
+        $candidatePaths[] = __DIR__ . '/' . $trimmedPath;
+        $candidatePaths[] = __DIR__ . '/../../admin/' . $trimmedPath;
+    }
+
+    if ($baseName !== '' && $baseName !== '.' && $baseName !== '..') {
+        $candidatePaths[] = __DIR__ . '/uploads/pdfs/' . $baseName;
+        $candidatePaths[] = __DIR__ . '/../../admin/uploads/' . $baseName;
+    }
+
+    foreach (array_unique($candidatePaths) as $candidatePath) {
+        $realPath = realpath($candidatePath);
+        if ($realPath === false || !is_file($realPath)) {
+            continue;
+        }
+
+        foreach ($allowedBases as $allowedBase) {
+            if ($realPath === $allowedBase || str_starts_with($realPath, $allowedBase . DIRECTORY_SEPARATOR)) {
+                return $realPath;
+            }
+        }
+    }
+
+    return null;
+}
+
 $activityId    = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $forceDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
@@ -34,18 +92,11 @@ if (!$row) {
 
 $data = json_decode($row['data'] ?? '', true);
 $pdfUrl = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
+$downloadName = safe_pdf_filename($pdfUrl);
 
 if ($pdfUrl === '') {
     http_response_code(404);
     exit('No hay PDF guardado para esta actividad.');
-}
-
-// Handle remote URL storage (Cloudinary/raw) through the proxy.
-if (preg_match('/^https?:\/\//i', $pdfUrl)) {
-    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl)
-        . ($forceDownload ? '&dl=1' : '');
-    header('Location: ' . $proxyUrl, true, 302);
-    exit;
 }
 
 // Handle base64 data URI (new storage method)
@@ -60,33 +111,29 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
 
     header('Content-Type: application/pdf');
     header('Content-Length: ' . strlen($binary));
-    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
+    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
     header('Cache-Control: private, max-age=3600');
     echo $binary;
     exit;
 }
 
-// Handle legacy local file path (fallback for any previously uploaded files)
-if (str_starts_with($pdfUrl, '/')) {
-    // Repo root from this file: flipbooks -> activities -> lessons -> lessons -> repo root
-    $localPath = __DIR__ . '/../../../../' . $pdfUrl;
-    $realLocal = realpath($localPath);
+// Handle local/legacy uploads before proxying remote URLs.
+$localPdfPath = resolve_local_pdf_path($pdfUrl);
+if ($localPdfPath !== null) {
+    header('Content-Type: application/pdf');
+    header('Content-Length: ' . filesize($localPdfPath));
+    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
+    header('Cache-Control: private, max-age=3600');
+    readfile($localPdfPath);
+    exit;
+}
 
-    // Security: ensure the resolved path is inside the uploads directory
-    $uploadBase = realpath(__DIR__ . '/uploads/pdfs') ?: '';
-    if (
-        $realLocal !== false &&
-        $uploadBase !== '' &&
-        str_starts_with($realLocal, $uploadBase) &&
-        is_file($realLocal)
-    ) {
-        header('Content-Type: application/pdf');
-        header('Content-Length: ' . filesize($realLocal));
-        header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
-        header('Cache-Control: private, max-age=3600');
-        readfile($realLocal);
-        exit;
-    }
+// Handle remote URL storage (Cloudinary/raw) through the proxy.
+if (preg_match('/^https?:\/\//i', $pdfUrl)) {
+    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl)
+        . ($forceDownload ? '&dl=1' : '');
+    header('Location: ' . $proxyUrl, true, 302);
+    exit;
 }
 
 http_response_code(404);
