@@ -703,7 +703,7 @@ $actCount = count($sections);
 <title><?= h($unitName) ?> — Worksheet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ════════════════════════════════════════════════════════
    ONES Worksheet — palette: white · #F97316 · #7F77DD · #1a1a2e
@@ -732,7 +732,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
            background: var(--ink); display: flex; align-items: center;
            gap: 12px; padding: 9px 22px;
            box-shadow: 0 2px 12px rgba(0,0,0,.25); }
-.tb-brand { font-family: 'Fredoka One', sans-serif; font-size: 15px;
+.tb-brand { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 15px;
             color: var(--ora); margin-right: auto; }
 .tb-unit  { font-size: 12px; color: rgba(255,255,255,.55);
             max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -757,7 +757,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
               display: flex; align-items: center; justify-content: space-between;
               background: var(--white); }
 .lockup { display: flex; align-items: center; gap: 14px; }
-.ones-text { font-family: 'Fredoka One', sans-serif; font-size: 30px;
+.ones-text { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 30px;
              color: var(--ora); line-height: 1; letter-spacing: -.5px; }
 .tagline { font-size: 9px; font-weight: 800; color: var(--lila);
            letter-spacing: 2.5px; font-family: 'Nunito', sans-serif; }
@@ -791,7 +791,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
              justify-content: space-between; gap: 14px; }
 .unit-eyebrow { font-size: 8.5px; font-weight: 800; text-transform: uppercase;
                 letter-spacing: .15em; color: var(--lila3); margin-bottom: 4px; }
-.unit-title { font-family: 'Fredoka One', sans-serif; font-size: 18px;
+.unit-title { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 18px;
               color: var(--ink); line-height: 1.2; margin-bottom: 3px; }
 .unit-sub { font-size: 10px; color: var(--lila3); font-weight: 600; }
 .unit-chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
@@ -801,7 +801,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 .grade-badge { background: var(--lila); border-radius: 10px; padding: 7px 14px; text-align: center; flex-shrink: 0; }
 .gb-lbl { font-size: 7.5px; font-weight: 800; text-transform: uppercase;
           letter-spacing: .12em; color: rgba(255,255,255,.7); display: block; margin-bottom: 2px; }
-.gb-val { font-family: 'Fredoka One', sans-serif; font-size: 15px; color: #fff; }
+.gb-val { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 15px; color: #fff; }
 
 /* ── Student fields ── */
 .student-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
@@ -825,8 +825,8 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 
 .sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
 .snum { width: 32px; height: 32px; border-radius: 50%; display: flex;
-        align-items: center; justify-content: center; font-family: 'Fredoka One', sans-serif;
-        font-size: 15px; font-weight: 800; color: #fff; flex-shrink: 0; }
+        align-items: center; justify-content: center; font-family: 'Fredoka', sans-serif;
+        font-size: 15px; font-weight: 700; color: #fff; flex-shrink: 0; }
 .snum.ora  { background: var(--ora); }
 .snum.lila { background: var(--lila); }
 .sec-kicker { font-size: 8px; font-weight: 800; text-transform: uppercase;
