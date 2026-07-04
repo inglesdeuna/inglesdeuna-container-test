@@ -497,9 +497,9 @@ body {
 
 .dict-image {
     display: none;
-    width: min(100%, 220px);
+    width: min(100%, 340px);
     max-width: 100%;
-    max-height: 170px;
+    max-height: 280px;
     object-fit: contain;
     border-radius: 22px;
     margin: 0 auto 18px auto;
@@ -516,7 +516,7 @@ body {
 .dict-answer-box {
     width: 100%;
     max-width: 620px;
-    min-height: 130px;
+    min-height: 108px;
     padding: 16px;
     border: 1.5px solid #EDE9FA;
     background: #ffffff;
@@ -846,11 +846,11 @@ body {
     }
 
     .dict-image {
-        max-height: 140px;
+        max-height: 220px;
     }
 
     .dict-answer-box {
-        min-height: 120px;
+        min-height: 100px;
         border-radius: 18px;
     }
 

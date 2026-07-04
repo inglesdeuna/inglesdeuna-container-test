@@ -189,9 +189,9 @@ body{margin:0!important;padding:0!important;background:#F8F7FE!important;font-fa
 .pron-fill{height:100%;width:0%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px;transition:width .45s ease}
 .pron-count{min-width:74px;text-align:center;padding:7px 11px;border-radius:999px;background:#7F77DD;color:#ffffff;font-size:12px;font-weight:900}
 
-.pron-card{min-height:480px;border:1px solid #EDE9FA;border-radius:30px;background:#ffffff;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-shadow:0 8px 24px rgba(127,119,221,.09)}
+.pron-card{min-height:540px;border:1px solid #EDE9FA;border-radius:30px;background:#ffffff;padding:18px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;box-shadow:0 8px 24px rgba(127,119,221,.09)}
 .pron-listen-cue{display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;padding:6px 13px;border-radius:999px;background:#EEEDFE;color:#534AB7;font-size:12px;font-weight:900}
-.pron-image{width:100%;max-width:600px;height:340px;margin-bottom:14px;border-radius:24px;background:#ffffff;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px}
+.pron-image{width:100%;max-width:680px;height:400px;margin-bottom:14px;border-radius:24px;background:#ffffff;border:1px solid #EDE9FA;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:10px}
 .pron-image img{width:100%;height:100%;object-fit:contain;display:block;border-radius:18px}
 .pron-placeholder{font-family:'Fredoka',sans-serif;font-size:62px;color:#CECBF6;font-weight:700;line-height:1.05;padding:0 12px;overflow-wrap:anywhere}
 .pron-word{max-width:620px;font-family:'Nunito','Segoe UI',sans-serif;font-size:clamp(20px,2.8vw,30px);font-weight:900;line-height:1.18;color:#534AB7;overflow-wrap:anywhere}
@@ -238,8 +238,8 @@ body.presentation-mode .pron-shell{position:absolute!important;inset:0!important
 @media(max-width:640px){
     .pron-shell{padding:12px}
     .pron-board{padding:14px;border-radius:26px}
-    .pron-card{min-height:420px;padding:14px;border-radius:24px}
-    .pron-image{height:280px;border-radius:20px}
+    .pron-card{min-height:460px;padding:14px;border-radius:24px}
+    .pron-image{height:320px;border-radius:20px}
     .pron-placeholder{font-size:44px}
     .pron-word{font-size:clamp(18px,5.5vw,28px)}
     .pron-card.text-only .pron-word{font-size:clamp(26px,7vw,40px)}
