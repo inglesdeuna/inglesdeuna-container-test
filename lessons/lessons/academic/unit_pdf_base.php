@@ -1039,7 +1039,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .dt-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
 .dt-num  { min-width: 24px; font-weight: 800; color: var(--ink); font-size: 13px;
            padding-top: 2px; flex-shrink: 0; }
-.dt-img  { width: 150px; height: 150px; min-width: 150px; flex: 0 0 150px;
+.dt-img  { width: 210px; height: 210px; min-width: 210px; flex: 0 0 210px;
            border-radius: 9px; overflow: hidden; border: 1px solid var(--lila2);
            background: #f9f8ff; display: flex; align-items: center; justify-content: center; }
 .dt-img img { width: 100%; height: 100%; object-fit: contain; }
@@ -1047,8 +1047,8 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .dt-write { flex: 1; display: flex; flex-direction: column; }
 .dt-ans  { border: 1.5px solid var(--lila2); border-radius: 8px; padding: 5px 10px;
            font-size: 11.5px; margin-bottom: 12px; }
-.dt-lines.ws-open-lines { gap: 30px; margin-top: 0; padding: 0; }
-.dt-lines .ws-open-line { border-bottom: 2px solid #000; height: 30px; }
+.dt-lines.ws-open-lines { gap: 21px; margin-top: 0; padding: 0; }
+.dt-lines .ws-open-line { border-bottom: 2px solid #000; height: 21px; }
 .dt-lines .ws-open-line::before { content: none; }
 
 /* ── Pronunciation ── */
@@ -1244,9 +1244,9 @@ body { font-size: 14px; }
   /* Dictation — keep the reference layout (square image + lines) in the printed PDF */
   .dt-item { padding: 0 0 24px; margin-bottom: 24px; gap: 18px; }
   .dt-num  { font-size: 11px; min-width: 20px; }
-  .dt-img  { width: 150px; height: 150px; min-width: 150px; flex: 0 0 150px; border-radius: 9px; }
-  .dt-lines.ws-open-lines { gap: 28px; }
-  .dt-lines .ws-open-line { height: 28px; border-bottom-width: 2px; }
+  .dt-img  { width: 210px; height: 210px; min-width: 210px; flex: 0 0 210px; border-radius: 9px; }
+  .dt-lines.ws-open-lines { gap: 20px; }
+  .dt-lines .ws-open-line { height: 20px; border-bottom-width: 2px; }
 
   /* Notes box */
   .notes-box { min-height: 130px; border-radius: 7px; }
