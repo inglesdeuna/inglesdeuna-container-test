@@ -637,26 +637,74 @@ function ws_notes(array $d, int $n, string $kicker, bool $k): string {
 
 /* ── READING COMPREHENSION ───────────────────────────────── */
 function ws_reading(array $d, int $n, bool $k): string {
-    $mode  = trim((string)($d['mode'] ?? 'reading'));
-    $qs    = is_array($d['questions'] ?? null) ? $d['questions'] : [];
-    $ltrs  = ['A','B','C','D'];
-    $kicker = $mode === 'vocabulary' ? 'Vocabulary Meaning' : 'Reading Comprehension';
-    $out   = ws_head($n, $kicker, trim((string)($d['title'] ?? '')),
-                     'Read carefully and choose the correct answer.', $k);
-    if (!empty($d['text'] ?? '')) {
-        $out .= '<div class="rc-text">'.nl2br(h(trim((string)$d['text']))).'</div>';
+    // Real payload shape (see activities/reading_comprehension/viewer.php normalizeText()):
+    // { mode:'vocab'|'comp', title, genre, wordCount, body, words:[{word,correct,distractors}], questions:[{stem,options[4],correct,feedback}] }
+    $mode   = strtolower(trim((string)($d['mode'] ?? 'vocab')));
+    $isComp = $mode === 'comp';
+    $body   = trim((string)($d['body'] ?? ($d['text'] ?? '')));
+    $ltrs   = ['A','B','C','D'];
+    $kicker = $isComp ? 'Reading Comprehension' : 'Vocabulary Meaning';
+    $instr  = $isComp
+        ? 'Read the passage carefully, then answer the questions below.'
+        : 'Read the passage. Choose the correct meaning for each highlighted word.';
+    $out    = ws_head($n, $kicker, trim((string)($d['title'] ?? '')), $instr, $k);
+    if ($body !== '') {
+        $out .= '<div class="rc-text">'.nl2br(h($body)).'</div>';
     }
-    foreach ($qs as $qi => $q) {
-        $qt = trim((string)($q['question'] ?? ''));
-        $op = is_array($q['options'] ?? null) ? $q['options'] : [];
-        $ck = (int)($q['correct'] ?? 0);
-        $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt).'</div><div class="ws-opts">';
-        foreach ($op as $oi => $o) {
-            $ot = trim((string)$o); if ($ot === '') continue;
-            $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
-            $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
+
+    if ($isComp) {
+        $qs = is_array($d['questions'] ?? null) ? $d['questions'] : [];
+        foreach ($qs as $qi => $q) {
+            if (!is_array($q)) continue;
+            $qt = trim((string)($q['stem'] ?? ($q['question'] ?? '')));
+            $op = is_array($q['options'] ?? null) ? $q['options'] : [];
+            $ck = (int)($q['correct'] ?? 0);
+            $hasOpt = false;
+            foreach ($op as $o) { if (trim((string)$o) !== '') { $hasOpt = true; break; } }
+            if ($qt === '' && !$hasOpt) continue;
+            $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt).'</div>';
+            if ($hasOpt) {
+                $out .= '<div class="ws-opts">';
+                foreach ($op as $oi => $o) {
+                    $ot = trim((string)$o); if ($ot === '') continue;
+                    $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
+                    $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
+                }
+                $out .= '</div>';
+            } else {
+                /* open-answer question — provide writing lines instead of options */
+                $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', 2).'</div>';
+                if ($k) {
+                    $fb = trim((string)($q['feedback'] ?? ''));
+                    if ($fb !== '') $out .= '<div class="ws-expl">'.h($fb).'</div>';
+                }
+            }
+            $out .= '</div>';
         }
-        $out .= '</div></div>';
+    } else {
+        $words = is_array($d['words'] ?? null) ? $d['words'] : [];
+        foreach ($words as $wi => $w) {
+            if (!is_array($w)) continue;
+            $word = trim((string)($w['word'] ?? ''));
+            if ($word === '') continue;
+            $correct     = trim((string)($w['correct'] ?? ''));
+            $distractors = is_array($w['distractors'] ?? null) ? $w['distractors'] : [];
+            $opts = [];
+            if ($correct !== '') $opts[] = $correct;
+            foreach ($distractors as $dtxt) { $dtxt = trim((string)$dtxt); if ($dtxt !== '') $opts[] = $dtxt; }
+            $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($wi+1).'</span>What does &ldquo;<strong>'.h($word).'</strong>&rdquo; mean?</div>';
+            if (!empty($opts)) {
+                $out .= '<div class="ws-opts">';
+                foreach ($opts as $oi => $o) {
+                    $ck_cls = ($k && $o === $correct) ? ' ws-ck' : '';
+                    $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($o).'</div>';
+                }
+                $out .= '</div>';
+            } else {
+                $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', 2).'</div>';
+            }
+            $out .= '</div>';
+        }
     }
     return $out.ws_foot();
 }
