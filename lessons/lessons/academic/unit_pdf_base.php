@@ -346,43 +346,26 @@ function ws_render_blanks(string $raw, array $answers, string $type): string {
 }
 
 function ws_writing(array $d, int $n, bool $k): string {
-    $qs   = is_array($d['questions'] ?? null) ? $d['questions'] : [];
-    $desc = trim((string)($d['description'] ?? ''));
+    /* Real schema: {title, items:[{id, instruction, prompt_text, answer}]} */
+    $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+    if (empty($items) && is_array($d['questions'] ?? null)) $items = $d['questions']; // legacy fallback
     $out  = ws_head($n, 'Writing Practice', trim((string)($d['title'] ?? '')),
-                    $desc ?: 'Write your answers in complete sentences.', $k, 'card-open');
-    foreach ($qs as $qi => $q) {
-        $qt   = trim((string)($q['question']    ?? ''));
-        $in   = trim((string)($q['instruction'] ?? ''));
-        $an   = is_array($q['correct_answers'] ?? null) ? $q['correct_answers'] : [];
-        $type = trim((string)($q['type'] ?? 'writing'));
-        /* Estimate number of write lines from instruction or default */
-        $numLines = 3;
-        if ($in !== '') {
-            /* more lines if instruction implies paragraph */
-            $numLines = (stripos($in,'paragraph')!==false||stripos($in,'describe')!==false) ? 5 : 3;
-        }
+                    'Write your answers in complete sentences.', $k, 'card-open');
+    if (empty($items)) return $out.'<div class="notes-box"></div>'.ws_foot();
+    foreach ($items as $qi => $it) {
+        $in  = trim((string)($it['instruction'] ?? ''));
+        $qt  = trim((string)($it['prompt_text'] ?? ($it['question'] ?? '')));
+        $an  = trim((string)($it['answer'] ?? ''));
+        /* More lines if instruction/prompt implies a longer paragraph response */
+        $numLines = (stripos($in,'paragraph')!==false || stripos($qt,'paragraph')!==false
+                     || stripos($in,'describe')!==false) ? 5 : 3;
         $out .= '<div class="ws-wb">';
-        if ($type === 'fill_sentence' || $type === 'fill_paragraph' || $type === 'listen_write') {
-            $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'
-                 .  h($type === 'listen_write' ? 'Complete the audio prompt.' : 'Complete the text.')
-                 .  '</div>';
-            if ($in !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
-            $out .= ws_render_blanks($qt, $an, $type);
-            /* open lines below fill-in for extended writing */
-            $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', 2).'</div>';
+        $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt !== '' ? $qt : ($in ?: 'Write your answer.')).'</div>';
+        if ($in !== '' && $qt !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
+        if ($k && $an !== '') {
+            $out .= '<div class="ws-ab"><div class="ws-ma">&#10003; '.h($an).'</div></div>';
         } else {
-            $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt).'</div>';
-            if ($in !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
-            if ($type === 'writing' && $k && !empty($an)) {
-                $out .= '<div class="ws-ab">';
-                foreach ($an as $a) {
-                    $a = trim((string)$a);
-                    if ($a !== '') $out .= '<div class="ws-ma">&#10003; '.h($a).'</div>';
-                }
-                $out .= '</div>';
-            } else {
-                $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', $numLines).'</div>';
-            }
+            $out .= '<div class="ws-open-lines">'.str_repeat('<div class="ws-open-line"></div>', $numLines).'</div>';
         }
         $out .= '</div>';
     }
@@ -934,8 +917,8 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
            border-left: 3px solid var(--lila); padding: 4px 8px;
            margin-top: 5px; margin-left: 30px; border-radius: 0 6px 6px 0; }
 
-/* ── Video Comprehension — distinct look, matches brand title font ── */
-.ws-qt--video { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--ora); }
+/* ── Video Comprehension — same font/size as the rest of the worksheet ── */
+.ws-qt--video { color: var(--ora); }
 .qnum--video  { background: var(--ora); }
 .ws-opt--video { border-color: #FCDDBF; background: #FFFAF5; }
 .ws-opt--video .opt-l--video { border-color: var(--ora); color: var(--ora); }
