@@ -113,6 +113,11 @@ $worksheetCss = <<<'CSS'
 .ws-open-line,.ws-line{height:38px!important}
 .ws-open-line::before{bottom:-18px!important}
 .rp-pdf-lines{gap:32px!important}
+/* ── Dictation: square image box left + writing lines right (reference "DISEÑO DICTADO") ── */
+.dt-item{display:flex!important;align-items:flex-start!important;gap:20px!important}
+.dt-img{width:150px!important;height:150px!important;min-width:150px!important;flex:0 0 150px!important}
+.dt-write{flex:1!important}
+.dt-lines{margin-top:0!important}
 CSS;
 if (strpos($html,'</style>')!==false) $html=preg_replace('/<\/style>/',$worksheetCss."\n</style>",$html,1); else $html=str_replace('</head>','<style>'.$worksheetCss.'</style></head>',$html);
 echo $html;
