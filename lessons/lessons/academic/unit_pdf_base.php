@@ -532,11 +532,11 @@ function ws_video(array $d, int $n, bool $k): string {
         $op = is_array($q['options'] ?? null) ? $q['options'] : [];
         $ck = (int)($q['correct'] ?? 0);
         $ex = trim((string)($q['explanation'] ?? ''));
-        $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt).'</div><div class="ws-opts">';
+        $out .= '<div class="ws-qb ws-qb--video"><div class="ws-qt ws-qt--video"><span class="qnum qnum--video">'.($qi+1).'</span>'.h($qt).'</div><div class="ws-opts">';
         foreach ($op as $oi => $o) {
             $ot = trim((string)$o); if ($ot === '') continue;
             $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
-            $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
+            $out .= '<div class="ws-opt ws-opt--video'.$ck_cls.'"><span class="opt-l opt-l--video">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
         }
         $out .= '</div>';
         if ($k && $ex !== '') $out .= '<div class="ws-expl">'.h($ex).'</div>';
@@ -886,6 +886,14 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
            border-left: 3px solid var(--lila); padding: 4px 8px;
            margin-top: 5px; margin-left: 30px; border-radius: 0 6px 6px 0; }
 
+/* ── Video Comprehension — distinct look, matches brand title font ── */
+.ws-qt--video { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 12.5px; color: var(--ora); }
+.qnum--video  { background: var(--ora); }
+.ws-opt--video { border-color: #FCDDBF; background: #FFFAF5; }
+.ws-opt--video .opt-l--video { border-color: var(--ora); color: var(--ora); }
+.ws-opt--video.ws-ck { background: #f0eeff; border-color: var(--lila); }
+.ws-opt--video.ws-ck .opt-l--video { background: var(--lila); color: #fff; border-color: var(--lila); }
+
 /* ── Answer key highlight ── */
 .ws-ans { color: var(--lila); font-weight: 700; }
 
@@ -1176,7 +1184,8 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .doc-header,.course-bar,.unit-hero,.snum,.qnum,.opt-l,.ws-ck,
   .ws-ck .opt-l,.key-tag,.ibox,.ws-bank,.ws-chip,.ws-expl,.ws-ab,
   .fc-img,.fc-word,.fc-blank-zone,.grade-badge,.ws-ob,.notes-box,
-  .pr-img,.dt-img,.rc-text,.ws-or,.mc-img-opt,.mc-img-opt.ws-ck
+  .pr-img,.dt-img,.rc-text,.ws-or,.mc-img-opt,.mc-img-opt.ws-ck,
+  .ws-qt--video,.qnum--video,.ws-opt--video,.opt-l--video
   { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
   img { max-width: 100%; height: auto;

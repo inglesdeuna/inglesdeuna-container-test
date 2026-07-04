@@ -515,35 +515,37 @@ body {
 #dd-words {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 14px;
     justify-content: center;
     margin-bottom: 16px;
-    min-height: 48px;
+    min-height: 56px;
 }
 
 .dd-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 7px 14px;
-    border-radius: 10px;
+    padding: 12px 22px;
+    border-radius: 14px;
     background: #EEEDFE;
-    border: 1.5px solid #AFA9EC;
+    border: 2px solid #AFA9EC;
     color: var(--dd-purple-dark);
-    font-family: 'Nunito', sans-serif;
-    font-size: 13px;
-    font-weight: 900;
+    font-family: 'Fredoka', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
     text-align: center;
     cursor: grab;
     user-select: none;
-    box-shadow: none;
-    transition: opacity .12s ease, border-color .12s ease, background .12s ease;
+    box-shadow: 0 4px 14px rgba(127,119,221,.22);
+    transition: opacity .12s ease, border-color .12s ease, background .12s ease, transform .12s ease, box-shadow .12s ease;
 }
 
 .dd-chip:active { cursor: grabbing; }
 .dd-chip:hover {
     background: #E7E4FB;
-    border-color: #9A93E6;
+    border-color: var(--dd-purple);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(127,119,221,.32);
 }
 .dd-chip.dd-chip--dragging { opacity: .45; transform: none; }
 
