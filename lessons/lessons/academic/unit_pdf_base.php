@@ -28,6 +28,30 @@ if (!isset($pdo) || !($pdo instanceof PDO)) die('Database connection unavailable
 
 /* ── helpers ─────────────────────────────────────────────────── */
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
+
+/**
+ * Highlights vocabulary words inside a reading-comprehension passage, mirroring
+ * activities/reading_comprehension/viewer.php's client-side highlight() so the
+ * printed worksheet matches what students see in the activity.
+ */
+function ws_rc_highlight(string $body, array $words): string {
+    $out = nl2br(h($body));
+    $terms = [];
+    foreach ($words as $w) {
+        $term = trim((string)($w['word'] ?? ''));
+        if ($term !== '') $terms[] = $term;
+    }
+    usort($terms, fn($a, $b) => mb_strlen($b) <=> mb_strlen($a));
+    foreach ($terms as $term) {
+        $pattern = preg_match('/\s/', $term)
+            ? '/(' . preg_quote($term, '/') . ')/iu'
+            : '/\b(' . preg_quote($term, '/') . ')\b/iu';
+        $out = preg_replace_callback($pattern, function ($m) {
+            return '<span class="ws-rc-hl">' . $m[1] . '</span>';
+        }, $out);
+    }
+    return $out;
+}
 function col_exists(PDO $pdo, string $t, string $c): bool {
     try { $pdo->query("SELECT {$c} FROM {$t} LIMIT 0"); return true; } catch (Throwable $e) { return false; }
 }
@@ -632,7 +656,9 @@ function ws_reading(array $d, int $n, bool $k): string {
         : 'Read the passage. Choose the correct meaning for each highlighted word.';
     $out    = ws_head($n, $kicker, trim((string)($d['title'] ?? '')), $instr, $k);
     if ($body !== '') {
-        $out .= '<div class="rc-text">'.nl2br(h($body)).'</div>';
+        $words = is_array($d['words'] ?? null) ? $d['words'] : [];
+        $bodyHtml = $isComp ? nl2br(h($body)) : ws_rc_highlight($body, $words);
+        $out .= '<div class="rc-text">'.$bodyHtml.'</div>';
     }
 
     if ($isComp) {
@@ -1037,6 +1063,8 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 /* ── Reading comprehension ── */
 .rc-text { font-size: 11.5px; line-height: 1.7; border: 1.5px solid var(--lila2);
            border-radius: 10px; padding: 10px 13px; margin-bottom: 12px; color: var(--ink); }
+.ws-rc-hl { color: #C2580A; font-weight: 800; border-bottom: 2px solid var(--ora);
+            background: #FFF0E6; border-radius: 3px; padding: 0 2px; }
 
 /* ── MC image options ── */
 .mc-img-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 7px; }
