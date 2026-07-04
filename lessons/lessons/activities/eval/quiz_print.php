@@ -153,7 +153,7 @@ $printTitle = $examTitle . ($isKey ? ' — Answer Key' : '');
 <title><?= h($printTitle) ?></title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ═══════════════════════════════════════════════════════════
    ONES Quiz Print — palette: white · #F97316 · #7F77DD · #1a1a2e
@@ -180,7 +180,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 .toolbar { position: sticky; top: 0; z-index: 100; background: var(--ink);
            display: flex; align-items: center; gap: 12px; padding: 9px 22px;
            box-shadow: 0 2px 12px rgba(0,0,0,.25); }
-.tb-brand { font-family: 'Fredoka One', sans-serif; font-size: 15px;
+.tb-brand { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 15px;
             color: var(--ora); margin-right: auto; }
 .tb-title { font-size: 12px; color: rgba(255,255,255,.55);
             max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -207,7 +207,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 .doc-header { padding: 16px 30px 13px; border-bottom: 2px solid var(--ora);
               display: flex; align-items: center; justify-content: space-between; }
 .lockup { display: flex; align-items: center; gap: 14px; }
-.ones-text { font-family: 'Fredoka One', sans-serif; font-size: 28px;
+.ones-text { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 28px;
              color: var(--ora); line-height: 1; letter-spacing: -.5px; }
 .tagline { font-size: 8.5px; font-weight: 800; color: var(--lila); letter-spacing: 2.5px; }
 .byline-row { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
@@ -242,20 +242,20 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 .score-box   { border: 1.5px solid var(--lila2); border-radius: 8px; padding: 5px 16px; text-align: center; }
 .score-lbl   { font-size: 7.5px; font-weight: 800; text-transform: uppercase;
                letter-spacing: .1em; color: var(--lila3); display: block; margin-bottom: 2px; }
-.score-val   { font-family: 'Fredoka One', sans-serif; font-size: 20px; color: var(--ora); }
+.score-val   { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 20px; color: var(--ora); }
 .score-tot   { font-size: 10.5px; color: var(--lila3); font-weight: 600; }
 .grade-label { font-size: 7.5px; font-weight: 800; text-transform: uppercase;
                letter-spacing: .1em; color: var(--lila3); display: block; margin-bottom: 5px; text-align: right; }
 .grade-circle { width: 52px; height: 52px; border-radius: 50%; border: 2.5px solid var(--lila2);
                 display: flex; align-items: center; justify-content: center;
-                font-family: 'Fredoka One', sans-serif; font-size: 22px; color: var(--lila3);
+                font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 22px; color: var(--lila3);
                 margin-left: auto; }
 
 /* Answer key total box */
 .key-total { background: var(--lila2); border-radius: 12px; padding: 10px 18px;
              display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
 .kt-lbl  { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; color: var(--lila3); }
-.kt-val  { font-family: 'Fredoka One', sans-serif; font-size: 22px; color: var(--lila); }
+.kt-val  { font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 22px; color: var(--lila); }
 .kt-sub  { font-size: 10px; color: var(--lila3); font-weight: 600; }
 
 /* ── Student fields ── */
@@ -285,7 +285,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
 .sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .snum { width: 30px; height: 30px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-family: 'Fredoka One', sans-serif; font-size: 14px; color: #fff; flex-shrink: 0; }
+        font-family: 'Fredoka', sans-serif; font-weight: 700; font-size: 14px; color: #fff; flex-shrink: 0; }
 .snum.ora  { background: var(--ora); }
 .snum.lila { background: var(--lila); }
 .sec-kicker { font-size: 8px; font-weight: 800; text-transform: uppercase;
