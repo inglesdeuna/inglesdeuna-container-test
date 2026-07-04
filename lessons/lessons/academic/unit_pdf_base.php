@@ -1034,7 +1034,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
    ════════════════════════════════════════════════════════ */
 @media print {
   html, body { width: 100%; background: #fff !important; }
-  body { font-size: 10px; line-height: 1.4; }
+  body { font-size: 12px; line-height: 1.4; }
   .toolbar, .ws-pdiv, .ws-plbl { display: none !important; }
   .ws-doc { box-shadow: none; border-radius: 0; max-width: 100%; margin: 0; }
 
@@ -1042,7 +1042,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .doc-header { padding: 0 0 8px; }
   .ones-text { font-size: 22px; }
   .tagline { font-size: 7px; letter-spacing: 2px; }
-  .byline { font-size: 7.5px; }
+  .byline { font-size: 9.5px; }
   .ws-badge { font-size: 8px; padding: 2px 10px; }
   .ws-date  { font-size: 8px; }
 
@@ -1058,7 +1058,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .unit-hero { padding: 8px 11px; margin-bottom: 8px; border-radius: 8px; }
   .unit-eyebrow { font-size: 7px; }
   .unit-title { font-size: 13px; }
-  .unit-sub { font-size: 8.5px; }
+  .unit-sub { font-size: 10.5px; }
   .uchip { font-size: 7.5px; padding: 1px 8px; }
   .grade-badge { padding: 4px 10px; border-radius: 7px; }
   .gb-lbl { font-size: 6.5px; }
@@ -1070,7 +1070,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .sf-lbl { font-size: 6.5px; margin-bottom: 7px; }
 
   /* Instruction */
-  .instr-row { padding: 6px 10px; font-size: 8.5px; margin-bottom: 10px; border-radius: 7px; }
+  .instr-row { padding: 6px 10px; font-size: 10.5px; margin-bottom: 10px; border-radius: 7px; }
   .ins-dot   { width: 15px; height: 15px; }
   .ins-dot svg { width: 8px; height: 8px; }
 
@@ -1087,10 +1087,10 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .ibox { padding: 5px 8px; margin-bottom: 7px; border-radius: 6px; }
   .card-open .ibox { padding: 0 0 7px; border-radius: 0; margin-bottom: 10px; }
   .ilbl { font-size: 7px; }
-  .itxt { font-size: 8.5px; }
+  .itxt { font-size: 10.5px; }
 
   /* Tables */
-  table.ws-tbl { font-size: 8.5px; }
+  table.ws-tbl { font-size: 10.5px; }
   table.ws-tbl th { padding: 4px 8px; font-size: 7px; }
   table.ws-tbl td { padding: 7px 8px; }
   .tc-n { width: 22px; }
@@ -1100,22 +1100,22 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .ws-qt { font-size: 9.5px; gap: 6px; }
   .qnum  { width: 17px; height: 17px; font-size: 8px; }
   .ws-opts { gap: 4px 8px; padding-left: 23px; margin-top: 5px; }
-  .ws-opt  { padding: 5px 8px; font-size: 8.5px; min-height: 28px; border-radius: 7px; }
+  .ws-opt  { padding: 5px 8px; font-size: 10.5px; min-height: 28px; border-radius: 7px; }
   .opt-l   { width: 17px; height: 17px; font-size: 8px; }
-  .ws-expl { font-size: 8px; padding: 3px 6px; margin-left: 23px; }
+  .ws-expl { font-size: 10px; padding: 3px 6px; margin-left: 23px; }
 
   /* Word bank */
   .ws-bank { padding: 5px 0 10px; gap: 3px 5px; margin-bottom: 10px; }
   .ws-blbl { font-size: 7.5px; }
-  .ws-chip { padding: 2px 9px; font-size: 8.5px; }
-  .ws-fr   { font-size: 9px; padding-bottom: 10px; }
+  .ws-chip { padding: 2px 9px; font-size: 10.5px; }
+  .ws-fr   { font-size: 11px; padding-bottom: 10px; }
   .ws-fn   { font-size: 8.5px; }
-  .ws-fill-prompt { margin-left: 23px; font-size: 9px; line-height: 2.0; }
+  .ws-fill-prompt { margin-left: 23px; font-size: 11px; line-height: 2.0; }
   .ws-inline-blank { min-width: calc(var(--bl, 10) * 0.60ch); border-bottom-width: 1.8px; }
 
   /* Writing */
   .ws-wb  { margin-bottom: 10px; }
-  .ws-wi  { font-size: 8px; margin: 2px 0 5px 23px; }
+  .ws-wi  { font-size: 10px; margin: 2px 0 5px 23px; }
   .ws-open-lines { gap: 22px; margin-top: 8px; }
   .ws-open-line  { height: 24px; }
   .ws-open-line::before { bottom: -11px; }
@@ -1127,27 +1127,27 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   /* Match */
   .mcols { gap: 14px; }
   .mchd  { font-size: 7.5px; padding-bottom: 4px; margin-bottom: 5px; }
-  .mrow  { padding: 6px 0; font-size: 9px; }
+  .mrow  { padding: 6px 0; font-size: 11px; }
   .mn,.ml { font-size: 9px; }
   .mbl   { flex: 0 0 24px; }
 
   /* Order */
-  .ws-or { padding: 6px 4px; font-size: 9.5px; }
+  .ws-or { padding: 6px 4px; font-size: 11.5px; }
   .ws-ob { width: 26px; height: 20px; border-radius: 5px; }
 
   /* Flashcard grid */
   .fc-grid { gap: 6px; grid-template-columns: repeat(4,1fr); }
   .fc-card { border-radius: 8px; break-inside: avoid; page-break-inside: avoid; }
-  .fc-img  { height: 70px; padding: 5px; }
-  .fc-img img { max-height: 58px; }
+  .fc-img  { height: 100px; padding: 6px; }
+  .fc-img img { max-height: 84px; }
   .fc-word { padding: 4px 6px; font-size: 9px; }
   .fc-blank-zone { padding: 6px 8px 7px; }
   .fc-blbl { font-size: 6.5px; margin-bottom: 6px; }
 
   /* Pronunciation */
   .pr-grid { gap: 7px; }
-  .pr-img  { height: 70px; }
-  .pr-img img { max-height: 58px; }
+  .pr-img  { height: 100px; }
+  .pr-img img { max-height: 84px; }
   .pr-fields { padding: 6px 8px; gap: 5px; }
   .pr-lbl    { font-size: 6.5px; }
   .pr-blank  { height: 14px; }
@@ -1156,13 +1156,13 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .dt-item { padding: 6px 0; gap: 8px; }
   .dt-num  { font-size: 10px; min-width: 20px; }
   .dt-lines { gap: 20px; }
-  .dt-img  { width: 50px; height: 38px; border-radius: 6px; }
+  .dt-img  { width: 90px; height: 68px; border-radius: 6px; }
 
   /* Notes box */
   .notes-box { min-height: 130px; border-radius: 7px; }
 
   /* RC text */
-  .rc-text { font-size: 9px; padding: 7px 9px; }
+  .rc-text { font-size: 11px; padding: 7px 9px; }
 
   /* Break control */
   .ws-qb,.ws-wb,.ws-or,.dt-item { break-inside: avoid; page-break-inside: avoid; }
