@@ -248,6 +248,7 @@ ob_start();
     padding:14px 16px 32px;
     font-family:'Nunito',sans-serif;font-size:15px;
     font-weight:700;color:#271B5D;resize:vertical;
+    line-height:1.5;
     outline:none;background:#fff;
     transition:border-color .18s,box-shadow .18s;
 }

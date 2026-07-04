@@ -523,7 +523,7 @@ body {
     border-radius: 22px;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: clamp(16px, 2vw, 19px);
-    line-height: 1.45;
+    line-height: 1.5;
     font-weight: 800;
     color: #534AB7;
     resize: vertical;
