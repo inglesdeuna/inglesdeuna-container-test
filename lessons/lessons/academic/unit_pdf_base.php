@@ -903,8 +903,9 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
            margin-bottom: 16px; }
 .ws-blbl { font-size: 9px; font-weight: 800; text-transform: uppercase;
            letter-spacing: .1em; color: var(--ora); margin-right: 6px; }
-.ws-chip { padding: 5px 13px; border-radius: 999px; border: 1.5px solid var(--lila2);
-           color: var(--ink); font-weight: 600; font-size: 12px; }
+.ws-chip { padding: 5px 13px; border-radius: 999px; border: 1.5px solid var(--lila);
+           background: var(--lila2); color: var(--ink); font-family: 'Fredoka', sans-serif;
+           font-weight: 700; font-size: 13px; }
 .ws-fr   { display: flex; align-items: baseline; gap: 10px; padding-bottom: 14px;
            border-bottom: 1.5px solid var(--lila2); font-size: 13px;
            line-height: 1.6; break-inside: avoid; }
@@ -1115,7 +1116,7 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   /* Word bank */
   .ws-bank { padding: 5px 0 10px; gap: 3px 5px; margin-bottom: 10px; }
   .ws-blbl { font-size: 7.5px; }
-  .ws-chip { padding: 2px 9px; font-size: 10.5px; }
+  .ws-chip { padding: 2px 9px; font-size: 11px; }
   .ws-fr   { font-size: 11px; padding-bottom: 10px; }
   .ws-fn   { font-size: 8.5px; }
   .ws-fill-prompt { margin-left: 23px; font-size: 11px; line-height: 2.0; }
