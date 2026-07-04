@@ -564,18 +564,18 @@ function ws_dictation(array $d, int $n, bool $k): string {
     foreach ($items as $i => $item) {
         $en  = trim((string)($item['en'] ?? ''));
         $img = trim((string)($item['img'] ?? ''));
-        $wc  = $en !== '' ? count(preg_split('/\s+/', $en)) : 4;
-        if ($wc <= 3) $lines = 1;
-        elseif ($wc <= 8) $lines = 2;
-        elseif ($wc <= 16) $lines = 3;
-        else $lines = 4;
         $out .= '<div class="dt-item">';
         $out .= '<div class="dt-num">'.($i+1).'.</div>';
+        if ($img !== '') {
+            $out .= '<div class="dt-img"><img src="'.h($img).'" alt="item '.($i+1).'" loading="eager"></div>';
+        } else {
+            /* No image on this item — keep the reserved box so every row stays aligned */
+            $out .= '<div class="dt-img dt-img-empty"></div>';
+        }
         $out .= '<div class="dt-write">';
-        if ($img !== '') $out .= '<div class="dt-img"><img src="'.h($img).'" alt="item '.($i+1).'" loading="eager"></div>';
         if ($k && $en !== '') $out .= '<div class="ws-ans dt-ans">'.h($en).'</div>';
-        $out .= '<div class="ws-open-lines">';
-        for ($l = 0; $l < $lines; $l++) $out .= '<div class="ws-open-line"></div>';
+        $out .= '<div class="ws-open-lines dt-lines">';
+        for ($l = 0; $l < 4; $l++) $out .= '<div class="ws-open-line"></div>';
         $out .= '</div></div></div>';
     }
     return $out.ws_foot();
@@ -1032,18 +1032,24 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
            letter-spacing: .1em; color: var(--lila3); display: block; margin-bottom: 8px; }
 .fc-bline { border-bottom: 1.5px solid var(--lila2); }
 
-/* ── Dictation ── */
-.dt-item { display: flex; align-items: flex-start; gap: 11px; padding: 11px 0;
-           border-bottom: 1px solid var(--lila2); break-inside: avoid; }
-.dt-item:last-child { border-bottom: none; }
-.dt-num  { min-width: 28px; font-weight: 800; color: var(--ink); font-size: 13px; padding-top: 2px; }
-.dt-write { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.dt-img  { width: 80px; height: 60px; flex: 0 0 80px; border-radius: 9px;
-           overflow: hidden; border: 1px solid var(--lila2); }
+/* ── Dictation — square image left, writing lines right ── */
+.dt-item { display: flex; align-items: flex-start; gap: 20px; padding: 0 0 28px;
+           margin-bottom: 28px; border-bottom: 1px solid var(--lila2);
+           break-inside: avoid; page-break-inside: avoid; }
+.dt-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.dt-num  { min-width: 24px; font-weight: 800; color: var(--ink); font-size: 13px;
+           padding-top: 2px; flex-shrink: 0; }
+.dt-img  { width: 150px; height: 150px; min-width: 150px; flex: 0 0 150px;
+           border-radius: 9px; overflow: hidden; border: 1px solid var(--lila2);
+           background: #f9f8ff; display: flex; align-items: center; justify-content: center; }
 .dt-img img { width: 100%; height: 100%; object-fit: contain; }
+.dt-img-empty { background: #f9f8ff; }
+.dt-write { flex: 1; display: flex; flex-direction: column; }
 .dt-ans  { border: 1.5px solid var(--lila2); border-radius: 8px; padding: 5px 10px;
-           font-size: 11.5px; }
-.dt-lines { display: flex; flex-direction: column; gap: 28px; padding-top: 8px; }
+           font-size: 11.5px; margin-bottom: 12px; }
+.dt-lines.ws-open-lines { gap: 30px; margin-top: 0; padding: 0; }
+.dt-lines .ws-open-line { border-bottom: 2px solid #000; height: 30px; }
+.dt-lines .ws-open-line::before { content: none; }
 
 /* ── Pronunciation ── */
 .pr-grid  { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
@@ -1089,6 +1095,21 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .ws-plbl { text-align: center; margin: -11px 0 26px; }
 .ws-plbl span { background: #fff; padding: 0 14px; font-size: 9.5px; font-weight: 800;
                 text-transform: uppercase; letter-spacing: .14em; color: var(--lila2); }
+
+/* ── Legibility: activity text (instructions/labels/questions/content)
+   uses Verdana Bold 14px. Titles, header and branding keep their own
+   font-family (Fredoka) and are not affected. ── */
+body,
+.itxt, .instr-row, .ws-qt, .ws-wi, .ws-opt, .dt-ans, .ws-ans, .mt, .ws-ot,
+.rc-text, .pr-ans, .ws-fr, .ws-fill-prompt, .ws-ma, .ws-expl, .ws-audio {
+  font-family: 'Verdana', 'Nunito', 'Segoe UI', Arial, sans-serif;
+  font-weight: 700;
+}
+body { font-size: 14px; }
+.itxt, .instr-row, .ws-qt, .ws-wi, .ws-opt, .dt-ans, .ws-ans, .mt, .ws-ot,
+.rc-text, .pr-ans, .ws-fr, .ws-fill-prompt, .ws-ma, .ws-expl, .ws-audio {
+  font-size: 14px;
+}
 
 /* ── Page footer ── */
 .page-footer { border-top: 1.5px solid var(--lila2); padding: 7px 30px;
@@ -1220,11 +1241,12 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .pr-lbl    { font-size: 6.5px; }
   .pr-blank  { height: 14px; }
 
-  /* Dictation */
-  .dt-item { padding: 6px 0; gap: 8px; }
-  .dt-num  { font-size: 10px; min-width: 20px; }
-  .dt-lines { gap: 20px; }
-  .dt-img  { width: 90px; height: 68px; border-radius: 6px; }
+  /* Dictation — keep the reference layout (square image + lines) in the printed PDF */
+  .dt-item { padding: 0 0 24px; margin-bottom: 24px; gap: 18px; }
+  .dt-num  { font-size: 11px; min-width: 20px; }
+  .dt-img  { width: 150px; height: 150px; min-width: 150px; flex: 0 0 150px; border-radius: 9px; }
+  .dt-lines.ws-open-lines { gap: 28px; }
+  .dt-lines .ws-open-line { height: 28px; border-bottom-width: 2px; }
 
   /* Notes box */
   .notes-box { min-height: 130px; border-radius: 7px; }
@@ -1255,6 +1277,15 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
   .page-footer { padding: 5px 0; }
   .ft-brand,.ft-info { font-size: 7.5px; }
   .ft-pg { font-size: 7.5px; }
+
+  /* Legibility: keep Verdana Bold 14px for activity text in the printed/exported PDF */
+  body { font-size: 14px; }
+  .itxt, .instr-row, .ws-qt, .ws-wi, .ws-opt, .dt-ans, .ws-ans, .mt, .ws-ot,
+  .rc-text, .pr-ans, .ws-fr, .ws-fill-prompt, .ws-ma, .ws-expl, .ws-audio {
+    font-family: 'Verdana', 'Nunito', 'Segoe UI', Arial, sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+  }
 }
 </style>
 </head>
