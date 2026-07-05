@@ -60,6 +60,32 @@ function ws_flashcards(array $d, int $n, bool $k): string {
 }
 PHP;
 
+$dictationPatch = <<<'PHP'
+/* ── DICTATION ───────────────────────────────────────────── */
+function ws_dictation(array $d, int $n, bool $k): string {
+    $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+    $out = ws_head($n, 'Dictation', trim((string)($d['title'] ?? '')), 'Listen to each item and write what you hear.', $k, 'card-open dictation-print');
+    if (empty($items)) return $out.'<div class="notes-box"></div>'.ws_foot();
+    foreach ($items as $i => $item) {
+        if (!is_array($item)) continue;
+        $en = pdf_pick($item, ['en','answer','text','sentence']);
+        $img = pdf_pick($item, ['img','image']);
+        $rowClass = $img !== '' ? 'dt-with-img' : 'dt-no-img';
+        $out .= '<div class="dt-item '.$rowClass.'">';
+        $out .= '<div class="dt-num">'.($i+1).'.</div>';
+        if ($img !== '') {
+            $out .= '<div class="dt-img"><img src="'.h($img).'" alt="item '.($i+1).'" loading="eager"></div>';
+        }
+        $out .= '<div class="dt-write">';
+        if ($k && $en !== '') $out .= '<div class="ws-ans dt-ans">'.h($en).'</div>';
+        $out .= '<div class="ws-open-lines dt-lines">';
+        for ($l = 0; $l < 4; $l++) $out .= '<div class="ws-open-line"></div>';
+        $out .= '</div></div></div>';
+    }
+    return $out.ws_foot();
+}
+PHP;
+
 $pronPatch = <<<'PHP'
 /* ── PRONUNCIATION ───────────────────────────────────────── */
 function ws_pronunciation(array $d, int $n, bool $k): string {
@@ -94,6 +120,7 @@ function ws_roleplay(array $d,int $n,bool $k): string { $scene=is_array($d['scen
 PHP;
 
 $source = preg_replace('/\/\* ── VOCABULARY \/ FLASHCARDS[\s\S]*?\/\* ── QUIZ/s', $activityPatch."\n\n/* ── QUIZ", $source, 1);
+$source = preg_replace('/\/\* ── DICTATION[\s\S]*?\/\* ── PRONUNCIATION/s', $dictationPatch."\n\n/* ── PRONUNCIATION", $source, 1);
 $source = preg_replace('/\/\* ── PRONUNCIATION[\s\S]*?\/\* ── POWERPOINT/s', $pronPatch."\n\n/* ── POWERPOINT", $source, 1);
 $source = preg_replace('/\/\* ── BUILD SECTIONS/s', $roleplayPatch."\n\n/* ── BUILD SECTIONS", $source, 1);
 $source = str_replace("case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;", "case 'reading_comprehension':\$html = ws_reading(\$data, \$actN, \$isKey);    break;\n        case 'roleplay':\n        case 'roleplay_activity':\n        case 'roleplay_kids':         \$html = ws_roleplay(\$data, \$actN, \$isKey); break;", $source);
@@ -109,15 +136,12 @@ $worksheetCss = <<<'CSS'
 /* ── Roomier writing spacing so students have comfortable space to write ── */
 .ws-qb{margin-bottom:24px!important}
 .ws-opt{min-height:44px!important;padding:9px 12px!important}
-.ws-open-lines,.dt-lines,.ws-lines{gap:34px!important;margin-top:14px!important}
+.ws-open-lines,.ws-lines{gap:34px!important;margin-top:14px!important}
 .ws-open-line,.ws-line{height:38px!important}
 .ws-open-line::before{bottom:-18px!important}
 .rp-pdf-lines{gap:32px!important}
-/* ── Dictation: square image box left + writing lines right (reference "DISEÑO DICTADO") ── */
-.dt-item{display:flex!important;align-items:flex-start!important;gap:20px!important}
-.dt-img{width:150px!important;height:150px!important;min-width:150px!important;flex:0 0 150px!important}
-.dt-write{flex:1!important}
-.dt-lines{margin-top:0!important}
+/* ── Dictation: image only when available; no empty image box; compact line spacing like DISEÑO DICTADO ── */
+.dictation-print{padding:18px 24px!important}.dt-item{display:flex!important;align-items:flex-start!important;gap:10px!important;margin:0 0 24px!important;break-inside:avoid!important}.dt-num{width:22px!important;min-width:22px!important;font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1!important;padding-top:6px!important}.dt-img{width:150px!important;height:138px!important;min-width:150px!important;flex:0 0 150px!important;background:#fff!important;border:0!important;border-radius:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}.dt-img img{width:100%!important;height:100%!important;object-fit:contain!important}.dt-img-empty{display:none!important}.dt-write{flex:1!important;min-width:0!important}.dt-lines{display:grid!important;gap:22px!important;margin-top:6px!important}.dt-with-img .dt-lines{margin-top:8px!important}.dt-no-img .dt-write{flex-basis:100%!important}.dt-no-img .dt-lines{margin-top:2px!important}.dt-lines .ws-open-line{height:0!important;min-height:0!important;border-bottom:2px solid #111!important}
 CSS;
 if (strpos($html,'</style>')!==false) $html=preg_replace('/<\/style>/',$worksheetCss."\n</style>",$html,1); else $html=str_replace('</head>','<style>'.$worksheetCss.'</style></head>',$html);
 echo $html;
