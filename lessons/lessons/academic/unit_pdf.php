@@ -60,6 +60,83 @@ function ws_flashcards(array $d, int $n, bool $k): string {
 }
 PHP;
 
+$writingPatch = <<<'PHP'
+/* ── WRITING PRACTICE ────────────────────────────────────── */
+function ws_blank_span(string $seed = ''): string {
+    $len = max(8, min(26, mb_strlen(trim($seed), 'UTF-8') + 4));
+    return '<span class="ws-inline-blank" style="--bl:'.$len.'"></span>';
+}
+
+function ws_render_blanks(string $raw, array $answers, string $type): string {
+    $raw = str_replace(["\r\n","\r"], "\n", $raw);
+    $answers = array_values(array_filter(array_map('trim', $answers), fn($a) => $a !== ''));
+    $cls = $type === 'fill_sentence' ? 'ws-fill-prompt ws-fill-sentence' : 'ws-fill-prompt';
+    if ($raw === '') {
+        $fb = !empty($answers) ? implode(' ', array_fill(0, count($answers), ws_blank_span('answer'))) : ws_blank_span();
+        return '<div class="'.$cls.'">'.$fb.'</div>';
+    }
+    $html = '';
+    if (preg_match('/_{2,}/', $raw)) {
+        $parts = preg_split('/(_{2,})/', $raw, -1, PREG_SPLIT_DELIM_CAPTURE);
+        $bi = 0;
+        foreach ($parts as $part) {
+            if ($part === '') continue;
+            if (preg_match('/^_{2,}$/', $part)) { $html .= ws_blank_span($answers[$bi] ?? ''); $bi++; }
+            else $html .= nl2br(h($part));
+        }
+    } elseif (!empty($answers)) {
+        $rem = $raw;
+        foreach ($answers as $ans) {
+            $pat = '/'.preg_quote($ans,'/')  .'/iu';
+            if (preg_match($pat, $rem, $m, PREG_OFFSET_CAPTURE)) {
+                $before = substr($rem, 0, (int)$m[0][1]);
+                $after  = substr($rem, (int)$m[0][1] + strlen($m[0][0]));
+                $html .= nl2br(h($before)) . ws_blank_span($ans);
+                $rem = $after;
+            } else {
+                $html .= nl2br(h($rem)); $rem = '';
+                $html .= ' '.ws_blank_span($ans);
+            }
+        }
+        if ($rem !== '') $html .= nl2br(h($rem));
+    } else {
+        $html = nl2br(h($raw)).' '.ws_blank_span();
+    }
+    return '<div class="'.$cls.'">'.$html.'</div>';
+}
+
+function ws_writing(array $d, int $n, bool $k): string {
+    $items = is_array($d['items'] ?? null) ? $d['items'] : [];
+    if (empty($items) && is_array($d['questions'] ?? null)) $items = $d['questions'];
+    $out = ws_head($n, 'Writing Practice', trim((string)($d['title'] ?? '')), 'Write your answers in complete sentences.', $k, 'card-open wp-print');
+    if (empty($items)) return $out.'<div class="notes-box"></div>'.ws_foot();
+    foreach ($items as $qi => $it) {
+        if (!is_array($it)) continue;
+        $in = trim((string)($it['instruction'] ?? ''));
+        $qt = trim((string)($it['prompt_text'] ?? ($it['question'] ?? ($it['prompt'] ?? ''))));
+        $an = trim((string)($it['answer'] ?? ($it['model_answer'] ?? '')));
+        $combined = mb_strtolower($in.' '.$qt, 'UTF-8');
+        $len = mb_strlen($qt.' '.$in, 'UTF-8');
+        $numLines = 5;
+        if (preg_match('/translate|translation|traducir|traduce|traduccion|traducción|english|ingles|inglés/u', $combined)) $numLines = 8;
+        if (preg_match('/paragraph|describe|summarize|summary|resumen|resume/u', $combined)) $numLines = max($numLines, 7);
+        if ($len > 280) $numLines = max($numLines, 7);
+        if ($len > 520) $numLines = max($numLines, 9);
+        $numLines = min(10, $numLines);
+        $out .= '<div class="ws-wb wp-item">';
+        $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt !== '' ? $qt : ($in ?: 'Write your answer.')).'</div>';
+        if ($in !== '' && $qt !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
+        if ($k && $an !== '') {
+            $out .= '<div class="ws-ab"><div class="ws-ma">&#10003; '.h($an).'</div></div>';
+        } else {
+            $out .= '<div class="ws-open-lines wp-lines">'.str_repeat('<div class="ws-open-line"></div>', $numLines).'</div>';
+        }
+        $out .= '</div>';
+    }
+    return $out.ws_foot();
+}
+PHP;
+
 $dictationPatch = <<<'PHP'
 /* ── DICTATION ───────────────────────────────────────────── */
 function ws_dictation(array $d, int $n, bool $k): string {
@@ -120,6 +197,7 @@ function ws_roleplay(array $d,int $n,bool $k): string { $scene=is_array($d['scen
 PHP;
 
 $source = preg_replace('/\/\* ── VOCABULARY \/ FLASHCARDS[\s\S]*?\/\* ── QUIZ/s', $activityPatch."\n\n/* ── QUIZ", $source, 1);
+$source = preg_replace('/\/\* ── WRITING PRACTICE[\s\S]*?\/\* ── MATCH/s', $writingPatch."\n\n/* ── MATCH", $source, 1);
 $source = preg_replace('/\/\* ── DICTATION[\s\S]*?\/\* ── PRONUNCIATION/s', $dictationPatch."\n\n/* ── PRONUNCIATION", $source, 1);
 $source = preg_replace('/\/\* ── PRONUNCIATION[\s\S]*?\/\* ── POWERPOINT/s', $pronPatch."\n\n/* ── POWERPOINT", $source, 1);
 $source = preg_replace('/\/\* ── BUILD SECTIONS/s', $roleplayPatch."\n\n/* ── BUILD SECTIONS", $source, 1);
@@ -140,6 +218,8 @@ $worksheetCss = <<<'CSS'
 .ws-open-line,.ws-line{height:38px!important}
 .ws-open-line::before{bottom:-18px!important}
 .rp-pdf-lines{gap:32px!important}
+/* ── Writing practice: more answer lines for translation/summarize prompts without oversized gaps ── */
+.wp-print .wp-item{margin-bottom:26px!important;break-inside:avoid!important}.wp-print .wp-lines{display:grid!important;gap:16px!important;margin-top:16px!important}.wp-print .wp-lines .ws-open-line{height:12px!important;min-height:12px!important;border-bottom:2px solid #111!important}.wp-print .ws-wi{font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;font-style:italic!important;line-height:1.45!important;margin-top:8px!important;color:#2F2A55!important}
 /* ── Dictation: image only when available; no empty image box; compact line spacing like DISEÑO DICTADO ── */
 .dictation-print{padding:18px 24px!important}.dt-item{display:flex!important;align-items:flex-start!important;gap:10px!important;margin:0 0 24px!important;break-inside:avoid!important}.dt-num{width:22px!important;min-width:22px!important;font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1!important;padding-top:6px!important}.dt-img{width:150px!important;height:138px!important;min-width:150px!important;flex:0 0 150px!important;background:#fff!important;border:0!important;border-radius:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}.dt-img img{width:100%!important;height:100%!important;object-fit:contain!important}.dt-img-empty{display:none!important}.dt-write{flex:1!important;min-width:0!important}.dt-lines{display:grid!important;gap:22px!important;margin-top:6px!important}.dt-with-img .dt-lines{margin-top:8px!important}.dt-no-img .dt-write{flex-basis:100%!important}.dt-no-img .dt-lines{margin-top:2px!important}.dt-lines .ws-open-line{height:0!important;min-height:0!important;border-bottom:2px solid #111!important}
 CSS;
