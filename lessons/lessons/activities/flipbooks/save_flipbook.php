@@ -55,10 +55,17 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     curl_setopt($ch, CURLOPT_TIMEOUT, 180);
 
     $result = curl_exec($ch);
+    $curlError = curl_error($ch);
     $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
     if ($result === false || $httpCode >= 400) {
+        error_log(sprintf(
+            'flipbook: Cloudinary raw PDF upload failed (http=%d, curl_error=%s, response=%s)',
+            $httpCode,
+            $curlError !== '' ? $curlError : 'none',
+            substr((string) $result, 0, 500)
+        ));
         return null;
     }
 
@@ -68,6 +75,16 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     }
 
     return isset($decoded['secure_url']) ? (string) $decoded['secure_url'] : null;
+}
+
+function store_pdf_as_base64(string $filePath): ?string
+{
+    $binary = @file_get_contents($filePath);
+    if ($binary === false || $binary === '') {
+        return null;
+    }
+
+    return 'data:application/pdf;base64,' . base64_encode($binary);
 }
 
 function store_pdf_locally(string $sourcePath, string $originalName): ?string
@@ -100,6 +117,17 @@ function persist_pdf(string $sourcePath, string $originalName): ?string
         return $cloudinaryUrl;
     }
 
+    // Cloudinary is unavailable/misconfigured (or rejected the raw upload).
+    // Store the PDF as a base64 data URI in the database — this is
+    // resilient to Render's ephemeral filesystem, unlike local disk storage,
+    // which is lost on every container restart/redeploy.
+    $base64Url = store_pdf_as_base64($sourcePath);
+    if ($base64Url !== null && $base64Url !== '') {
+        return $base64Url;
+    }
+
+    // Last resort only: local disk storage does NOT survive Render
+    // restarts/redeploys, so a PDF stored this way can silently disappear.
     return store_pdf_locally($sourcePath, $originalName);
 }
 
