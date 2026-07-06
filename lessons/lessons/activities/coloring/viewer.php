@@ -150,7 +150,7 @@ body {
     flex: 1;
     min-height: 0;
     overflow: hidden;
-    width: min(100%, 980px);
+    width: min(100%, 1280px);
     margin: 0 auto;
     border: 1px solid #EDE9FA;
     border-radius: 20px;
@@ -169,6 +169,31 @@ body {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+}
+
+.board-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: row;
+    gap: clamp(10px, 1.4vw, 18px);
+    align-items: stretch;
+}
+
+.side-panel {
+    flex: 0 0 clamp(190px, 22%, 250px);
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+}
+
+.stage-panel {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    display: flex;
 }
 
 .prog-track {
@@ -204,7 +229,7 @@ body {
     background: #F5F3FF;
     border: 1px solid #EDE9FA;
     border-radius: 14px;
-    padding: 8px 12px;
+    padding: 10px 10px;
 }
 
 .picker-label {
@@ -222,7 +247,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     margin-bottom: 8px;
 }
@@ -285,14 +310,16 @@ body {
 
 .colors-grid {
     display: grid;
-    grid-template-columns: repeat(8, minmax(36px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
     justify-items: center;
 }
 
 .swatch {
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    max-width: 44px;
+    aspect-ratio: 1 / 1;
+    height: auto;
     border-radius: 50%;
     cursor: pointer;
     border: 3px solid transparent;
@@ -311,6 +338,7 @@ body {
     justify-content: center;
     gap: 8px;
     padding: 2px 0;
+    flex-wrap: wrap;
 }
 
 .sel-dot {
@@ -332,6 +360,7 @@ body {
 
 .canvas-wrap {
     flex: 1;
+    min-width: 0;
     min-height: 0;
     overflow: hidden;
     border: 1px solid #EDE9FA;
@@ -342,6 +371,7 @@ body {
     align-items: center;
     touch-action: none;
     padding: 8px;
+    width: 100%;
 }
 
 #coloringCanvas {
@@ -422,9 +452,7 @@ body {
 }
 
 .board.is-completed .prog-row,
-.board.is-completed .picker-section,
-.board.is-completed .sel-bar,
-.board.is-completed .canvas-wrap,
+.board.is-completed .board-body,
 .board.is-completed .bottom-row {
     display: none;
 }
@@ -456,11 +484,26 @@ body {
 .af-unscored__btn-primary{flex:1;background:#F97316;color:#fff;border:none;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 .af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 
+/* Tablets: keep colors on the left, shrink the side panel a bit */
 @media (max-width: 900px) {
-    .colors-grid { grid-template-columns: repeat(4, minmax(32px, 1fr)); }
-    .swatch { width: 40px; height: 40px; }
-    .tool-btn { padding: 7px 12px; font-size: 12px; }
-    .brush-size-btn { width: 34px; height: 34px; }
+    .side-panel { flex: 0 0 clamp(160px, 30%, 210px); }
+    .colors-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    .swatch { max-width: 38px; }
+    .tool-btn { padding: 7px 10px; font-size: 12px; }
+    .brush-size-btn { width: 32px; height: 32px; }
+}
+
+/* Phones: stack side panel above the (now much larger) canvas */
+@media (max-width: 640px) {
+    .board-body { flex-direction: column; }
+    .side-panel {
+        flex: 0 0 auto;
+        max-height: 42vh;
+        overflow-y: auto;
+    }
+    .stage-panel { flex: 1; }
+    .colors-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; }
+    .swatch { max-width: 34px; }
 }
 </style>
 
@@ -479,32 +522,39 @@ body {
                     <span class="prog-badge" id="progBadge">0/0</span>
                 </div>
 
-                <div class="picker-section">
-                    <div class="tool-row" id="toolRow">
-                        <button type="button" class="tool-btn active" id="toolFillBtn" data-tool="fill" aria-label="Fill tool">
-                            <span class="tool-icon">🪣</span><span class="tool-text">Fill</span>
-                        </button>
-                        <button type="button" class="tool-btn" id="toolBrushBtn" data-tool="brush" aria-label="Brush tool">
-                            <span class="tool-icon">🖌️</span><span class="tool-text">Brush</span>
-                        </button>
-                        <div class="brush-sizes" id="brushSizes" hidden>
-                            <button type="button" class="brush-size-btn" data-size="14" aria-label="Small brush"><span class="brush-dot" style="width:9px;height:9px;"></span></button>
-                            <button type="button" class="brush-size-btn active" data-size="26" aria-label="Medium brush"><span class="brush-dot" style="width:15px;height:15px;"></span></button>
-                            <button type="button" class="brush-size-btn" data-size="42" aria-label="Large brush"><span class="brush-dot" style="width:21px;height:21px;"></span></button>
+                <div class="board-body">
+                    <div class="side-panel">
+                        <div class="picker-section">
+                            <div class="tool-row" id="toolRow">
+                                <button type="button" class="tool-btn active" id="toolFillBtn" data-tool="fill" aria-label="Fill tool">
+                                    <span class="tool-icon">🪣</span><span class="tool-text">Fill</span>
+                                </button>
+                                <button type="button" class="tool-btn" id="toolBrushBtn" data-tool="brush" aria-label="Brush tool">
+                                    <span class="tool-icon">🖌️</span><span class="tool-text">Brush</span>
+                                </button>
+                                <div class="brush-sizes" id="brushSizes" hidden>
+                                    <button type="button" class="brush-size-btn" data-size="14" aria-label="Small brush"><span class="brush-dot" style="width:9px;height:9px;"></span></button>
+                                    <button type="button" class="brush-size-btn active" data-size="26" aria-label="Medium brush"><span class="brush-dot" style="width:15px;height:15px;"></span></button>
+                                    <button type="button" class="brush-size-btn" data-size="42" aria-label="Large brush"><span class="brush-dot" style="width:21px;height:21px;"></span></button>
+                                </div>
+                            </div>
+                            <div class="picker-label">Select a color</div>
+                            <div class="colors-grid" id="coloringPalette"></div>
+                        </div>
+
+                        <div class="sel-bar">
+                            <div class="sel-dot" id="sel-dot"></div>
+                            <span class="sel-label" id="sel-label">Red selected</span>
                         </div>
                     </div>
-                    <div class="picker-label">Select a color</div>
-                    <div class="colors-grid" id="coloringPalette"></div>
+
+                    <div class="stage-panel">
+                        <div class="canvas-wrap">
+                            <canvas id="coloringCanvas" width="600" height="600"></canvas>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="sel-bar">
-                    <div class="sel-dot" id="sel-dot"></div>
-                    <span class="sel-label" id="sel-label">Red selected</span>
-                </div>
-
-                <div class="canvas-wrap">
-                    <canvas id="coloringCanvas" width="600" height="600"></canvas>
-                </div>
 
                 <div class="bottom-row">
                     <div class="btns">
