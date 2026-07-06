@@ -1422,6 +1422,21 @@ body {
   .sd-main-header { flex-direction: column; gap: 6px; }
   .sd-main-meta { text-align: left; }
 }
+@media (max-width: 480px) {
+  .sd-header { height: auto; min-height: 56px; padding: 8px 12px; }
+  .sd-brand-sub { display: none; }
+  .sd-brand-name { font-size: 20px; }
+  .sd-header-right { gap: 8px; }
+  .sd-header-student-role { display: none; }
+  .sd-header-student-name { font-size: 13px; }
+  .sd-header-avatar { width: 32px; height: 32px; font-size: 12px; }
+  .sd-logout-btn { padding: 6px 10px; font-size: 12px; }
+  .sd-phase-bar { padding: 8px 12px; gap: 6px; }
+  .sd-phase-btn { padding: 8px 14px; font-size: 13px; }
+  .sd-body { padding: 12px 12px 24px; gap: 14px; }
+  .sd-card { padding: 14px 12px; }
+  .sd-profile-avatar { width: 72px; height: 72px; font-size: 24px; }
+}
 
 /* ─── No-units Popup ─── */
 .sd-popup-overlay {
