@@ -113,6 +113,32 @@ function load_profiled_teachers_from_database(): array {
     }
 }
 
+function load_unprofiled_teachers_from_database(): array {
+    $pdo = get_pdo_connection();
+    if (!$pdo || !table_exists($pdo, 'teachers')) {
+        return [];
+    }
+
+    try {
+        $hasIsActive = column_exists($pdo, 'teacher_accounts', 'is_active');
+        $activeFilter = $hasIsActive ? "AND COALESCE(ta.is_active, true) = true" : '';
+
+        $stmt = $pdo->query("
+            SELECT t.id, t.name
+            FROM teachers t
+            WHERE NOT EXISTS (
+                SELECT 1 FROM teacher_accounts ta
+                WHERE ta.teacher_id = t.id
+                {$activeFilter}
+            )
+            ORDER BY t.name ASC, t.id ASC
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
+    } catch (Throwable $e) {
+        return [];
+    }
+}
+
 function load_technical_courses_from_database(): array {
     $pdo = get_pdo_connection();
     if (!$pdo) {
@@ -331,6 +357,7 @@ function build_map(array $items): array {
    =============================== */
 
 $teachers = load_profiled_teachers_from_database();
+$unprofiledTeachers = load_unprofiled_teachers_from_database();
 $technicalCourses = load_technical_courses_from_database();
 $englishTargets = load_english_targets_from_database();
 $technicalUnits = load_technical_units_from_database();
@@ -1108,6 +1135,18 @@ tbody tr:last-child td{
                     <?php foreach ($errors as $error) { ?>
                         <div>• <?php echo h($error); ?></div>
                     <?php } ?>
+                </div>
+            <?php } ?>
+
+            <?php if (!empty($unprofiledTeachers)) { ?>
+                <div class="notice">
+                    <div>⚠️ Estos docentes están inscritos pero no aparecen en la lista porque aún no tienen un perfil creado:</div>
+                    <div>
+                        <?php foreach ($unprofiledTeachers as $ut) { ?>
+                            <?php echo h((string) ($ut['name'] ?? 'Docente')); ?><?php echo $ut !== end($unprofiledTeachers) ? ', ' : ''; ?>
+                        <?php } ?>
+                    </div>
+                    <div><a class="link-secondary" href="teacher_profiles.php">Crear perfil docente</a> para poder asignarles grupos.</div>
                 </div>
             <?php } ?>
 
