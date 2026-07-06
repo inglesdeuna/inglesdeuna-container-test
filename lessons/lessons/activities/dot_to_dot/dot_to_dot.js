@@ -26,10 +26,24 @@ let points = [];
 let current = 1;
 let completed = false;
 let dragging = false;
+let activePointerId = null;
+let usingTouch = false;
 let imageOpacity = 0;
 let closingLineProgress = 1; /* 0→1 while animating the last closing segment */
 let mouse = { x: 0, y: 0 };
 let d2dRounds = 0;
+
+let stageSetupTime = 0;
+let lastConnectedAt = -Infinity;
+let idleAnimHandle = null;
+
+/* Easing helpers for a more natural, lively feel */
+function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+function easeOutBack(t) {
+  const c1 = 1.70158;
+  const c3 = c1 + 1;
+  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+}
 
 function setupCanvas() {
   const rect = stage.getBoundingClientRect();
@@ -47,7 +61,30 @@ function setupCanvas() {
     label: point.label != null ? String(point.label) : ""
   }));
 
-  render();
+  stageSetupTime = performance.now();
+  lastConnectedAt = -Infinity;
+
+  render(stageSetupTime);
+  startIdleLoop();
+}
+
+function startIdleLoop() {
+  if (idleAnimHandle) cancelAnimationFrame(idleAnimHandle);
+
+  function loop(ts) {
+    if (completed) return;
+    render(ts);
+    idleAnimHandle = requestAnimationFrame(loop);
+  }
+
+  idleAnimHandle = requestAnimationFrame(loop);
+}
+
+function stopIdleLoop() {
+  if (idleAnimHandle) {
+    cancelAnimationFrame(idleAnimHandle);
+    idleAnimHandle = null;
+  }
 }
 
 function getPointerPosition(event) {
@@ -73,8 +110,14 @@ function getPointerPosition(event) {
   };
 }
 
+/* Touch fingers are bigger and less precise than a mouse cursor, so widen
+   the hit area on touch devices to make dragging between dots easier. */
+function dotHitRadius() {
+  return usingTouch ? 56 : 42;
+}
+
 function isNearDot(pos, dot) {
-  return Math.hypot(pos.x - dot.x, pos.y - dot.y) < 42;
+  return Math.hypot(pos.x - dot.x, pos.y - dot.y) < dotHitRadius();
 }
 
 function clearCanvas() {
@@ -97,8 +140,12 @@ function updateUI() {
 function setImageVisibility() {
   if (completed) {
     img.style.opacity = imageOpacity;
+    img.style.filter = "blur(" + ((1 - imageOpacity) * 6) + "px)";
+    img.style.transform = "scale(" + (1.035 - imageOpacity * 0.035) + ")";
   } else {
     img.style.opacity = "0.08";
+    img.style.filter = "none";
+    img.style.transform = "scale(1)";
   }
 }
 
@@ -149,13 +196,36 @@ function drawDraggingLine() {
   ctx.setLineDash([]);
 }
 
-function drawDots() {
+function drawDots(timestamp) {
+  const now = timestamp != null ? timestamp : performance.now();
+
   points.forEach((point, index) => {
     const active = index === current - 1;
     const done = index < current - 1;
 
+    /* Staggered "pop-in" entrance so dots feel placed with movement
+       rather than appearing frozen on the image. */
+    const entranceT = clamp01((now - stageSetupTime - index * 70) / 380);
+    const entranceScale = entranceT <= 0 ? 0 : easeOutBack(entranceT);
+
+    if (entranceScale <= 0) return;
+
+    /* The active dot gently breathes to invite the next tap/drag —
+       especially helpful as a touch affordance. */
+    const pulse = active ? 1 + Math.sin(now / 260) * 0.07 : 1;
+
+    /* A quick bounce plays on the dot that was just connected. */
+    const sinceConnect = now - lastConnectedAt;
+    const isJustConnected = done && index === current - 2 && sinceConnect < 320;
+    const connectBounce = isJustConnected
+      ? 1 + (1 - clamp01(sinceConnect / 320)) * 0.35
+      : 1;
+
+    const baseRadius = active ? 20 : 16;
+    const radius = baseRadius * entranceScale * pulse * connectBounce;
+
     ctx.beginPath();
-    ctx.arc(point.x, point.y, active ? 20 : 16, 0, Math.PI * 2);
+    ctx.arc(point.x, point.y, Math.max(radius, 0), 0, Math.PI * 2);
 
     if (done) {
       ctx.fillStyle = "#7F77DD";
@@ -171,6 +241,16 @@ function drawDots() {
     ctx.lineWidth = 3;
     ctx.stroke();
 
+    /* Soft glow ring around the active dot to make the touch target
+       visually bigger and more inviting on small screens. */
+    if (active) {
+      ctx.beginPath();
+      ctx.arc(point.x, point.y, radius + 8, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(249,115,22,0.35)";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
     ctx.fillStyle = done || active ? "#ffffff" : "#534AB7";
     ctx.font = "bold 15px system-ui";
     ctx.textAlign = "center";
@@ -179,7 +259,11 @@ function drawDots() {
   });
 }
 
-function render() {
+function clamp01(value) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function render(timestamp) {
   clearCanvas();
   setImageVisibility();
 
@@ -187,7 +271,7 @@ function render() {
   drawDraggingLine();
 
   if (!completed) {
-    drawDots();
+    drawDots(timestamp);
   }
 
   updateUI();
@@ -200,9 +284,12 @@ function fadeInImage(durationMs, onDone) {
 
   function animate(timestamp) {
     if (!startTime) startTime = timestamp;
-    imageOpacity = Math.min((timestamp - startTime) / dur, 1);
-    render();
-    if (imageOpacity < 1) {
+    const linearT = Math.min((timestamp - startTime) / dur, 1);
+    /* Ease-out reveal so the image "settles" into view rather than
+       fading in at a constant, mechanical rate. */
+    imageOpacity = easeOutCubic(linearT);
+    render(timestamp);
+    if (linearT < 1) {
       requestAnimationFrame(animate);
     } else if (onDone) {
       onDone();
@@ -302,10 +389,15 @@ function resetGame() {
   current = 1;
   completed = false;
   dragging = false;
+  activePointerId = null;
   imageOpacity = 0;
   closingLineProgress = 1;
+  stageSetupTime = performance.now();
+  lastConnectedAt = -Infinity;
 
   img.style.opacity = "0.08";
+  img.style.filter = "none";
+  img.style.transform = "scale(1)";
   canvas.style.cursor = "grab";
 
   revealBtn.style.display = "none";
@@ -314,7 +406,8 @@ function resetGame() {
   completionPanel.innerHTML = "";
   if (mainPanel) mainPanel.style.display = "";
 
-  render();
+  render(stageSetupTime);
+  startIdleLoop();
 }
 
 function showCompletedPanel() {
@@ -391,6 +484,7 @@ function showCompletedPanel() {
 function completeGame() {
   completed = true;
   dragging = false;
+  stopIdleLoop();
   canvas.style.cursor = "default";
   revealBtn.style.display = "none";
   continueBtn.style.display = "none";
@@ -429,11 +523,17 @@ function startDrag(event) {
   if (completed) return;
   if (points.length < 3) return;
 
+  usingTouch = event.pointerType ? event.pointerType !== "mouse" : usingTouch;
+
   const pos = getPointerPosition(event);
 
   if (isNearDot(pos, points[current - 1])) {
     dragging = true;
     mouse = pos;
+    activePointerId = event.pointerId != null ? event.pointerId : null;
+    if (activePointerId != null && canvas.setPointerCapture) {
+      try { canvas.setPointerCapture(activePointerId); } catch (e) {}
+    }
     canvas.style.cursor = "grabbing";
     render();
   }
@@ -441,6 +541,7 @@ function startDrag(event) {
 
 function moveDrag(event) {
   if (!dragging || completed) return;
+  if (activePointerId != null && event.pointerId != null && event.pointerId !== activePointerId) return;
 
   event.preventDefault();
   mouse = getPointerPosition(event);
@@ -449,15 +550,20 @@ function moveDrag(event) {
 
 function endDrag(event) {
   if (!dragging || completed) return;
+  if (activePointerId != null && event.pointerId != null && event.pointerId !== activePointerId) return;
 
   const pos = getPointerPosition(event);
   const nextDot = points[current];
 
   if (nextDot && isNearDot(pos, nextDot)) {
     current++;
+    lastConnectedAt = performance.now();
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
 
     if (current === points.length) {
       completeGame();
+      dragging = false;
+      activePointerId = null;
       return;
     }
   } else {
@@ -471,6 +577,7 @@ function endDrag(event) {
   }
 
   dragging = false;
+  activePointerId = null;
   canvas.style.cursor = "grab";
   render();
 }
@@ -501,12 +608,24 @@ function revealImage() {
   completeGame();
 }
 
-canvas.addEventListener("mousedown", startDrag);
-canvas.addEventListener("mousemove", moveDrag);
-canvas.addEventListener("mouseup", endDrag);
+canvas.addEventListener("pointerdown", function (event) {
+  if (event.pointerType === "touch") event.preventDefault();
+  startDrag(event);
+}, { passive: false });
 
-canvas.addEventListener("mouseleave", function () {
+canvas.addEventListener("pointermove", function (event) {
+  if (dragging) event.preventDefault();
+  moveDrag(event);
+}, { passive: false });
+
+canvas.addEventListener("pointerup", endDrag);
+canvas.addEventListener("pointercancel", endDrag);
+
+canvas.addEventListener("pointerleave", function () {
+  if (usingTouch) return; /* touch drags are captured; ignore leave */
+
   dragging = false;
+  activePointerId = null;
 
   if (!completed) {
     canvas.style.cursor = "grab";
@@ -514,14 +633,6 @@ canvas.addEventListener("mouseleave", function () {
 
   render();
 });
-
-canvas.addEventListener("touchstart", function (event) {
-  event.preventDefault();
-  startDrag(event);
-}, { passive: false });
-
-canvas.addEventListener("touchmove", moveDrag, { passive: false });
-canvas.addEventListener("touchend", endDrag);
 
 resetBtn.addEventListener("click", resetGame);
 hintBtn.addEventListener("click", showHint);
