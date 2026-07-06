@@ -191,15 +191,13 @@ body {
     border-radius: 18px;
     opacity: 0;
     transform: scale(1.01);
-    transition: opacity .45s ease, transform .45s ease;
+    /* Opacity/filter/transform are driven frame-by-frame by JS during the
+       reveal (see fadeInImage in dot_to_dot.js) using an eased curve, so no
+       CSS transition is applied here to avoid double-smoothing/lag. */
     user-select: none;
     pointer-events: none;
     box-shadow: 0 12px 36px rgba(127,119,221,.13);
-}
-
-.d2dv-stage.revealed .d2dv-img {
-    opacity: 1;
-    transform: scale(1);
+    will-change: opacity, filter, transform;
 }
 
 /* ── Canvas: absolute overlay on top of the image ── */
@@ -211,12 +209,6 @@ body {
     display: block;
     border-radius: 14px;
     touch-action: none;
-}
-
-.d2dv-stage.revealed #d2dvCanvas {
-    opacity: 0;
-    transition: opacity .38s ease;
-    pointer-events: none;
 }
 
 /* ── Status text ── */
@@ -248,14 +240,18 @@ body {
     border-radius: 10px;
     padding: 13px clamp(20px,3vw,32px);
     min-width: clamp(104px,16vw,146px);
+    min-height: 48px;
     font-weight: 900;
     font-family: 'Nunito', 'Segoe UI', sans-serif;
     font-size: clamp(13px, 1.8vw, 15px);
     line-height: 1;
     cursor: pointer;
-    transition: transform .15s ease, filter .15s ease;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
 }
 .d2dv-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.d2dv-btn:active { transform: scale(.95); filter: brightness(.97); }
 
 /* Reset — purple */
 .d2dv-btn-soft {
