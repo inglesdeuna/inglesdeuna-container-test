@@ -69,6 +69,34 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+function load_teachers_from_database(): array
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return [];
+    }
+
+    try {
+        $stmt = $pdo->query("
+            SELECT id, name
+            FROM teachers
+            ORDER BY name ASC, id ASC
+        ");
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    } catch (Throwable $e) {
+        return [];
+    }
+
+    return array_values(array_filter(array_map(function ($row) {
+        return [
+            'id' => (string) ($row['id'] ?? ''),
+            'name' => (string) ($row['name'] ?? ''),
+        ];
+    }, is_array($rows) ? $rows : []), function ($row) {
+        return (string) ($row['id'] ?? '') !== '';
+    }));
+}
+
 function find_by_id(array $rows, string $id): ?array
 {
     foreach ($rows as $row) {
@@ -330,12 +358,16 @@ foreach ([$coursesFile, $teachersFile, $assignmentsFile] as $file) {
 }
 
 $courses = json_decode((string) file_get_contents($coursesFile), true);
-$teachers = json_decode((string) file_get_contents($teachersFile), true);
 $assignments = json_decode((string) file_get_contents($assignmentsFile), true);
 
 $courses = is_array($courses) ? $courses : [];
-$teachers = is_array($teachers) ? $teachers : [];
 $assignments = is_array($assignments) ? $assignments : [];
+
+$teachers = load_teachers_from_database();
+if (empty($teachers)) {
+    $teachers = json_decode((string) file_get_contents($teachersFile), true);
+    $teachers = is_array($teachers) ? $teachers : [];
+}
 
 $program = isset($_GET['program']) ? (string) $_GET['program'] : 'technical';
 if ($program !== 'technical' && $program !== 'english') {
