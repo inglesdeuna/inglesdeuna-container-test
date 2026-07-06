@@ -143,7 +143,7 @@ function setImageVisibility() {
     img.style.filter = "blur(" + ((1 - imageOpacity) * 6) + "px)";
     img.style.transform = "scale(" + (1.035 - imageOpacity * 0.035) + ")";
   } else {
-    img.style.opacity = "0.08";
+    img.style.opacity = "0";
     img.style.filter = "none";
     img.style.transform = "scale(1)";
   }
@@ -395,7 +395,7 @@ function resetGame() {
   stageSetupTime = performance.now();
   lastConnectedAt = -Infinity;
 
-  img.style.opacity = "0.08";
+  img.style.opacity = "0";
   img.style.filter = "none";
   img.style.transform = "scale(1)";
   canvas.style.cursor = "grab";
