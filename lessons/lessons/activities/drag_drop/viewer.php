@@ -521,6 +521,15 @@ body {
     min-height: 56px;
 }
 
+.dd-touch-hint {
+    text-align: center;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--dd-muted);
+    margin: -6px 0 16px;
+}
+.dd-touch-hint.hidden { display: none; }
+
 .dd-chip {
     display: inline-flex;
     align-items: center;
@@ -548,6 +557,13 @@ body {
     box-shadow: 0 8px 20px rgba(127,119,221,.32);
 }
 .dd-chip.dd-chip--dragging { opacity: .45; transform: none; }
+.dd-chip.dd-chip--selected {
+    background: var(--dd-purple);
+    border-color: var(--dd-purple);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(127,119,221,.4);
+}
 
 .dd-actions {
     display: grid;
@@ -709,6 +725,7 @@ body {
                     </div>
 
                     <div id="dd-words"></div>
+                    <div id="dd-touch-hint" class="dd-touch-hint hidden">Tap a word, then tap a blank to place it.</div>
                 </div>
 
                 <div class="dd-actions">

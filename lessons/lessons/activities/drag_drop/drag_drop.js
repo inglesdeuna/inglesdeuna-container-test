@@ -20,6 +20,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var cardShellEl = document.getElementById('dd-card-shell');
   var cardBodyEl = document.getElementById('dd-card-body');
   var completedEl = document.getElementById('dd-completed');
+  var touchHintEl = document.getElementById('dd-touch-hint');
 
   var completedTitleEl = document.getElementById('dd-completed-title');
   var completedTextEl = document.getElementById('dd-completed-text');
@@ -42,9 +43,16 @@ document.addEventListener('DOMContentLoaded', function () {
     return;
   }
 
+  var isTouchLike = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)
+    || ('ontouchstart' in window)
+    || navigator.maxTouchPoints > 0;
+
+  if (isTouchLike && touchHintEl) touchHintEl.classList.remove('hidden');
+
   var index = 0;
   var answered = false;
   var dragging = null;
+  var selectedChip = null;
   var slotContents = {};
   var scoreVisible = false;
   var scores = questions.map(function () { return 0; });
@@ -432,7 +440,27 @@ document.addEventListener('DOMContentLoaded', function () {
       dragging = null;
     });
 
+    chip.addEventListener('click', function () {
+      if (!isTouchLike || answered) return;
+      selectChip(chip);
+    });
+
     wordsEl.appendChild(chip);
+  }
+
+  function selectChip(chip) {
+    if (selectedChip === chip) {
+      clearSelectedChip();
+      return;
+    }
+    if (selectedChip) selectedChip.classList.remove('dd-chip--selected');
+    selectedChip = chip;
+    chip.classList.add('dd-chip--selected');
+  }
+
+  function clearSelectedChip() {
+    if (selectedChip) selectedChip.classList.remove('dd-chip--selected');
+    selectedChip = null;
   }
 
   function decodeHtmlEntities(value) {
@@ -457,6 +485,20 @@ document.addEventListener('DOMContentLoaded', function () {
     return s;
   }
 
+  function placeWordInSlot(drop, slotIndex, word, chipEl) {
+    if (slotContents[slotIndex] !== undefined) {
+      addWordChip(slotContents[slotIndex]);
+    }
+
+    slotContents[slotIndex] = word;
+    drop.textContent = word;
+    drop.classList.add('dd-inline-drop--filled');
+
+    if (chipEl && chipEl.parentNode) {
+      chipEl.parentNode.removeChild(chipEl);
+    }
+  }
+
   function bindDropZone(drop, slotIndex) {
     drop.addEventListener('dragover', function (e) {
       e.preventDefault();
@@ -473,24 +515,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
       if (!dragging || answered) return;
 
-      var word = dragging.dataset.word;
-
-      if (slotContents[slotIndex] !== undefined) {
-        addWordChip(slotContents[slotIndex]);
-      }
-
-      slotContents[slotIndex] = word;
-      drop.textContent = word;
-      drop.classList.add('dd-inline-drop--filled');
-
-      if (dragging.parentNode) {
-        dragging.parentNode.removeChild(dragging);
-      }
+      placeWordInSlot(drop, slotIndex, dragging.dataset.word, dragging);
       dragging = null;
     });
 
     drop.addEventListener('click', function () {
       if (answered) return;
+
+      if (isTouchLike && selectedChip) {
+        var selected = selectedChip;
+        placeWordInSlot(drop, slotIndex, selected.dataset.word, selected);
+        clearSelectedChip();
+        return;
+      }
+
       if (slotContents[slotIndex] === undefined) return;
 
       var word = slotContents[slotIndex];
@@ -665,6 +703,7 @@ document.addEventListener('DOMContentLoaded', function () {
     answered = false;
     slotContents = {};
     dragging = null;
+    selectedChip = null;
 
     if (completedEl) {
       completedEl.style.display = 'none';

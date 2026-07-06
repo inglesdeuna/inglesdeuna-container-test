@@ -1127,6 +1127,17 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
     .btn{ width:100%; text-align:center; }
     .profile-meta{ grid-template-columns:1fr; }
 }
+
+@media (max-width: 480px){
+    .page{ padding:12px; }
+    .panel{ padding:18px 16px; }
+    .card{ padding:18px; margin-bottom:14px; }
+    .avatar{ width:120px; height:120px; font-size:48px; }
+    .teacher-name{ font-size:18px; }
+    .main-section-title{ font-size:19px; margin:22px 0 14px; }
+    .course-card{ min-height:110px; padding:18px 16px; }
+    .course-name{ font-size:17px; }
+}
 </style>
 </head>
 <body>
