@@ -22,7 +22,7 @@ $assignment = isset($_GET['assignment']) ? trim((string)$_GET['assignment']) : '
 function mzk_ed_default(): array {
     return [
         'title' => 'Vocabulary Maze',
-        'theme' => '',
+        'theme' => 'plants',
         'difficulty' => 'medium',
         'vocabulary_bank' => [],
         'path_sequence' => [],
@@ -30,6 +30,11 @@ function mzk_ed_default(): array {
         'layout_positions' => [],
         'audio_urls' => [],
     ];
+}
+
+function mzk_ed_theme(string $theme): string {
+    $theme = strtolower(trim($theme));
+    return in_array($theme, ['plants', 'buildings', 'park', 'home'], true) ? $theme : 'plants';
 }
 
 function mzk_ed_clean_positions($raw): array {
@@ -105,7 +110,7 @@ function mzk_ed_norm($raw): array {
 
     return [
         'title' => trim((string)($d['title'] ?? '')) ?: 'Vocabulary Maze',
-        'theme' => trim((string)($d['theme'] ?? '')),
+        'theme' => mzk_ed_theme((string)($d['theme'] ?? '')),
         'difficulty' => $difficulty,
         'vocabulary_bank' => $bank,
         'path_sequence' => $pathSequence,
@@ -118,7 +123,7 @@ function mzk_ed_norm($raw): array {
 function mzk_ed_enc(array $p): string {
     return json_encode([
         'title' => trim((string)($p['title'] ?? '')) ?: 'Vocabulary Maze',
-        'theme' => trim((string)($p['theme'] ?? '')),
+        'theme' => mzk_ed_theme((string)($p['theme'] ?? '')),
         'difficulty' => in_array($p['difficulty'] ?? 'medium', ['easy', 'medium', 'hard'], true) ? $p['difficulty'] : 'medium',
         'vocabulary_bank' => array_values($p['vocabulary_bank'] ?? []),
         'path_sequence' => array_values($p['path_sequence'] ?? []),
@@ -179,7 +184,7 @@ if ($activityId === '' && !empty($activity['id'])) $activityId = $activity['id']
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = trim((string)($_POST['activity_title'] ?? ''));
-    $postedTheme = trim((string)($_POST['theme'] ?? ''));
+    $postedTheme = mzk_ed_theme((string)($_POST['theme'] ?? ''));
     $postedDifficulty = trim((string)($_POST['difficulty'] ?? 'medium'));
     if (!in_array($postedDifficulty, ['easy', 'medium', 'hard'], true)) $postedDifficulty = 'medium';
 
@@ -283,7 +288,7 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 </style>
 
 <form method="post" enctype="multipart/form-data" class="mzke-wrap" id="mzkeForm">
-<div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Theme</label><input type="text" name="theme" value="<?= htmlspecialchars($activityTheme, ENT_QUOTES, 'UTF-8') ?>"></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div></div>
+<div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Filler theme</label><select id="mzke_theme" name="theme"><option value="plants"<?= $activityTheme==='plants'?' selected':'' ?>>🌿 Plants</option><option value="buildings"<?= $activityTheme==='buildings'?' selected':'' ?>>🏢 Buildings</option><option value="park"<?= $activityTheme==='park'?' selected':'' ?>>🌳 Park</option><option value="home"<?= $activityTheme==='home'?' selected':'' ?>>🛋️ Home</option></select><p class="mzke-help" style="margin-top:-8px">Fills the dead-end squares with matching icons so the maze never shows a blank tile.</p></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div></div>
 
 <div class="mzke-section"><h3>2. Upload your pictures</h3><p class="mzke-section-sub">Add one picture for every word in the correct path, plus (optionally) a few "wall" pictures for wrong turns. <b>The grid always matches the number of pictures you add — there are never empty spaces.</b> The maze automatically draws a <b>start arrow</b> and a <b>home (house)</b> icon at the two ends of the path; those icons are not pictures you upload.</p><div class="mzke-bank-grid" id="mzkeBankGrid"></div><div class="mzke-toolbar" style="justify-content:flex-start"><button type="button" class="mzke-btn-update" onclick="mzkeAddSlot('path')">+ Add picture</button><button type="button" class="mzke-btn-update" style="background:#ef4444" onclick="mzkeAddSlot('branch')">+ Add wall</button></div></div>
 
@@ -447,6 +452,12 @@ function mzkeRenderPreview(){
   svg.setAttribute('width', Math.min(layout.width, 900));
   svg.setAttribute('height', layout.height * (Math.min(layout.width, 900) / layout.width));
   mzkRenderMazeBase(NS, svg, layout, {wallColor:'#CDC7F3', floorColor:'#ffffff', dotColor:'rgba(83,74,183,.10)'});
+  const theme = document.getElementById('mzke_theme') ? document.getElementById('mzke_theme').value : 'plants';
+  (layout.fillerCells || []).forEach((cell, i) => {
+    const fg = mzkRenderFillerIcon(NS, theme, i, layout.cellSize);
+    fg.setAttribute('transform', 'translate(' + cell.x + ',' + cell.y + ')');
+    svg.appendChild(fg);
+  });
   const R = Math.round(layout.cellSize * 0.32);
   layout.nodes.forEach(node=>{
     const isEndpoint = node.kind === 'start' || node.kind === 'home';
@@ -513,6 +524,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     mzkePathSlots = mzkeResizeSlots(mzkePathSlots, 2, 'path') || [];
   }
   mzkeRenderAll();
+  const themeSelect = document.getElementById('mzke_theme');
+  if (themeSelect) themeSelect.addEventListener('change', mzkeRenderPreview);
 });
 
 document.getElementById('mzkeForm').addEventListener('submit', e=>{
