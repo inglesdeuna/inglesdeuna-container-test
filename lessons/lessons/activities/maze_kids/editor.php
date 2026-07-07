@@ -270,25 +270,25 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 .mzke-section label{display:block;font-weight:800;margin-bottom:6px;font-size:13px;color:#374151}
 .mzke-section input[type=text],.mzke-section select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid #d1d5db;box-sizing:border-box;margin-bottom:12px;font-size:14px;font-family:inherit}
 .mzke-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mzke-help{margin:-6px 0 10px;color:#6b7280;font-size:12px;font-weight:700}
-.mzke-bank-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}.mzke-bank-card{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;width:150px;position:relative}
-.mzke-bank-thumb{width:100%;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin-bottom:8px}.mzke-bank-thumb img{width:100%;height:100%;object-fit:contain;display:block}
-.mzke-bank-card input[type=text]{margin-bottom:6px;font-size:13px}.mzke-bank-card input[type=file]{font-size:11px;margin-bottom:6px}.mzke-btn-remove-bank{position:absolute;top:6px;right:6px;background:#ef4444;color:#fff;border:none;border-radius:6px;width:20px;height:20px;line-height:1;cursor:pointer;font-size:12px}
-.mzke-btn-tts-small{background:#F97316;color:#fff;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:800;width:100%}.mzke-btn-add{background:#16a34a;color:#fff;padding:10px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:800}.mzke-btn-save{background:linear-gradient(180deg,#7c3aed,#6d28d9);color:#fff;padding:10px 24px;border:none;border-radius:10px;cursor:pointer;font-weight:900;font-size:15px}.mzke-toolbar{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
-.mzke-seq-list{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;min-height:60px;padding:10px;border:2px dashed #CDC7F3;border-radius:10px}.mzke-seq-item{background:#F8F7FF;border:1px solid #7F77DD;border-radius:8px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:6px}.mzke-seq-item .num{font-family:'Fredoka',sans-serif;font-weight:700;color:#7F77DD}.mzke-node-thumb{width:28px;height:28px;border-radius:6px;overflow:hidden;background:#fff;flex:none;display:flex;align-items:center;justify-content:center}.mzke-node-thumb img{width:100%;height:100%;object-fit:cover;display:block}.mzke-seq-item button{background:none;border:none;color:#ef4444;cursor:pointer;font-weight:900}
-.mzke-bank-picker{display:flex;flex-wrap:wrap;gap:8px}.mzke-bank-picker-item{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}.mzke-bank-picker-item:hover{border-color:#7F77DD}.mzke-bank-picker-item .mzke-node-thumb{width:24px;height:24px}
-.mzke-branch-item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:10px;align-items:end;flex-wrap:wrap}.mzke-branch-item select{margin-bottom:0;min-width:220px}.mzke-branch-item button{background:#ef4444;color:#fff;border:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:800}
-#mzkePreviewWrap{overflow:auto;background:#F8F7FF;border-radius:16px;padding:16px;border:1px solid #EDE9FA;min-height:280px}#mzkePreviewWrap svg{display:block;margin:0 auto;max-width:100%;height:auto}.mzke-preview-node{cursor:grab}.mzke-preview-node:active{cursor:grabbing}.mzke-preview-note{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;color:#6b7280;font-size:12px;font-weight:800}.mzke-reset-layout{background:#7F77DD;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:900;cursor:pointer}
-@media(max-width:760px){.mzke-row2{grid-template-columns:1fr}.mzke-branch-item select{min-width:100%}}
+.mzke-count-row{display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:6px}.mzke-count-field{min-width:190px}.mzke-count-field input{margin-bottom:0}.mzke-btn-update{background:#7F77DD;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:900;font-size:13px}
+.mzke-bank-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}.mzke-bank-card{background:#fff;border:2px solid #e5e7eb;border-radius:10px;padding:10px;width:150px;position:relative}.mzke-bank-card.path{border-color:#CDC7F3}.mzke-bank-card.branch{border-color:#FCA5A5}.mzke-bank-card.empty{border-style:dashed}
+.mzke-slot-tag{position:absolute;top:6px;left:6px;background:#7F77DD;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;font-family:'Fredoka',sans-serif}.mzke-bank-card.branch .mzke-slot-tag{background:#ef4444}
+.mzke-bank-thumb{width:100%;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin-bottom:8px;margin-top:14px}.mzke-bank-thumb img{width:100%;height:100%;object-fit:contain;display:block}
+.mzke-bank-card input[type=text]{margin-bottom:6px;font-size:13px}.mzke-bank-card input[type=file]{font-size:11px;margin-bottom:6px}
+.mzke-btn-tts-small{background:#F97316;color:#fff;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:800;width:100%}.mzke-btn-save{background:linear-gradient(180deg,#7c3aed,#6d28d9);color:#fff;padding:10px 24px;border:none;border-radius:10px;cursor:pointer;font-weight:900;font-size:15px}.mzke-toolbar{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.mzke-section-sub{margin:0 0 14px;color:#374151;font-size:13px;font-weight:700}.mzke-section-sub b{color:#7F77DD}
+#mzkePreviewWrap{overflow:auto;background:#F8F7FF;border-radius:16px;padding:16px;border:1px solid #EDE9FA;min-height:280px}#mzkePreviewWrap svg{display:block;margin:0 auto;max-width:100%;height:auto}.mzke-preview-note{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;color:#6b7280;font-size:12px;font-weight:800}
+@media(max-width:760px){.mzke-row2{grid-template-columns:1fr}.mzke-count-row{flex-direction:column;align-items:stretch}}
 </style>
 
 <form method="post" enctype="multipart/form-data" class="mzke-wrap" id="mzkeForm">
-<div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Theme</label><input type="text" name="theme" value="<?= htmlspecialchars($activityTheme, ENT_QUOTES, 'UTF-8') ?>"></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div><button type="button" class="mzke-btn-tts-small" style="width:auto;padding:8px 14px" onclick="mzkeAutoSuggestBranches()">Auto-suggest dead ends</button><button type="button" class="mzke-btn-tts-small" style="width:auto;padding:8px 14px;margin-left:8px" onclick="mzkeRandomizePathOrder()">🎲 Randomize path order</button></div>
+<div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Theme</label><input type="text" name="theme" value="<?= htmlspecialchars($activityTheme, ENT_QUOTES, 'UTF-8') ?>"></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div></div>
 
-<div class="mzke-section"><h3>2. Vocabulary bank</h3><p class="mzke-help">Upload images and write the word. These become the maze pictures.</p><div class="mzke-bank-grid" id="mzkeBankGrid"><?php foreach ($vocabularyBank as $item): ?><div class="mzke-bank-card" data-vocab-id="<?= htmlspecialchars($item['id'],ENT_QUOTES,'UTF-8') ?>"><button type="button" class="mzke-btn-remove-bank" onclick="mzkeRemoveBank(this)">x</button><input type="hidden" name="bank_id[]" value="<?= htmlspecialchars($item['id'],ENT_QUOTES,'UTF-8') ?>"><input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value="<?= htmlspecialchars($item['image_url'],ENT_QUOTES,'UTF-8') ?>"><div class="mzke-bank-thumb"><?php if (!empty($item['image_url'])): ?><img src="<?= htmlspecialchars($item['image_url'],ENT_QUOTES,'UTF-8') ?>" alt=""><?php endif; ?></div><input type="file" name="bank_image_upload[]" accept="image/*" onchange="mzkePrevImg(this)"><input type="text" name="bank_word[]" value="<?= htmlspecialchars($item['word'],ENT_QUOTES,'UTF-8') ?>" placeholder="word" onchange="mzkeSyncPicker()"><input type="hidden" name="bank_audio[]" class="mzke-audio-hidden" value="<?= htmlspecialchars($audioUrls[$item['id']] ?? '',ENT_QUOTES,'UTF-8') ?>"><button type="button" class="mzke-btn-tts-small" onclick="mzkeGenAudio(this)">Audio</button></div><?php endforeach; ?></div><div class="mzke-toolbar"><button type="button" class="mzke-btn-add" onclick="mzkeAddBank()">+ Add Image/Word</button></div></div>
+<div class="mzke-section"><h3>2. How many pictures?</h3><p class="mzke-section-sub">Choose how many pictures make up the correct path, and how many are "wall" pictures (wrong turns / dead ends). The grid below is generated automatically to match.</p><div class="mzke-count-row"><div class="mzke-count-field"><label>Pictures in the path (incl. start &amp; home)</label><input type="number" id="mzkePathCount" min="2" max="20" step="1" value="<?= max(2, count($pathSequence) ?: 5) ?>"></div><div class="mzke-count-field"><label>Wall pictures (dead ends)</label><input type="number" id="mzkeBranchCount" min="0" max="10" step="1" value="<?= count($distractorBranches) ?>"></div><button type="button" class="mzke-btn-update" onclick="mzkeUpdateGrid()">Update grid</button></div></div>
 
-<div class="mzke-section"><h3>3. Path sequence</h3><p class="mzke-help">Click the images below in the correct order. Children will tap them in this order.</p><div class="mzke-seq-list" id="mzkeSeqList"></div><div class="mzke-bank-picker" id="mzkeSeqPicker"></div></div>
-<div class="mzke-section"><h3>4. Distractor branches / wall animals</h3><p class="mzke-help">Choose which picture is a dead end and after which correct node it connects. Each wall now draws two blockages (a mid-wall barrier plus the dead-end picture) so it reads as a real obstacle instead of a single stray tile. Add a few walls spread across different nodes so children have to think at more than one turn.</p><div id="mzkeBranchList"></div><div class="mzke-toolbar"><button type="button" class="mzke-btn-add" onclick="mzkeAddBranch()">+ Add Dead End</button></div></div>
-<div class="mzke-section"><h3>5. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls. It updates automatically as you edit the path and dead ends above.</span></div><div id="mzkePreviewWrap"></div></div>
+<div class="mzke-section"><h3>3. Upload your pictures</h3><p class="mzke-section-sub">Each space below is one spot in the maze. <b>Numbered spaces</b> (1, 2, 3…) are the correct path children must tap in order — the last one is <b>HOME</b>. <b>Red "Wall" spaces</b> are wrong turns. Upload an image and type the word for every space.</p><div class="mzke-bank-grid" id="mzkeBankGrid"></div></div>
+
+<div class="mzke-section"><h3>4. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls. It updates automatically as you fill in pictures above.</span></div><div id="mzkePreviewWrap"></div></div>
 <div class="mzke-toolbar"><button type="submit" class="mzke-btn-save">Save</button></div>
 <input type="hidden" name="layout_positions_json" id="mzkeLayoutPositionsInput">
 <div id="mzkePathInputs"></div><div id="mzkeBranchInputs"></div>
@@ -296,30 +296,238 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 
 <script src="maze_layout.js"></script>
 <script>
-let mzkeBank = <?php echo json_encode($vocabularyBank, JSON_UNESCAPED_UNICODE); ?>;
-let mzkePath = <?php echo json_encode($pathSequence, JSON_UNESCAPED_UNICODE); ?>;
-let mzkeBranches = <?php echo json_encode($distractorBranches, JSON_UNESCAPED_UNICODE); ?>;
-let mzkeLastLayout = null;
+let mzkePathSlots = [];
+let mzkeBranchSlots = [];
 
-function mzkeReadBankFromDom(){const cards=document.querySelectorAll('#mzkeBankGrid .mzke-bank-card');const bank=[];cards.forEach(card=>{const id=card.getAttribute('data-vocab-id');const word=card.querySelector('input[name="bank_word[]"]').value.trim();const img=card.querySelector('.mzke-img-existing').value.trim();bank.push({id:id,word:word,image_url:img});});mzkeBank=bank;return bank;}
-function mzkeBankById(id){return mzkeBank.find(b=>b.id===id)||{word:'',image_url:''};}
+function mzkeUid(prefix){return prefix+'_'+Date.now()+Math.floor(Math.random()*100000);}
 function mzkeEscape(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
 
-function mzkeAddBank(){const id='mzk_'+Date.now()+Math.floor(Math.random()*1000);const div=document.createElement('div');div.className='mzke-bank-card';div.setAttribute('data-vocab-id',id);div.innerHTML=`<button type="button" class="mzke-btn-remove-bank" onclick="mzkeRemoveBank(this)">x</button><input type="hidden" name="bank_id[]" value="${id}"><input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value=""><div class="mzke-bank-thumb"></div><input type="file" name="bank_image_upload[]" accept="image/*" onchange="mzkePrevImg(this)"><input type="text" name="bank_word[]" value="" placeholder="word" onchange="mzkeSyncPicker()"><input type="hidden" name="bank_audio[]" class="mzke-audio-hidden" value=""><button type="button" class="mzke-btn-tts-small" onclick="mzkeGenAudio(this)">Audio</button>`;document.getElementById('mzkeBankGrid').appendChild(div);mzkeSyncPicker();}
-function mzkeRemoveBank(btn){const card=btn.closest('.mzke-bank-card');const id=card.getAttribute('data-vocab-id');card.remove();mzkePath=mzkePath.filter(v=>v!==id);mzkeBranches=mzkeBranches.filter(b=>b.vocabulary_id!==id);mzkeSyncAll();}
-function mzkePrevImg(fileInput){const card=fileInput.closest('.mzke-bank-card');const thumb=card.querySelector('.mzke-bank-thumb');const hidden=card.querySelector('.mzke-img-existing');const file=fileInput.files[0];if(file){const reader=new FileReader();reader.onload=e=>{thumb.innerHTML=`<img src="${e.target.result}" alt="">`;hidden.value=e.target.result;mzkeSyncPicker();};reader.readAsDataURL(file);}else{mzkeSyncPicker();}}
-function mzkeGenAudio(btn){alert('Audio generation is unchanged. Save the activity after setting words/images.');}
+function mzkeInitSlotsFromServer(bank, path, branches, audioUrls){
+  const byId = {};
+  bank.forEach(item=>{byId[item.id]=item;});
+  mzkePathSlots = path.map(vid=>{
+    const b = byId[vid] || {word:'',image_url:''};
+    return {id:vid, word:b.word||'', image_url:b.image_url||'', audio:(audioUrls&&audioUrls[vid])||''};
+  });
+  mzkeBranchSlots = branches.map(br=>{
+    const b = byId[br.vocabulary_id] || {word:'',image_url:''};
+    const id = br.vocabulary_id || mzkeUid('branch');
+    return {id:id, word:b.word||'', image_url:b.image_url||'', audio:(audioUrls&&audioUrls[id])||''};
+  });
+}
 
-function mzkeSyncPicker(){mzkeReadBankFromDom();const picker=document.getElementById('mzkeSeqPicker');picker.innerHTML='';mzkeBank.forEach(item=>{if(!item.word&&!item.image_url)return;const btn=document.createElement('button');btn.type='button';btn.className='mzke-bank-picker-item';btn.innerHTML=`<span class="mzke-node-thumb">${item.image_url?`<img src="${mzkeEscape(item.image_url)}" alt="">`:''}</span><span>${mzkeEscape(item.word||'(no word)')}</span>`;btn.onclick=()=>{mzkePath.push(item.id);mzkeSyncAll();};picker.appendChild(btn);});mzkeRenderSeqList();mzkeRenderBranches();mzkeRenderPreview();}
-function mzkeRenderSeqList(){const list=document.getElementById('mzkeSeqList');list.innerHTML='';mzkePath.forEach((vid,idx)=>{const b=mzkeBankById(vid);const el=document.createElement('div');el.className='mzke-seq-item';el.innerHTML=`<span class="num">${idx+1}.</span>${b.image_url?`<span class="mzke-node-thumb"><img src="${mzkeEscape(b.image_url)}" alt=""></span>`:''}<span>${mzkeEscape(b.word||vid)}</span><button type="button">x</button>`;el.querySelector('button').onclick=()=>{mzkePath.splice(idx,1);mzkeSyncAll();};list.appendChild(el);});const inputs=document.getElementById('mzkePathInputs');inputs.innerHTML='';mzkePath.forEach(vid=>{const inp=document.createElement('input');inp.type='hidden';inp.name='path_vocabulary_id[]';inp.value=vid;inputs.appendChild(inp);});}
-function mzkeRandomizePathOrder(){mzkeReadBankFromDom();if(!mzkePath.length){alert('Add at least one node to the path sequence first.');return;}mzkePath=(window.mzkShuffleArray?window.mzkShuffleArray(mzkePath):mzkePath.slice());mzkeRenderSeqList();mzkeRenderPreview();}
-function mzkeAutoSuggestBranches(){const suggested={easy:0,medium:2,hard:4}[document.getElementById('mzke_difficulty').value]||0;mzkeReadBankFromDom();const used=new Set(mzkePath.concat(mzkeBranches.map(b=>b.vocabulary_id)));const available=mzkeBank.filter(item=>(item.word||item.image_url)&&!used.has(item.id));while(mzkeBranches.length<suggested&&available.length){const item=available.shift();mzkeBranches.push({attach_after_index:mzkePath.length?Math.min(mzkePath.length-1,mzkeBranches.length%mzkePath.length):0,vocabulary_id:item.id});}mzkeRenderBranches();mzkeRenderPreview();}
-function mzkeAddBranch(){if(!mzkePath.length){alert('Add at least one path node first.');return;}mzkeBranches.push({attach_after_index:0,vocabulary_id:''});mzkeRenderBranches();mzkeRenderPreview();}
-function mzkeRenderBranches(){const wrap=document.getElementById('mzkeBranchList');wrap.innerHTML='';mzkeBranches.forEach((br,idx)=>{const row=document.createElement('div');row.className='mzke-branch-item';const after=document.createElement('select');mzkePath.forEach((vid,i)=>{const b=mzkeBankById(vid);const opt=document.createElement('option');opt.value=i;opt.textContent='After node '+(i+1)+' ('+(b.word||vid)+')';if(i===br.attach_after_index)opt.selected=true;after.appendChild(opt);});after.onchange=()=>{br.attach_after_index=parseInt(after.value,10)||0;mzkeRenderPreview();};const vocab=document.createElement('select');mzkeBank.forEach(item=>{if(!item.word&&!item.image_url)return;const opt=document.createElement('option');opt.value=item.id;opt.textContent=item.word||item.id;if(item.id===br.vocabulary_id)opt.selected=true;vocab.appendChild(opt);});vocab.onchange=()=>{br.vocabulary_id=vocab.value;mzkeRenderPreview();};const rem=document.createElement('button');rem.type='button';rem.textContent='Remove';rem.onclick=()=>{mzkeBranches.splice(idx,1);mzkeSyncAll();};row.appendChild(after);row.appendChild(vocab);row.appendChild(rem);wrap.appendChild(row);});const inputs=document.getElementById('mzkeBranchInputs');inputs.innerHTML='';mzkeBranches.forEach(br=>{const a=document.createElement('input');a.type='hidden';a.name='branch_after_index[]';a.value=br.attach_after_index;const v=document.createElement('input');v.type='hidden';v.name='branch_vocabulary_id[]';v.value=br.vocabulary_id;inputs.appendChild(a);inputs.appendChild(v);});}
-function mzkeRenderPreview(){const wrap=document.getElementById('mzkePreviewWrap');wrap.innerHTML='';mzkeReadBankFromDom();document.getElementById('mzkeLayoutPositionsInput').value='{}';if(!mzkePath.length){wrap.textContent='Add nodes to the path sequence to see a preview.';return;}const layout=generateMazeLayout(mzkePath,mzkeBranches);mzkeLastLayout=layout;const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 '+layout.width+' '+layout.height);svg.setAttribute('width',Math.min(layout.width,900));svg.setAttribute('height',layout.height*(Math.min(layout.width,900)/layout.width));mzkRenderMazeBase(NS,svg,layout,{wallColor:'#CDC7F3',floorColor:'#ffffff',dotColor:'rgba(83,74,183,.10)'});const R=Math.round(layout.cellSize*0.32);layout.nodes.forEach(node=>{const b=mzkeBankById(node.vocabularyId);const isStart=node.kind==='path'&&node.index===0;const isEnd=node.kind==='path'&&node.index===mzkePath.length-1;const g=document.createElementNS(NS,'g');g.setAttribute('class','mzke-preview-node');g.setAttribute('transform','translate('+node.x+','+node.y+')');const c=document.createElementNS(NS,'circle');c.setAttribute('r',R);c.setAttribute('fill','#fff');c.setAttribute('stroke',node.kind==='branch'?'#FCA5A5':(isStart?'#F97316':(isEnd?'#16a34a':'#7F77DD')));c.setAttribute('stroke-width','3');g.appendChild(c);if(b.image_url){const img=document.createElementNS(NS,'image');img.setAttributeNS('http://www.w3.org/1999/xlink','href',b.image_url);img.setAttribute('href',b.image_url);img.setAttribute('x',-R+5);img.setAttribute('y',-R+5);img.setAttribute('width',(R-5)*2);img.setAttribute('height',(R-5)*2);img.setAttribute('clip-path','circle('+(R-5)+'px)');img.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(img);}const num=document.createElementNS(NS,'text');num.setAttribute('x',R-7);num.setAttribute('y',-R+11);num.setAttribute('text-anchor','middle');num.setAttribute('font-size','13');num.setAttribute('font-family','Fredoka, sans-serif');num.setAttribute('font-weight','700');num.setAttribute('fill','#7F77DD');num.textContent=node.kind==='path'?String(node.index+1):'x';g.appendChild(num);if(b.word){const label=document.createElementNS(NS,'text');label.setAttribute('x',0);label.setAttribute('y',R+14);label.setAttribute('text-anchor','middle');label.setAttribute('font-size','10');label.setAttribute('font-family','Nunito, sans-serif');label.setAttribute('font-weight','800');label.setAttribute('fill','#534AB7');label.textContent=b.word;g.appendChild(label);}if(isStart||isEnd){const flag=document.createElementNS(NS,'text');flag.setAttribute('x',0);flag.setAttribute('y',-R-11);flag.setAttribute('text-anchor','middle');flag.setAttribute('font-size','11');flag.setAttribute('font-family','Nunito, sans-serif');flag.setAttribute('font-weight','900');flag.setAttribute('fill',isStart?'#F97316':'#16a34a');flag.textContent=isStart?'START':'HOME';g.appendChild(flag);}svg.appendChild(g);});wrap.appendChild(svg);}
-function mzkeSyncAll(){mzkeSyncPicker();}
-document.addEventListener('DOMContentLoaded',()=>{mzkeSyncAll();});
-document.getElementById('mzkeForm').addEventListener('submit',e=>{document.getElementById('mzkeLayoutPositionsInput').value='{}';if(!mzkePath.length){e.preventDefault();alert('Add at least one node to the path sequence before saving.');document.getElementById('mzkeSeqPicker').scrollIntoView({behavior:'smooth',block:'center'});}});
+function mzkeResizeSlots(arr, newLen, prefix){
+  newLen = Math.max(0, newLen|0);
+  if (arr.length > newLen){
+    const removed = arr.slice(newLen);
+    const hasData = removed.some(s=>s.word||s.image_url);
+    if (hasData && !confirm('Some pictures already added in the removed spaces will be lost. Continue?')) return null;
+    arr = arr.slice(0, newLen);
+  }
+  while (arr.length < newLen) arr.push({id:mzkeUid(prefix), word:'', image_url:''});
+  return arr;
+}
+
+function mzkeUpdateGrid(){
+  const pathCount = Math.max(2, parseInt(document.getElementById('mzkePathCount').value,10) || 2);
+  const branchCount = Math.max(0, parseInt(document.getElementById('mzkeBranchCount').value,10) || 0);
+  mzkeReadSlotsFromDom();
+  const newPath = mzkeResizeSlots(mzkePathSlots, pathCount, 'path');
+  if (newPath === null) return;
+  mzkePathSlots = newPath;
+  const newBranches = mzkeResizeSlots(mzkeBranchSlots, branchCount, 'branch');
+  if (newBranches === null) return;
+  mzkeBranchSlots = newBranches;
+  document.getElementById('mzkePathCount').value = pathCount;
+  document.getElementById('mzkeBranchCount').value = branchCount;
+  mzkeRenderAll();
+}
+
+function mzkeReadSlotsFromDom(){
+  document.querySelectorAll('#mzkeBankGrid .mzke-bank-card').forEach(card=>{
+    const id = card.getAttribute('data-vocab-id');
+    const kind = card.getAttribute('data-kind');
+    const word = card.querySelector('input[name^="bank_word"]').value.trim();
+    const img = card.querySelector('.mzke-img-existing').value.trim();
+    const arr = kind === 'branch' ? mzkeBranchSlots : mzkePathSlots;
+    const slot = arr.find(s=>s.id===id);
+    if (slot){ slot.word = word; slot.image_url = img; }
+  });
+}
+
+function mzkeSlotCard(slot, kind, label){
+  const div = document.createElement('div');
+  div.className = 'mzke-bank-card ' + kind + (!slot.word && !slot.image_url ? ' empty' : '');
+  div.setAttribute('data-vocab-id', slot.id);
+  div.setAttribute('data-kind', kind);
+  div.innerHTML = `<span class="mzke-slot-tag">${mzkeEscape(label)}</span>
+<input type="hidden" name="${kind==='branch'?'branch_vocabulary_id[]':'path_vocabulary_id[]'}" value="${mzkeEscape(slot.id)}">
+<input type="hidden" name="bank_id[]" value="${mzkeEscape(slot.id)}">
+<input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value="${mzkeEscape(slot.image_url)}">
+<div class="mzke-bank-thumb">${slot.image_url?`<img src="${mzkeEscape(slot.image_url)}" alt="">`:''}</div>
+<input type="file" name="bank_image_upload[]" accept="image/*" onchange="mzkePrevImg(this)">
+<input type="text" name="bank_word[]" value="${mzkeEscape(slot.word)}" placeholder="word" onchange="mzkeOnWordChange(this)">
+<input type="hidden" name="bank_audio[]" class="mzke-audio-hidden" value="${mzkeEscape(slot.audio||'')}">`;
+  return div;
+}
+
+function mzkePrevImg(fileInput){
+  const card = fileInput.closest('.mzke-bank-card');
+  const thumb = card.querySelector('.mzke-bank-thumb');
+  const hidden = card.querySelector('.mzke-img-existing');
+  const file = fileInput.files[0];
+  if (file){
+    const reader = new FileReader();
+    reader.onload = e => {
+      thumb.innerHTML = `<img src="${e.target.result}" alt="">`;
+      hidden.value = e.target.result;
+      card.classList.remove('empty');
+      mzkeReadSlotsFromDom();
+      mzkeRenderPreview();
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function mzkeOnWordChange(input){
+  const card = input.closest('.mzke-bank-card');
+  if (input.value.trim()) card.classList.remove('empty');
+  mzkeReadSlotsFromDom();
+  mzkeRenderPreview();
+}
+
+function mzkeRenderBankGrid(){
+  const grid = document.getElementById('mzkeBankGrid');
+  grid.innerHTML = '';
+  mzkePathSlots.forEach((slot, idx)=>{
+    const isLast = idx === mzkePathSlots.length - 1;
+    const label = isLast ? 'HOME' : String(idx + 1);
+    grid.appendChild(mzkeSlotCard(slot, 'path', label));
+  });
+  mzkeBranchSlots.forEach((slot, idx)=>{
+    grid.appendChild(mzkeSlotCard(slot, 'branch', 'Wall ' + (idx + 1)));
+  });
+  const inputs = document.getElementById('mzkePathInputs');
+  inputs.innerHTML = '';
+  const binputs = document.getElementById('mzkeBranchInputs');
+  binputs.innerHTML = '';
+  const pathCount = mzkePathSlots.length;
+  const branchCount = mzkeBranchSlots.length;
+  mzkeBranchSlots.forEach((slot, idx)=>{
+    const attachAfter = branchCount > 0
+      ? Math.min(pathCount - 1, Math.max(0, Math.floor((idx + 1) * pathCount / (branchCount + 1))))
+      : 0;
+    const a = document.createElement('input');
+    a.type = 'hidden'; a.name = 'branch_after_index[]'; a.value = attachAfter;
+    binputs.appendChild(a);
+  });
+}
+
+function mzkeRenderPreview(){
+  const wrap = document.getElementById('mzkePreviewWrap');
+  wrap.innerHTML = '';
+  document.getElementById('mzkeLayoutPositionsInput').value = '{}';
+  if (!mzkePathSlots.length){ wrap.textContent = 'Set the number of pictures above to see a preview.'; return; }
+  const byId = {};
+  mzkePathSlots.forEach(s=>{byId[s.id]=s;});
+  mzkeBranchSlots.forEach(s=>{byId[s.id]=s;});
+  const pathIds = mzkePathSlots.map(s=>s.id);
+  const pathCount = pathIds.length;
+  const branchCount = mzkeBranchSlots.length;
+  const branches = mzkeBranchSlots.map((s, idx)=>({
+    vocabulary_id: s.id,
+    attach_after_index: branchCount > 0
+      ? Math.min(pathCount - 1, Math.max(0, Math.floor((idx + 1) * pathCount / (branchCount + 1))))
+      : 0,
+  }));
+  const layout = generateMazeLayout(pathIds, branches);
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height);
+  svg.setAttribute('width', Math.min(layout.width, 900));
+  svg.setAttribute('height', layout.height * (Math.min(layout.width, 900) / layout.width));
+  mzkRenderMazeBase(NS, svg, layout, {wallColor:'#CDC7F3', floorColor:'#ffffff', dotColor:'rgba(83,74,183,.10)'});
+  const R = Math.round(layout.cellSize * 0.32);
+  layout.nodes.forEach(node=>{
+    const b = byId[node.vocabularyId] || {word:'',image_url:''};
+    const isStart = node.kind === 'path' && node.index === 0;
+    const isEnd = node.kind === 'path' && node.index === pathCount - 1;
+    const g = document.createElementNS(NS, 'g');
+    g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
+    const c = document.createElementNS(NS, 'circle');
+    c.setAttribute('r', R);
+    c.setAttribute('fill', '#fff');
+    c.setAttribute('stroke', node.kind === 'branch' ? '#FCA5A5' : (isStart ? '#F97316' : (isEnd ? '#16a34a' : '#7F77DD')));
+    c.setAttribute('stroke-width', '3');
+    g.appendChild(c);
+    if (b.image_url){
+      const img = document.createElementNS(NS, 'image');
+      img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
+      img.setAttribute('href', b.image_url);
+      img.setAttribute('x', -R + 5); img.setAttribute('y', -R + 5);
+      img.setAttribute('width', (R - 5) * 2); img.setAttribute('height', (R - 5) * 2);
+      img.setAttribute('clip-path', 'circle(' + (R - 5) + 'px)');
+      img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
+      g.appendChild(img);
+    }
+    const num = document.createElementNS(NS, 'text');
+    num.setAttribute('x', R - 7); num.setAttribute('y', -R + 11); num.setAttribute('text-anchor', 'middle');
+    num.setAttribute('font-size', '13'); num.setAttribute('font-family', 'Fredoka, sans-serif'); num.setAttribute('font-weight', '700');
+    num.setAttribute('fill', '#7F77DD');
+    num.textContent = node.kind === 'path' ? String(node.index + 1) : 'x';
+    g.appendChild(num);
+    if (b.word){
+      const label = document.createElementNS(NS, 'text');
+      label.setAttribute('x', 0); label.setAttribute('y', R + 14); label.setAttribute('text-anchor', 'middle');
+      label.setAttribute('font-size', '10'); label.setAttribute('font-family', 'Nunito, sans-serif'); label.setAttribute('font-weight', '800');
+      label.setAttribute('fill', '#534AB7');
+      label.textContent = b.word;
+      g.appendChild(label);
+    }
+    if (isStart || isEnd){
+      const flag = document.createElementNS(NS, 'text');
+      flag.setAttribute('x', 0); flag.setAttribute('y', -R - 11); flag.setAttribute('text-anchor', 'middle');
+      flag.setAttribute('font-size', '11'); flag.setAttribute('font-family', 'Nunito, sans-serif'); flag.setAttribute('font-weight', '900');
+      flag.setAttribute('fill', isStart ? '#F97316' : '#16a34a');
+      flag.textContent = isStart ? 'START' : 'HOME';
+      g.appendChild(flag);
+    }
+    svg.appendChild(g);
+  });
+  wrap.appendChild(svg);
+}
+
+function mzkeRenderAll(){ mzkeRenderBankGrid(); mzkeRenderPreview(); }
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  mzkeInitSlotsFromServer(
+    <?php echo json_encode($vocabularyBank, JSON_UNESCAPED_UNICODE); ?>,
+    <?php echo json_encode($pathSequence, JSON_UNESCAPED_UNICODE); ?>,
+    <?php echo json_encode($distractorBranches, JSON_UNESCAPED_UNICODE); ?>,
+    <?php echo json_encode($audioUrls, JSON_UNESCAPED_UNICODE); ?>
+  );
+  if (!mzkePathSlots.length){
+    const n = Math.max(2, parseInt(document.getElementById('mzkePathCount').value,10) || 5);
+    mzkePathSlots = mzkeResizeSlots(mzkePathSlots, n, 'path') || [];
+  }
+  document.getElementById('mzkePathCount').value = mzkePathSlots.length;
+  document.getElementById('mzkeBranchCount').value = mzkeBranchSlots.length;
+  mzkeRenderAll();
+});
+
+document.getElementById('mzkeForm').addEventListener('submit', e=>{
+  document.getElementById('mzkeLayoutPositionsInput').value = '{}';
+  mzkeReadSlotsFromDom();
+  if (!mzkePathSlots.length){
+    e.preventDefault();
+    alert('Set at least 2 pictures in the path before saving.');
+    return;
+  }
+  const incomplete = mzkePathSlots.concat(mzkeBranchSlots).some(s=>!s.word && !s.image_url);
+  if (incomplete && !confirm('Some spaces are still missing a picture or word. Save anyway?')) {
+    e.preventDefault();
+  }
+});
 </script>
 <?php
 $content = ob_get_clean();
