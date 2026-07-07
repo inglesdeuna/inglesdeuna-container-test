@@ -1,14 +1,6 @@
 /**
  * maze_layout.js
- * Pure JS maze-layout generator shared between maze_kids/editor.php (live preview)
- * and maze_kids/viewer.php (real interactive maze).
- *
- * generateMazeLayout(pathSequence, distractorBranches, customPositions) -> {
- *   nodes: [{ id, index, x, y, kind:'path'|'branch', vocabularyId, attachAfterIndex }],
- *   mainPath: [{x,y}, ...],
- *   wallPathD, corridorPathD, branchPathD, branchEndpoints,
- *   width, height, offsetX, offsetY
- * }
+ * Shared by maze_kids/editor.php and maze_kids/viewer.php.
  */
 (function (global) {
   'use strict';
@@ -149,5 +141,62 @@
     };
   }
 
+  function addEditorGridEnhancer() {
+    if (!global.document) return;
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(function () {
+        var wrap = document.getElementById('mzkePreviewWrap');
+        if (!wrap || typeof global.mzkeRenderPreview !== 'function') return;
+
+        var style = document.createElement('style');
+        style.textContent = '#mzkePreviewWrap{background-color:#F8F7FF;background-image:linear-gradient(#DDD9FA 1px,transparent 1px),linear-gradient(90deg,#DDD9FA 1px,transparent 1px);background-size:74px 74px}.mzke-grid-legend{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 10px}.mzke-grid-legend span{border-radius:999px;padding:5px 10px;font-size:11px;font-weight:900;background:#fff;border:1px solid #EDE9FA}.mzke-grid-legend .start{color:#C2580A;border-color:#FDBA74}.mzke-grid-legend .home{color:#15803d;border-color:#86efac}.mzke-grid-legend .wall{color:#b91c1c;border-color:#fecaca}';
+        document.head.appendChild(style);
+
+        var note = document.querySelector('.mzke-preview-note span');
+        if (note) note.textContent = 'Drag the images on the grid to create the maze shape. The first image is START and the last image is HOME.';
+        var previewSection = wrap.closest('.mzke-section');
+        if (previewSection && !previewSection.querySelector('.mzke-grid-legend')) {
+          var legend = document.createElement('div');
+          legend.className = 'mzke-grid-legend';
+          legend.innerHTML = '<span class="start">START</span><span class="home">HOME</span><span>Correct path</span><span class="wall">Wall animals / dead ends</span>';
+          previewSection.insertBefore(legend, wrap);
+        }
+
+        var originalRender = global.mzkeRenderPreview;
+        global.mzkeRenderPreview = function () {
+          originalRender.apply(this, arguments);
+          var svg = wrap.querySelector('svg');
+          if (!svg) return;
+          var groups = Array.prototype.slice.call(svg.querySelectorAll('g.mzke-preview-node'));
+          var maxPath = 0;
+          groups.forEach(function (g) {
+            var t = Array.prototype.slice.call(g.querySelectorAll('text')).map(function (x) { return x.textContent.trim(); });
+            t.forEach(function (v) { if (/^\d+$/.test(v)) maxPath = Math.max(maxPath, parseInt(v, 10)); });
+          });
+          groups.forEach(function (g) {
+            if (g.querySelector('.mzke-extra-flag')) return;
+            var texts = Array.prototype.slice.call(g.querySelectorAll('text'));
+            var badge = texts.map(function (x) { return x.textContent.trim(); }).find(function (v) { return /^\d+$/.test(v) || v === 'x'; }) || '';
+            var flagText = badge === '1' ? 'START' : (badge === String(maxPath) ? 'HOME' : (badge === 'x' ? 'WALL' : ''));
+            if (!flagText) return;
+            var flag = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            flag.setAttribute('class', 'mzke-extra-flag');
+            flag.setAttribute('x', '0');
+            flag.setAttribute('y', '-38');
+            flag.setAttribute('text-anchor', 'middle');
+            flag.setAttribute('font-size', '10');
+            flag.setAttribute('font-family', 'Nunito, sans-serif');
+            flag.setAttribute('font-weight', '900');
+            flag.setAttribute('fill', flagText === 'START' ? '#C2580A' : (flagText === 'HOME' ? '#15803d' : '#b91c1c'));
+            flag.textContent = flagText;
+            g.appendChild(flag);
+          });
+        };
+        global.mzkeRenderPreview();
+      }, 0);
+    });
+  }
+
   global.generateMazeLayout = generateMazeLayout;
+  addEditorGridEnhancer();
 }(typeof window !== 'undefined' ? window : this));
