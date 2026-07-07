@@ -1,6 +1,8 @@
 /**
  * maze_layout.js
  * Shared by maze_kids/editor.php and maze_kids/viewer.php.
+ * generateMazeLayout() is the single source of truth for node positions,
+ * used identically by the editor live preview and the student viewer.
  */
 (function (global) {
   'use strict';
@@ -9,7 +11,6 @@
   var STEP_Y = 132;
   var PAD = 92;
   var MIN_CANVAS_WIDTH = 860;
-  var MAX_AUTO_COLS = 5;
 
   function pointKey(p) { return Math.round(p.x) + ':' + Math.round(p.y); }
 
@@ -31,47 +32,73 @@
     return Object.keys(out).length ? out : null;
   }
 
-  function autoMainPoint(index, count) {
-    var cols = Math.min(MAX_AUTO_COLS, Math.max(1, count));
+  function mzkHash(str) {
+    var h = 0;
+    for (var i = 0; i < str.length; i++) {
+      h = (h * 31 + str.charCodeAt(i)) | 0;
+    }
+    return Math.abs(h);
+  }
+
+  function seedFromPath(pathSequence) {
+    if (!pathSequence.length) return 0;
+    return mzkHash(pathSequence.join('|'));
+  }
+
+  function autoMainPoint(index, cols, reversed) {
     var row = Math.floor(index / cols);
     var posInRow = index % cols;
-    var col = row % 2 === 0 ? posInRow : (cols - 1 - posInRow);
+    var rowIsForward = reversed ? (row % 2 === 1) : (row % 2 === 0);
+    var col = rowIsForward ? posInRow : (cols - 1 - posInRow);
     return { x: col * STEP_X, y: row * STEP_Y };
   }
 
-  function buildMainPoints(count, customPositions) {
+  function buildMainPoints(count, customPositions, seed) {
     var points = [];
+    var cols = 4 + (seed % 3);
+    cols = Math.min(cols, Math.max(1, count));
+    var reversed = (seed % 2) === 1;
     for (var i = 0; i < count; i++) {
       var saved = customPositions && customPositions['path_' + i];
-      points.push(saved ? { x: saved.x, y: saved.y } : autoMainPoint(i, count));
+      points.push(saved ? { x: saved.x, y: saved.y } : autoMainPoint(i, cols, reversed));
     }
     return points;
   }
 
-  function buildBranchCandidates(base) {
+  function localDirection(mainPoints, idx) {
+    var cur = mainPoints[idx];
+    var ref = mainPoints[idx + 1] || mainPoints[idx - 1] || cur;
+    var dx = ref.x - cur.x, dy = ref.y - cur.y;
+    return (Math.abs(dx) >= Math.abs(dy)) ? 'h' : 'v';
+  }
+
+  function buildBranchCandidates(base, orientation) {
+    if (orientation === 'h') {
+      return [
+        { x: base.x, y: base.y - STEP_Y },
+        { x: base.x, y: base.y + STEP_Y },
+        { x: base.x, y: base.y - STEP_Y * 1.4 },
+        { x: base.x, y: base.y + STEP_Y * 1.4 }
+      ];
+    }
     return [
-      { x: base.x, y: base.y - STEP_Y },
-      { x: base.x, y: base.y + STEP_Y },
       { x: base.x + STEP_X, y: base.y },
       { x: base.x - STEP_X, y: base.y },
-      { x: base.x + STEP_X, y: base.y - STEP_Y },
-      { x: base.x - STEP_X, y: base.y - STEP_Y },
-      { x: base.x + STEP_X, y: base.y + STEP_Y },
-      { x: base.x - STEP_X, y: base.y + STEP_Y },
-      { x: base.x + STEP_X * 1.35, y: base.y },
-      { x: base.x - STEP_X * 1.35, y: base.y }
+      { x: base.x + STEP_X * 1.4, y: base.y },
+      { x: base.x - STEP_X * 1.4, y: base.y }
     ];
   }
 
-  function chooseBranchEndpoint(mainPoints, attachIndex, branchOrdinal, usedPoints, customPositions) {
+  function chooseBranchEndpoint(mainPoints, attachIndex, branchOrdinal, usedPoints, customPositions, seed) {
     if (customPositions && customPositions['branch_' + branchOrdinal]) {
       var saved = customPositions['branch_' + branchOrdinal];
       return { x: saved.x, y: saved.y };
     }
     var idx = Math.max(0, Math.min(mainPoints.length - 1, attachIndex));
     var base = mainPoints[idx] || { x: 0, y: 0 };
-    var candidates = buildBranchCandidates(base);
-    var rot = branchOrdinal % candidates.length;
+    var orientation = localDirection(mainPoints, idx);
+    var candidates = buildBranchCandidates(base, orientation);
+    var rot = (branchOrdinal + seed) % candidates.length;
     candidates = candidates.slice(rot).concat(candidates.slice(0, rot));
     for (var i = 0; i < candidates.length; i++) if (!usedPoints[pointKey(candidates[i])]) return candidates[i];
     return { x: base.x, y: base.y + STEP_Y * (branchOrdinal + 1) };
@@ -91,7 +118,8 @@
     distractorBranches = Array.isArray(distractorBranches) ? distractorBranches : [];
     customPositions = normalizeCustomPositions(customPositions);
 
-    var mainPoints = buildMainPoints(pathSequence.length, customPositions);
+    var seed = seedFromPath(pathSequence);
+    var mainPoints = buildMainPoints(pathSequence.length, customPositions, seed);
     var nodes = [];
     var usedPoints = {};
     var spreadBranches = shouldSpreadBranches(distractorBranches, customPositions) && mainPoints.length > 2;
@@ -104,10 +132,10 @@
     var branchSegments = [];
     for (var b = 0; b < distractorBranches.length; b++) {
       var branch = distractorBranches[b] || {};
-      var autoAttach = spreadBranches ? (b % Math.max(1, mainPoints.length - 1)) : (parseInt(branch.attach_after_index, 10) || 0);
+      var autoAttach = spreadBranches ? ((b + seed) % Math.max(1, mainPoints.length - 1)) : (parseInt(branch.attach_after_index, 10) || 0);
       var attachAfterIndex = Math.max(0, Math.min(mainPoints.length - 1, autoAttach));
       var startPoint = mainPoints[attachAfterIndex] || { x: 0, y: 0 };
-      var endpoint = chooseBranchEndpoint(mainPoints, attachAfterIndex, b, usedPoints, customPositions);
+      var endpoint = chooseBranchEndpoint(mainPoints, attachAfterIndex, b, usedPoints, customPositions, seed);
       usedPoints[pointKey(endpoint)] = true;
       nodes.push({ id: 'branch_' + b, index: pathSequence.length + b, x: endpoint.x, y: endpoint.y, kind: 'branch', vocabularyId: branch.vocabulary_id || '', attachAfterIndex: attachAfterIndex });
       branchSegments.push({ from: startPoint, to: endpoint });
@@ -150,6 +178,15 @@
       offsetX: offsetX,
       offsetY: offsetY
     };
+  }
+
+  function shuffleArray(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+    }
+    return a;
   }
 
   function addEditorGridEnhancer() {
@@ -218,6 +255,7 @@
   }
 
   global.generateMazeLayout = generateMazeLayout;
+  global.mzkShuffleArray = shuffleArray;
   addEditorGridEnhancer();
   loadArrowMode();
 }(typeof window !== 'undefined' ? window : this));
