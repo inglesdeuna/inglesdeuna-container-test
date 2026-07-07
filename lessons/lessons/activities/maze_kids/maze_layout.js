@@ -3,13 +3,13 @@
  * Pure JS maze-layout generator shared between maze_kids/editor.php (live preview)
  * and maze_kids/viewer.php (real interactive maze).
  *
- * generateMazeLayout(pathSequence, distractorBranches) -> {
+ * generateMazeLayout(pathSequence, distractorBranches, customPositions) -> {
  *   nodes: [{ id, index, x, y, kind:'path'|'branch', vocabularyId, attachAfterIndex }],
- *   mainPath: [{x,y}, ...],                // points along the main corridor, one per path node
- *   wallPathD: 'M ... L ...',              // thick outer "wall" stroke - MAIN corridor only
- *   corridorPathD: 'M ... L ...',          // thin dashed walkable stroke - MAIN corridor only
- *   branchPathD: 'M ... L ...',            // short dead-end distractor segments, rendered separately
- *   branchEndpoints: [{x,y}, ...],         // tip of each distractor branch (for the dead-end cap marker)
+ *   mainPath: [{x,y}, ...],
+ *   wallPathD: 'M ... L ...',
+ *   corridorPathD: 'M ... L ...',
+ *   branchPathD: 'M ... L ...',
+ *   branchEndpoints: [{x,y}, ...],
  *   width, height
  * }
  *
@@ -18,39 +18,14 @@
 (function (global) {
   'use strict';
 
-  var STEP_X = 140;   // horizontal distance covered per zigzag leg
-  var STEP_Y = 120;   // vertical distance between rows
-  var TURN_EVERY = 2; // change horizontal direction every N nodes
-  var PAD = 90;       // outer padding so nodes/branches never clip the SVG
+  var STEP_X = 148;
+  var STEP_Y = 132;
+  var PAD = 92;
+  var MIN_CANVAS_WIDTH = 860;
+  var MAX_AUTO_COLS = 5;
 
-  /* The viewer CSS scales the SVG to the available card width. Very short
-     mazes used to have a tiny intrinsic width (around 320px), so the browser
-     enlarged the whole SVG to the full viewer width and the nodes became huge.
-     Keep a stable worksheet-like canvas width and center small mazes inside it;
-     larger mazes can still grow naturally and shrink responsively. */
-  var MIN_CANVAS_WIDTH = 760;
-
-  /**
-   * Builds the zig-zag point list for the main path:
-   * right -> down -> left -> down -> right ... alternating every TURN_EVERY nodes.
-   */
-  function buildMainPoints(count) {
-    var points = [];
-    var x = 0, y = 0;
-    var dir = 1; // 1 = moving right, -1 = moving left
-    for (var i = 0; i < count; i++) {
-      points.push({ x: x, y: y });
-      if (i === count - 1) break;
-      var stepInRow = i % TURN_EVERY;
-      if (stepInRow === TURN_EVERY - 1) {
-        // time to drop a row and flip direction
-        y += STEP_Y;
-        dir *= -1;
-      } else {
-        x += STEP_X * dir;
-      }
-    }
-    return points;
+  function pointKey(p) {
+    return Math.round(p.x) + ':' + Math.round(p.y);
   }
 
   function pointsToPathD(points) {
@@ -62,42 +37,98 @@
     return d;
   }
 
+  function normalizeCustomPositions(customPositions) {
+    if (!customPositions || typeof customPositions !== 'object') return null;
+    var out = {};
+    Object.keys(customPositions).forEach(function (key) {
+      var p = customPositions[key] || {};
+      var x = Number(p.x), y = Number(p.y);
+      if (isFinite(x) && isFinite(y)) out[key] = { x: x, y: y };
+    });
+    return Object.keys(out).length ? out : null;
+  }
+
   /**
-   * Computes a short perpendicular branch endpoint from a main-path point,
-   * alternating above/below the corridor to avoid overlaps.
+   * Builds a wide, classroom-friendly path. The old automatic layout turned
+   * every 2 nodes, creating a tall vertical maze. This one uses up to 5 columns
+   * before dropping to the next row, so full screen stays horizontal.
    */
-  function branchEndpoint(mainPoints, attachIndex, branchOrdinal) {
+  function buildMainPoints(count, customPositions) {
+    var points = [];
+    if (customPositions) {
+      for (var c = 0; c < count; c++) {
+        var saved = customPositions['path_' + c];
+        if (saved) points.push({ x: saved.x, y: saved.y });
+        else break;
+      }
+      if (points.length === count) return points;
+    }
+
+    var cols = Math.min(MAX_AUTO_COLS, Math.max(1, count));
+    for (var i = 0; i < count; i++) {
+      var row = Math.floor(i / cols);
+      var posInRow = i % cols;
+      var col = row % 2 === 0 ? posInRow : (cols - 1 - posInRow);
+      points.push({ x: col * STEP_X, y: row * STEP_Y });
+    }
+    return points;
+  }
+
+  function buildBranchCandidates(base) {
+    return [
+      { x: base.x, y: base.y - STEP_Y },
+      { x: base.x, y: base.y + STEP_Y },
+      { x: base.x + STEP_X, y: base.y },
+      { x: base.x - STEP_X, y: base.y },
+      { x: base.x + STEP_X, y: base.y - STEP_Y },
+      { x: base.x - STEP_X, y: base.y - STEP_Y },
+      { x: base.x + STEP_X, y: base.y + STEP_Y },
+      { x: base.x - STEP_X, y: base.y + STEP_Y },
+      { x: base.x + STEP_X * 1.35, y: base.y },
+      { x: base.x - STEP_X * 1.35, y: base.y }
+    ];
+  }
+
+  function chooseBranchEndpoint(mainPoints, attachIndex, branchOrdinal, usedPoints, customPositions) {
+    if (customPositions && customPositions['branch_' + branchOrdinal]) {
+      var saved = customPositions['branch_' + branchOrdinal];
+      return { x: saved.x, y: saved.y };
+    }
+
     var idx = Math.max(0, Math.min(mainPoints.length - 1, attachIndex));
-    var base = mainPoints[idx];
-    var next = mainPoints[idx + 1] || mainPoints[idx - 1] || base;
-    // direction of travel at this node (used to find the perpendicular)
-    var dx = next.x - base.x;
-    var dy = next.y - base.y;
-    var len = Math.sqrt(dx * dx + dy * dy) || 1;
-    var ux = dx / len, uy = dy / len;
-    // perpendicular vector
-    var px = -uy, py = ux;
-    var side = (branchOrdinal % 2 === 0) ? 1 : -1;
-    var dist = STEP_Y * 0.85;
-    return {
-      x: base.x + px * dist * side + ux * (STEP_X * 0.15),
-      y: base.y + py * dist * side + uy * (STEP_Y * 0.15)
-    };
+    var base = mainPoints[idx] || { x: 0, y: 0 };
+    var candidates = buildBranchCandidates(base);
+
+    /* Rotate the candidate order by branch ordinal so multiple dead ends on
+       nearby path nodes do not all choose the same side. */
+    var rot = branchOrdinal % candidates.length;
+    candidates = candidates.slice(rot).concat(candidates.slice(0, rot));
+
+    for (var i = 0; i < candidates.length; i++) {
+      var p = candidates[i];
+      if (!usedPoints[pointKey(p)]) return p;
+    }
+
+    return { x: base.x, y: base.y + STEP_Y * (branchOrdinal + 1) };
   }
 
   /**
    * @param {Array} pathSequence         array of vocabulary_bank ids, in correct order
    * @param {Array} distractorBranches   [{ attach_after_index, vocabulary_id }]
+   * @param {Object|null} customPositions optional saved positions keyed by path_0, branch_0, etc.
    * @return {object} layout
    */
-  function generateMazeLayout(pathSequence, distractorBranches) {
+  function generateMazeLayout(pathSequence, distractorBranches, customPositions) {
     pathSequence = Array.isArray(pathSequence) ? pathSequence : [];
     distractorBranches = Array.isArray(distractorBranches) ? distractorBranches : [];
+    customPositions = normalizeCustomPositions(customPositions);
 
-    var mainPoints = buildMainPoints(pathSequence.length);
+    var mainPoints = buildMainPoints(pathSequence.length, customPositions);
     var nodes = [];
+    var usedPoints = {};
 
     for (var i = 0; i < pathSequence.length; i++) {
+      usedPoints[pointKey(mainPoints[i])] = true;
       nodes.push({
         id: 'path_' + i,
         index: i,
@@ -113,8 +144,9 @@
     for (var b = 0; b < distractorBranches.length; b++) {
       var branch = distractorBranches[b] || {};
       var attachAfterIndex = Math.max(0, Math.min(mainPoints.length - 1, parseInt(branch.attach_after_index, 10) || 0));
-      var endpoint = branchEndpoint(mainPoints, attachAfterIndex, b);
       var startPoint = mainPoints[attachAfterIndex] || { x: 0, y: 0 };
+      var endpoint = chooseBranchEndpoint(mainPoints, attachAfterIndex, b, usedPoints, customPositions);
+      usedPoints[pointKey(endpoint)] = true;
 
       nodes.push({
         id: 'branch_' + b,
@@ -129,7 +161,6 @@
       branchSegments.push({ from: startPoint, to: endpoint });
     }
 
-    // bounds (for width/height + centering offset)
     var xs = mainPoints.map(function (p) { return p.x; });
     var ys = mainPoints.map(function (p) { return p.y; });
     branchSegments.forEach(function (seg) {
@@ -143,7 +174,6 @@
     var rawWidth = (maxX - minX) + PAD * 2;
     var finalWidth = Math.max(rawWidth, MIN_CANVAS_WIDTH);
     var centerX = (finalWidth - rawWidth) / 2;
-
     var offsetX = PAD - minX + centerX;
     var offsetY = PAD - minY;
 
@@ -163,11 +193,8 @@
     return {
       nodes: nodes,
       mainPath: shiftedMain,
-      /* main corridor only - rendered as the double-stroke "path" */
       wallPathD: mainPathD,
       corridorPathD: mainPathD,
-      /* dead-end distractor branches - rendered as a distinct dashed red
-         line that never reconnects to the main corridor */
       branchPathD: branchPathD,
       branchEndpoints: branchEndpoints,
       width: Math.round(finalWidth),
