@@ -6,14 +6,9 @@
  * generateMazeLayout(pathSequence, distractorBranches, customPositions) -> {
  *   nodes: [{ id, index, x, y, kind:'path'|'branch', vocabularyId, attachAfterIndex }],
  *   mainPath: [{x,y}, ...],
- *   wallPathD: 'M ... L ...',
- *   corridorPathD: 'M ... L ...',
- *   branchPathD: 'M ... L ...',
- *   branchEndpoints: [{x,y}, ...],
- *   width, height
+ *   wallPathD, corridorPathD, branchPathD, branchEndpoints,
+ *   width, height, offsetX, offsetY
  * }
- *
- * No DOM access here - safe to reuse in editor preview and viewer.
  */
 (function (global) {
   'use strict';
@@ -24,16 +19,12 @@
   var MIN_CANVAS_WIDTH = 860;
   var MAX_AUTO_COLS = 5;
 
-  function pointKey(p) {
-    return Math.round(p.x) + ':' + Math.round(p.y);
-  }
+  function pointKey(p) { return Math.round(p.x) + ':' + Math.round(p.y); }
 
   function pointsToPathD(points) {
     if (!points.length) return '';
     var d = 'M ' + points[0].x.toFixed(1) + ' ' + points[0].y.toFixed(1);
-    for (var i = 1; i < points.length; i++) {
-      d += ' L ' + points[i].x.toFixed(1) + ' ' + points[i].y.toFixed(1);
-    }
+    for (var i = 1; i < points.length; i++) d += ' L ' + points[i].x.toFixed(1) + ' ' + points[i].y.toFixed(1);
     return d;
   }
 
@@ -48,11 +39,6 @@
     return Object.keys(out).length ? out : null;
   }
 
-  /**
-   * Builds a wide, classroom-friendly path. The old automatic layout turned
-   * every 2 nodes, creating a tall vertical maze. This one uses up to 5 columns
-   * before dropping to the next row, so full screen stays horizontal.
-   */
   function buildMainPoints(count, customPositions) {
     var points = [];
     if (customPositions) {
@@ -94,30 +80,15 @@
       var saved = customPositions['branch_' + branchOrdinal];
       return { x: saved.x, y: saved.y };
     }
-
     var idx = Math.max(0, Math.min(mainPoints.length - 1, attachIndex));
     var base = mainPoints[idx] || { x: 0, y: 0 };
     var candidates = buildBranchCandidates(base);
-
-    /* Rotate the candidate order by branch ordinal so multiple dead ends on
-       nearby path nodes do not all choose the same side. */
     var rot = branchOrdinal % candidates.length;
     candidates = candidates.slice(rot).concat(candidates.slice(0, rot));
-
-    for (var i = 0; i < candidates.length; i++) {
-      var p = candidates[i];
-      if (!usedPoints[pointKey(p)]) return p;
-    }
-
+    for (var i = 0; i < candidates.length; i++) if (!usedPoints[pointKey(candidates[i])]) return candidates[i];
     return { x: base.x, y: base.y + STEP_Y * (branchOrdinal + 1) };
   }
 
-  /**
-   * @param {Array} pathSequence         array of vocabulary_bank ids, in correct order
-   * @param {Array} distractorBranches   [{ attach_after_index, vocabulary_id }]
-   * @param {Object|null} customPositions optional saved positions keyed by path_0, branch_0, etc.
-   * @return {object} layout
-   */
   function generateMazeLayout(pathSequence, distractorBranches, customPositions) {
     pathSequence = Array.isArray(pathSequence) ? pathSequence : [];
     distractorBranches = Array.isArray(distractorBranches) ? distractorBranches : [];
@@ -129,15 +100,7 @@
 
     for (var i = 0; i < pathSequence.length; i++) {
       usedPoints[pointKey(mainPoints[i])] = true;
-      nodes.push({
-        id: 'path_' + i,
-        index: i,
-        x: mainPoints[i].x,
-        y: mainPoints[i].y,
-        kind: 'path',
-        vocabularyId: pathSequence[i],
-        attachAfterIndex: null
-      });
+      nodes.push({ id: 'path_' + i, index: i, x: mainPoints[i].x, y: mainPoints[i].y, kind: 'path', vocabularyId: pathSequence[i], attachAfterIndex: null });
     }
 
     var branchSegments = [];
@@ -147,26 +110,13 @@
       var startPoint = mainPoints[attachAfterIndex] || { x: 0, y: 0 };
       var endpoint = chooseBranchEndpoint(mainPoints, attachAfterIndex, b, usedPoints, customPositions);
       usedPoints[pointKey(endpoint)] = true;
-
-      nodes.push({
-        id: 'branch_' + b,
-        index: pathSequence.length + b,
-        x: endpoint.x,
-        y: endpoint.y,
-        kind: 'branch',
-        vocabularyId: branch.vocabulary_id || '',
-        attachAfterIndex: attachAfterIndex
-      });
-
+      nodes.push({ id: 'branch_' + b, index: pathSequence.length + b, x: endpoint.x, y: endpoint.y, kind: 'branch', vocabularyId: branch.vocabulary_id || '', attachAfterIndex: attachAfterIndex });
       branchSegments.push({ from: startPoint, to: endpoint });
     }
 
     var xs = mainPoints.map(function (p) { return p.x; });
     var ys = mainPoints.map(function (p) { return p.y; });
-    branchSegments.forEach(function (seg) {
-      xs.push(seg.to.x);
-      ys.push(seg.to.y);
-    });
+    branchSegments.forEach(function (seg) { xs.push(seg.to.x); ys.push(seg.to.y); });
     if (!xs.length) { xs = [0]; ys = [0]; }
     var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
     var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
@@ -185,9 +135,7 @@
     });
 
     var mainPathD = pointsToPathD(shiftedMain);
-    var branchPathD = branchSegments.map(function (seg) {
-      return pointsToPathD([seg.from, seg.to]);
-    }).join(' ');
+    var branchPathD = branchSegments.map(function (seg) { return pointsToPathD([seg.from, seg.to]); }).join(' ');
     var branchEndpoints = branchSegments.map(function (seg) { return seg.to; });
 
     return {
@@ -198,10 +146,11 @@
       branchPathD: branchPathD,
       branchEndpoints: branchEndpoints,
       width: Math.round(finalWidth),
-      height: Math.round((maxY - minY) + PAD * 2)
+      height: Math.round((maxY - minY) + PAD * 2),
+      offsetX: offsetX,
+      offsetY: offsetY
     };
   }
 
   global.generateMazeLayout = generateMazeLayout;
-
 }(typeof window !== 'undefined' ? window : this));
