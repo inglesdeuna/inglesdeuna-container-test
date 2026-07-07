@@ -6,14 +6,14 @@
  * generateMazeLayout(pathSequence, distractorBranches) -> {
  *   nodes: [{ id, index, x, y, kind:'path'|'branch', vocabularyId, attachAfterIndex }],
  *   mainPath: [{x,y}, ...],                // points along the main corridor, one per path node
- *   wallPathD: 'M ... L ...',              // thick outer "wall" stroke — MAIN corridor only
- *   corridorPathD: 'M ... L ...',          // thin dashed walkable stroke — MAIN corridor only
+ *   wallPathD: 'M ... L ...',              // thick outer "wall" stroke - MAIN corridor only
+ *   corridorPathD: 'M ... L ...',          // thin dashed walkable stroke - MAIN corridor only
  *   branchPathD: 'M ... L ...',            // short dead-end distractor segments, rendered separately
  *   branchEndpoints: [{x,y}, ...],         // tip of each distractor branch (for the dead-end cap marker)
  *   width, height
  * }
  *
- * No DOM access here — safe to reuse in editor preview and viewer.
+ * No DOM access here - safe to reuse in editor preview and viewer.
  */
 (function (global) {
   'use strict';
@@ -21,7 +21,14 @@
   var STEP_X = 140;   // horizontal distance covered per zigzag leg
   var STEP_Y = 120;   // vertical distance between rows
   var TURN_EVERY = 2; // change horizontal direction every N nodes
-  var PAD = 90;        // outer padding so nodes/branches never clip the SVG
+  var PAD = 90;       // outer padding so nodes/branches never clip the SVG
+
+  /* The viewer CSS scales the SVG to the available card width. Very short
+     mazes used to have a tiny intrinsic width (around 320px), so the browser
+     enlarged the whole SVG to the full viewer width and the nodes became huge.
+     Keep a stable worksheet-like canvas width and center small mazes inside it;
+     larger mazes can still grow naturally and shrink responsively. */
+  var MIN_CANVAS_WIDTH = 760;
 
   /**
    * Builds the zig-zag point list for the main path:
@@ -122,7 +129,7 @@
       branchSegments.push({ from: startPoint, to: endpoint });
     }
 
-    // ── bounds (for width/height + centering offset) ──
+    // bounds (for width/height + centering offset)
     var xs = mainPoints.map(function (p) { return p.x; });
     var ys = mainPoints.map(function (p) { return p.y; });
     branchSegments.forEach(function (seg) {
@@ -133,7 +140,11 @@
     var minX = Math.min.apply(null, xs), maxX = Math.max.apply(null, xs);
     var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
 
-    var offsetX = PAD - minX;
+    var rawWidth = (maxX - minX) + PAD * 2;
+    var finalWidth = Math.max(rawWidth, MIN_CANVAS_WIDTH);
+    var centerX = (finalWidth - rawWidth) / 2;
+
+    var offsetX = PAD - minX + centerX;
     var offsetY = PAD - minY;
 
     var shiftedMain = mainPoints.map(function (p) { return { x: p.x + offsetX, y: p.y + offsetY }; });
@@ -152,14 +163,14 @@
     return {
       nodes: nodes,
       mainPath: shiftedMain,
-      /* main corridor only — rendered as the double-stroke "path" */
+      /* main corridor only - rendered as the double-stroke "path" */
       wallPathD: mainPathD,
       corridorPathD: mainPathD,
-      /* dead-end distractor branches — rendered as a distinct dashed red
+      /* dead-end distractor branches - rendered as a distinct dashed red
          line that never reconnects to the main corridor */
       branchPathD: branchPathD,
       branchEndpoints: branchEndpoints,
-      width: Math.round((maxX - minX) + PAD * 2),
+      width: Math.round(finalWidth),
       height: Math.round((maxY - minY) + PAD * 2)
     };
   }
