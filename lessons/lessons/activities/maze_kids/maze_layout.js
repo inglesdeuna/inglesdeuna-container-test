@@ -138,7 +138,11 @@
       var endpoint = chooseBranchEndpoint(mainPoints, attachAfterIndex, b, usedPoints, customPositions, seed);
       usedPoints[pointKey(endpoint)] = true;
       nodes.push({ id: 'branch_' + b, index: pathSequence.length + b, x: endpoint.x, y: endpoint.y, kind: 'branch', vocabularyId: branch.vocabulary_id || '', attachAfterIndex: attachAfterIndex });
-      branchSegments.push({ from: startPoint, to: endpoint });
+      // A single dead-end point reads as decoration, not an obstacle. Every wall is built from
+      // two blockages (a mid-span barrier plus the dead-end itself) so it behaves like a real
+      // wall segment that must be routed around, not just one lonely tile.
+      var mid = { x: (startPoint.x + endpoint.x) / 2, y: (startPoint.y + endpoint.y) / 2 };
+      branchSegments.push({ from: startPoint, to: endpoint, mid: mid });
     }
 
     var xs = mainPoints.map(function (p) { return p.x; });
@@ -160,11 +164,13 @@
     branchSegments.forEach(function (seg) {
       seg.from = { x: seg.from.x + offsetX, y: seg.from.y + offsetY };
       seg.to = { x: seg.to.x + offsetX, y: seg.to.y + offsetY };
+      seg.mid = { x: seg.mid.x + offsetX, y: seg.mid.y + offsetY };
     });
 
     var mainPathD = pointsToPathD(shiftedMain);
-    var branchPathD = branchSegments.map(function (seg) { return pointsToPathD([seg.from, seg.to]); }).join(' ');
+    var branchPathD = branchSegments.map(function (seg) { return pointsToPathD([seg.from, seg.mid, seg.to]); }).join(' ');
     var branchEndpoints = branchSegments.map(function (seg) { return seg.to; });
+    var branchBlockers = branchSegments.map(function (seg) { return seg.mid; });
 
     return {
       nodes: nodes,
@@ -173,6 +179,7 @@
       corridorPathD: mainPathD,
       branchPathD: branchPathD,
       branchEndpoints: branchEndpoints,
+      branchBlockers: branchBlockers,
       width: Math.round(finalWidth),
       height: Math.round(rawHeight),
       offsetX: offsetX,
