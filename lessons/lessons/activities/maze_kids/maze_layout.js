@@ -188,6 +188,26 @@
     return { x: ref.x - cur.x, y: ref.y - cur.y };
   }
 
+  /**
+   * Finds a single free neighbour cell for a start/home endpoint marker.
+   * Prefers continuing straight along `preferDir` (so the entrance/exit
+   * lines up with the corridor) and falls back to any free neighbour.
+   */
+  function pickEndpointCell(anchor, preferDir, used, rng) {
+    var candidates = [];
+    if (preferDir) candidates.push(preferDir);
+    shuffle(DIRS, rng).forEach(function (d) {
+      if (!preferDir || d.x !== preferDir.x || d.y !== preferDir.y) candidates.push(d);
+    });
+    for (var i = 0; i < candidates.length; i++) {
+      var d = candidates[i];
+      var cand = { x: anchor.x + d.x, y: anchor.y + d.y };
+      var key = cellKey(cand.x, cand.y);
+      if (!used[key]) { used[key] = true; return cand; }
+    }
+    return null;
+  }
+
   function generateMazeLayout(pathSequence, distractorBranches) {
     pathSequence = Array.isArray(pathSequence) ? pathSequence : [];
     distractorBranches = Array.isArray(distractorBranches) ? distractorBranches : [];
@@ -231,6 +251,33 @@
         entryGx: built.entry.x,
         entryGy: built.entry.y
       });
+    }
+
+    // Dedicated entrance/exit markers. These are purely decorative (a start
+    // arrow and a home/house icon) and are never one of the teacher's
+    // uploaded vocabulary pictures, so they are appended as extra cells
+    // rather than reusing path_0 / the last path node.
+    if (mainCells.length) {
+      var startDir = mainCells.length > 1
+        ? { x: mainCells[0].x - mainCells[1].x, y: mainCells[0].y - mainCells[1].y }
+        : null;
+      var startCell = pickEndpointCell(mainCells[0], startDir, used, rng);
+      if (startCell) {
+        allCells.push({ x: startCell.x, y: startCell.y });
+        connectors.push([mainCells[0], startCell]);
+        nodes.unshift({ id: 'start', index: -1, gx: startCell.x, gy: startCell.y, kind: 'start', vocabularyId: '', attachAfterIndex: null });
+      }
+
+      var lastIdx = mainCells.length - 1;
+      var homeDir = mainCells.length > 1
+        ? { x: mainCells[lastIdx].x - mainCells[lastIdx - 1].x, y: mainCells[lastIdx].y - mainCells[lastIdx - 1].y }
+        : null;
+      var homeCell = pickEndpointCell(mainCells[lastIdx], homeDir, used, rng);
+      if (homeCell) {
+        allCells.push({ x: homeCell.x, y: homeCell.y });
+        connectors.push([mainCells[lastIdx], homeCell]);
+        nodes.push({ id: 'home', index: pathSequence.length + distractorBranches.length, gx: homeCell.x, gy: homeCell.y, kind: 'home', vocabularyId: '', attachAfterIndex: null });
+      }
     }
 
     var xs = allCells.map(function (c) { return c.x; });
@@ -354,6 +401,32 @@
     svg.appendChild(cellGroup);
   }
 
+  /**
+   * Draws a fixed icon (never a teacher-uploaded picture) for the maze's
+   * decorative start (arrow) and home (house) endpoint nodes.
+   */
+  function renderEndpointIcon(NS, kind) {
+    var g = document.createElementNS(NS, 'g');
+    if (kind === 'start') {
+      var tri = document.createElementNS(NS, 'path');
+      tri.setAttribute('d', 'M -7,-11 L 11,0 L -7,11 Z');
+      tri.setAttribute('fill', '#F97316');
+      g.appendChild(tri);
+    } else if (kind === 'home') {
+      var roof = document.createElementNS(NS, 'path');
+      roof.setAttribute('d', 'M -13,9 L -13,-2 L 0,-15 L 13,-2 L 13,9 Z');
+      roof.setAttribute('fill', '#16a34a');
+      g.appendChild(roof);
+      var door = document.createElementNS(NS, 'rect');
+      door.setAttribute('x', -4); door.setAttribute('y', -3);
+      door.setAttribute('width', 8); door.setAttribute('height', 12);
+      door.setAttribute('rx', 1.5);
+      door.setAttribute('fill', '#fff');
+      g.appendChild(door);
+    }
+    return g;
+  }
+
   function loadArrowMode() {
     if (!global.document) return;
     document.addEventListener('DOMContentLoaded', function () {
@@ -366,6 +439,7 @@
 
   global.generateMazeLayout = generateMazeLayout;
   global.mzkRenderMazeBase = renderMazeBase;
+  global.mzkRenderEndpointIcon = renderEndpointIcon;
   global.mzkShuffleArray = function (arr) { return shuffle(arr, Math.random); };
   loadArrowMode();
 }(typeof window !== 'undefined' ? window : this));

@@ -272,6 +272,7 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 .mzke-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mzke-help{margin:-6px 0 10px;color:#6b7280;font-size:12px;font-weight:700}
 .mzke-count-row{display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:6px}.mzke-count-field{min-width:190px}.mzke-count-field input{margin-bottom:0}.mzke-btn-update{background:#7F77DD;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:900;font-size:13px}
 .mzke-bank-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}.mzke-bank-card{background:#fff;border:2px solid #e5e7eb;border-radius:10px;padding:10px;width:150px;position:relative}.mzke-bank-card.path{border-color:#CDC7F3}.mzke-bank-card.branch{border-color:#FCA5A5}.mzke-bank-card.empty{border-style:dashed}
+.mzke-slot-remove{position:absolute;top:6px;right:6px;background:#9ca3af;color:#fff;border:none;border-radius:999px;width:20px;height:20px;line-height:20px;text-align:center;font-size:12px;font-weight:900;cursor:pointer;padding:0}.mzke-slot-remove:hover{background:#ef4444}
 .mzke-slot-tag{position:absolute;top:6px;left:6px;background:#7F77DD;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;font-family:'Fredoka',sans-serif}.mzke-bank-card.branch .mzke-slot-tag{background:#ef4444}
 .mzke-bank-thumb{width:100%;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin-bottom:8px;margin-top:14px}.mzke-bank-thumb img{width:100%;height:100%;object-fit:contain;display:block}
 .mzke-bank-card input[type=text]{margin-bottom:6px;font-size:13px}.mzke-bank-card input[type=file]{font-size:11px;margin-bottom:6px}
@@ -284,11 +285,9 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 <form method="post" enctype="multipart/form-data" class="mzke-wrap" id="mzkeForm">
 <div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Theme</label><input type="text" name="theme" value="<?= htmlspecialchars($activityTheme, ENT_QUOTES, 'UTF-8') ?>"></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div></div>
 
-<div class="mzke-section"><h3>2. How many pictures?</h3><p class="mzke-section-sub">Choose how many pictures make up the correct path, and how many are "wall" pictures (wrong turns / dead ends). The grid below is generated automatically to match.</p><div class="mzke-count-row"><div class="mzke-count-field"><label>Pictures in the path (incl. start &amp; home)</label><input type="number" id="mzkePathCount" min="2" max="20" step="1" value="<?= max(2, count($pathSequence) ?: 5) ?>"></div><div class="mzke-count-field"><label>Wall pictures (dead ends)</label><input type="number" id="mzkeBranchCount" min="0" max="10" step="1" value="<?= count($distractorBranches) ?>"></div><button type="button" class="mzke-btn-update" onclick="mzkeUpdateGrid()">Update grid</button></div></div>
+<div class="mzke-section"><h3>2. Upload your pictures</h3><p class="mzke-section-sub">Add one picture for every word in the correct path, plus (optionally) a few "wall" pictures for wrong turns. <b>The grid always matches the number of pictures you add — there are never empty spaces.</b> The maze automatically draws a <b>start arrow</b> and a <b>home (house)</b> icon at the two ends of the path; those icons are not pictures you upload.</p><div class="mzke-bank-grid" id="mzkeBankGrid"></div><div class="mzke-toolbar" style="justify-content:flex-start"><button type="button" class="mzke-btn-update" onclick="mzkeAddSlot('path')">+ Add picture</button><button type="button" class="mzke-btn-update" style="background:#ef4444" onclick="mzkeAddSlot('branch')">+ Add wall</button></div></div>
 
-<div class="mzke-section"><h3>3. Upload your pictures</h3><p class="mzke-section-sub">Each space below is one spot in the maze. <b>Numbered spaces</b> (1, 2, 3…) are the correct path children must tap in order — the last one is <b>HOME</b>. <b>Red "Wall" spaces</b> are wrong turns. Upload an image and type the word for every space.</p><div class="mzke-bank-grid" id="mzkeBankGrid"></div></div>
-
-<div class="mzke-section"><h3>4. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls. It updates automatically as you fill in pictures above.</span></div><div id="mzkePreviewWrap"></div></div>
+<div class="mzke-section"><h3>3. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls. It updates automatically as you fill in pictures above.</span></div><div id="mzkePreviewWrap"></div></div>
 <div class="mzke-toolbar"><button type="submit" class="mzke-btn-save">Save</button></div>
 <input type="hidden" name="layout_positions_json" id="mzkeLayoutPositionsInput">
 <div id="mzkePathInputs"></div><div id="mzkeBranchInputs"></div>
@@ -328,18 +327,20 @@ function mzkeResizeSlots(arr, newLen, prefix){
   return arr;
 }
 
-function mzkeUpdateGrid(){
-  const pathCount = Math.max(2, parseInt(document.getElementById('mzkePathCount').value,10) || 2);
-  const branchCount = Math.max(0, parseInt(document.getElementById('mzkeBranchCount').value,10) || 0);
+function mzkeAddSlot(kind){
   mzkeReadSlotsFromDom();
-  const newPath = mzkeResizeSlots(mzkePathSlots, pathCount, 'path');
-  if (newPath === null) return;
-  mzkePathSlots = newPath;
-  const newBranches = mzkeResizeSlots(mzkeBranchSlots, branchCount, 'branch');
-  if (newBranches === null) return;
-  mzkeBranchSlots = newBranches;
-  document.getElementById('mzkePathCount').value = pathCount;
-  document.getElementById('mzkeBranchCount').value = branchCount;
+  if (kind === 'branch') mzkeBranchSlots.push({id:mzkeUid('branch'), word:'', image_url:''});
+  else mzkePathSlots.push({id:mzkeUid('path'), word:'', image_url:''});
+  mzkeRenderAll();
+}
+
+function mzkeRemoveSlot(id, kind){
+  mzkeReadSlotsFromDom();
+  const arr = kind === 'branch' ? mzkeBranchSlots : mzkePathSlots;
+  const slot = arr.find(s=>s.id===id);
+  if (slot && (slot.word || slot.image_url) && !confirm('This picture has content. Remove it anyway?')) return;
+  const idx = arr.findIndex(s=>s.id===id);
+  if (idx > -1) arr.splice(idx, 1);
   mzkeRenderAll();
 }
 
@@ -361,6 +362,7 @@ function mzkeSlotCard(slot, kind, label){
   div.setAttribute('data-vocab-id', slot.id);
   div.setAttribute('data-kind', kind);
   div.innerHTML = `<span class="mzke-slot-tag">${mzkeEscape(label)}</span>
+<button type="button" class="mzke-slot-remove" title="Remove" onclick="mzkeRemoveSlot('${mzkeEscape(slot.id)}','${kind}')">&times;</button>
 <input type="hidden" name="${kind==='branch'?'branch_vocabulary_id[]':'path_vocabulary_id[]'}" value="${mzkeEscape(slot.id)}">
 <input type="hidden" name="bank_id[]" value="${mzkeEscape(slot.id)}">
 <input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value="${mzkeEscape(slot.image_url)}">
@@ -400,9 +402,7 @@ function mzkeRenderBankGrid(){
   const grid = document.getElementById('mzkeBankGrid');
   grid.innerHTML = '';
   mzkePathSlots.forEach((slot, idx)=>{
-    const isLast = idx === mzkePathSlots.length - 1;
-    const label = isLast ? 'HOME' : String(idx + 1);
-    grid.appendChild(mzkeSlotCard(slot, 'path', label));
+    grid.appendChild(mzkeSlotCard(slot, 'path', String(idx + 1)));
   });
   mzkeBranchSlots.forEach((slot, idx)=>{
     grid.appendChild(mzkeSlotCard(slot, 'branch', 'Wall ' + (idx + 1)));
@@ -427,7 +427,7 @@ function mzkeRenderPreview(){
   const wrap = document.getElementById('mzkePreviewWrap');
   wrap.innerHTML = '';
   document.getElementById('mzkeLayoutPositionsInput').value = '{}';
-  if (!mzkePathSlots.length){ wrap.textContent = 'Set the number of pictures above to see a preview.'; return; }
+  if (!mzkePathSlots.length){ wrap.textContent = 'Add pictures above to see a preview.'; return; }
   const byId = {};
   mzkePathSlots.forEach(s=>{byId[s.id]=s;});
   mzkeBranchSlots.forEach(s=>{byId[s.id]=s;});
@@ -449,18 +449,19 @@ function mzkeRenderPreview(){
   mzkRenderMazeBase(NS, svg, layout, {wallColor:'#CDC7F3', floorColor:'#ffffff', dotColor:'rgba(83,74,183,.10)'});
   const R = Math.round(layout.cellSize * 0.32);
   layout.nodes.forEach(node=>{
-    const b = byId[node.vocabularyId] || {word:'',image_url:''};
-    const isStart = node.kind === 'path' && node.index === 0;
-    const isEnd = node.kind === 'path' && node.index === pathCount - 1;
+    const isEndpoint = node.kind === 'start' || node.kind === 'home';
+    const b = isEndpoint ? {word:'',image_url:''} : (byId[node.vocabularyId] || {word:'',image_url:''});
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
     const c = document.createElementNS(NS, 'circle');
     c.setAttribute('r', R);
     c.setAttribute('fill', '#fff');
-    c.setAttribute('stroke', node.kind === 'branch' ? '#FCA5A5' : (isStart ? '#F97316' : (isEnd ? '#16a34a' : '#7F77DD')));
+    c.setAttribute('stroke', node.kind === 'branch' ? '#FCA5A5' : (node.kind === 'start' ? '#F97316' : (node.kind === 'home' ? '#16a34a' : '#7F77DD')));
     c.setAttribute('stroke-width', '3');
     g.appendChild(c);
-    if (b.image_url){
+    if (isEndpoint){
+      g.appendChild(mzkRenderEndpointIcon(NS, node.kind));
+    } else if (b.image_url){
       const img = document.createElementNS(NS, 'image');
       img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
       img.setAttribute('href', b.image_url);
@@ -470,26 +471,28 @@ function mzkeRenderPreview(){
       img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
       g.appendChild(img);
     }
-    const num = document.createElementNS(NS, 'text');
-    num.setAttribute('x', R - 7); num.setAttribute('y', -R + 11); num.setAttribute('text-anchor', 'middle');
-    num.setAttribute('font-size', '13'); num.setAttribute('font-family', 'Fredoka, sans-serif'); num.setAttribute('font-weight', '700');
-    num.setAttribute('fill', '#7F77DD');
-    num.textContent = node.kind === 'path' ? String(node.index + 1) : 'x';
-    g.appendChild(num);
-    if (b.word){
-      const label = document.createElementNS(NS, 'text');
-      label.setAttribute('x', 0); label.setAttribute('y', R + 14); label.setAttribute('text-anchor', 'middle');
-      label.setAttribute('font-size', '10'); label.setAttribute('font-family', 'Nunito, sans-serif'); label.setAttribute('font-weight', '800');
-      label.setAttribute('fill', '#534AB7');
-      label.textContent = b.word;
-      g.appendChild(label);
+    if (!isEndpoint){
+      const num = document.createElementNS(NS, 'text');
+      num.setAttribute('x', R - 7); num.setAttribute('y', -R + 11); num.setAttribute('text-anchor', 'middle');
+      num.setAttribute('font-size', '13'); num.setAttribute('font-family', 'Fredoka, sans-serif'); num.setAttribute('font-weight', '700');
+      num.setAttribute('fill', '#7F77DD');
+      num.textContent = node.kind === 'path' ? String(node.index + 1) : 'x';
+      g.appendChild(num);
+      if (b.word){
+        const label = document.createElementNS(NS, 'text');
+        label.setAttribute('x', 0); label.setAttribute('y', R + 14); label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('font-size', '10'); label.setAttribute('font-family', 'Nunito, sans-serif'); label.setAttribute('font-weight', '800');
+        label.setAttribute('fill', '#534AB7');
+        label.textContent = b.word;
+        g.appendChild(label);
+      }
     }
-    if (isStart || isEnd){
+    if (isEndpoint){
       const flag = document.createElementNS(NS, 'text');
       flag.setAttribute('x', 0); flag.setAttribute('y', -R - 11); flag.setAttribute('text-anchor', 'middle');
       flag.setAttribute('font-size', '11'); flag.setAttribute('font-family', 'Nunito, sans-serif'); flag.setAttribute('font-weight', '900');
-      flag.setAttribute('fill', isStart ? '#F97316' : '#16a34a');
-      flag.textContent = isStart ? 'START' : 'HOME';
+      flag.setAttribute('fill', node.kind === 'start' ? '#F97316' : '#16a34a');
+      flag.textContent = node.kind === 'start' ? 'START' : 'HOME';
       g.appendChild(flag);
     }
     svg.appendChild(g);
@@ -507,11 +510,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <?php echo json_encode($audioUrls, JSON_UNESCAPED_UNICODE); ?>
   );
   if (!mzkePathSlots.length){
-    const n = Math.max(2, parseInt(document.getElementById('mzkePathCount').value,10) || 5);
-    mzkePathSlots = mzkeResizeSlots(mzkePathSlots, n, 'path') || [];
+    mzkePathSlots = mzkeResizeSlots(mzkePathSlots, 2, 'path') || [];
   }
-  document.getElementById('mzkePathCount').value = mzkePathSlots.length;
-  document.getElementById('mzkeBranchCount').value = mzkeBranchSlots.length;
   mzkeRenderAll();
 });
 
