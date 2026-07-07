@@ -39,23 +39,19 @@
     return Object.keys(out).length ? out : null;
   }
 
+  function autoMainPoint(index, count) {
+    var cols = Math.min(MAX_AUTO_COLS, Math.max(1, count));
+    var row = Math.floor(index / cols);
+    var posInRow = index % cols;
+    var col = row % 2 === 0 ? posInRow : (cols - 1 - posInRow);
+    return { x: col * STEP_X, y: row * STEP_Y };
+  }
+
   function buildMainPoints(count, customPositions) {
     var points = [];
-    if (customPositions) {
-      for (var c = 0; c < count; c++) {
-        var saved = customPositions['path_' + c];
-        if (saved) points.push({ x: saved.x, y: saved.y });
-        else break;
-      }
-      if (points.length === count) return points;
-    }
-
-    var cols = Math.min(MAX_AUTO_COLS, Math.max(1, count));
     for (var i = 0; i < count; i++) {
-      var row = Math.floor(i / cols);
-      var posInRow = i % cols;
-      var col = row % 2 === 0 ? posInRow : (cols - 1 - posInRow);
-      points.push({ x: col * STEP_X, y: row * STEP_Y });
+      var saved = customPositions && customPositions['path_' + i];
+      points.push(saved ? { x: saved.x, y: saved.y } : autoMainPoint(i, count));
     }
     return points;
   }
@@ -122,6 +118,7 @@
     var minY = Math.min.apply(null, ys), maxY = Math.max.apply(null, ys);
 
     var rawWidth = (maxX - minX) + PAD * 2;
+    var rawHeight = (maxY - minY) + PAD * 2;
     var finalWidth = Math.max(rawWidth, MIN_CANVAS_WIDTH);
     var centerX = (finalWidth - rawWidth) / 2;
     var offsetX = PAD - minX + centerX;
@@ -146,7 +143,7 @@
       branchPathD: branchPathD,
       branchEndpoints: branchEndpoints,
       width: Math.round(finalWidth),
-      height: Math.round((maxY - minY) + PAD * 2),
+      height: Math.round(rawHeight),
       offsetX: offsetX,
       offsetY: offsetY
     };
