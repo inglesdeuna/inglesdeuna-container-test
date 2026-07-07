@@ -49,7 +49,7 @@
     if (!stage || stage.querySelector('.mzk-arrow-controls')) return;
     var hint = document.createElement('div');
     hint.className = 'mzk-arrow-hint';
-    hint.textContent = 'Use the arrows to move from START to HOME. Avoid wall animals.';
+    hint.textContent = 'Use the arrows, tap a picture, or swipe to move from START to HOME. Avoid wall animals.';
     var box = document.createElement('div');
     box.className = 'mzk-arrow-controls';
     box.innerHTML = '<span></span><button type="button" data-dir="up">↑</button><span></span><button type="button" data-dir="left">←</button><button type="button" data-dir="down">↓</button><button type="button" data-dir="right">→</button>';
@@ -59,6 +59,33 @@
     });
     stage.appendChild(hint);
     stage.appendChild(box);
+  }
+
+  // Lets the mouse/touch swipe directly on the maze stage move the token,
+  // as an alternative to the arrow buttons/keyboard for desktop drag and
+  // mobile swipe gestures. Small movements (taps/clicks on a node) are
+  // ignored here so they fall through to the per-node tap handler.
+  function installSwipe(step) {
+    var stage = document.querySelector('.mzk-stage');
+    if (!stage || stage.dataset.mzkSwipeBound) return;
+    stage.dataset.mzkSwipeBound = '1';
+    var SWIPE_THRESHOLD = 28;
+    var startX = 0, startY = 0, tracking = false;
+    stage.addEventListener('pointerdown', function (e) {
+      tracking = true;
+      startX = e.clientX;
+      startY = e.clientY;
+    });
+    stage.addEventListener('pointerup', function (e) {
+      if (!tracking) return;
+      tracking = false;
+      var dx = e.clientX - startX;
+      var dy = e.clientY - startY;
+      var absX = Math.abs(dx), absY = Math.abs(dy);
+      if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
+      step(absX >= absY ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up'));
+    });
+    stage.addEventListener('pointercancel', function () { tracking = false; });
   }
 
   function makeToken(svg) {
@@ -106,12 +133,20 @@
       token = makeToken(svg);
       placeToken();
       var hero = document.querySelector('.mzk-hero p');
-      if (hero) hero.textContent = 'Use the arrows to move from START to HOME. Avoid wall animals!';
+      if (hero) hero.textContent = 'Use the arrows, tap a picture, or swipe to move from START to HOME!';
+    }
+
+    function updateProgress() {
+      if (typeof window.mzkUpdateProgress === 'function') {
+        window.mzkNextIndex = index;
+        window.mzkUpdateProgress();
+      }
     }
 
     function reset(msg) {
       index = 0;
       placeToken();
+      updateProgress();
       if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback(msg || 'Wrong way. Start again.', 'bad');
       var snd = document.getElementById('mzkLoseAudio');
       if (snd && typeof window.mzkPlay === 'function') window.mzkPlay(snd);
@@ -131,6 +166,7 @@
       if (next && dir(here, next) === which) {
         index++;
         placeToken();
+        updateProgress();
         if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('Good! Keep going.', 'good');
         if (index >= pathNodes.length - 1 && typeof window.mzkFinish === 'function') setTimeout(window.mzkFinish, 350);
         return;
@@ -138,13 +174,26 @@
       reset('Wrong way. Follow the path.');
     }
 
+    // Lets a click/tap directly on a maze picture move the token, as a
+    // mouse/touch alternative to the arrow buttons and keyboard. Returns
+    // true when the tap was handled here (so the legacy per-node tap
+    // handler in viewer.php does not also run).
+    function nodeTap(node) {
+      if (!pathNodes.length || !pathNodes[index] || !node) return true;
+      var here = pathNodes[index];
+      step(dir(here, node));
+      return true;
+    }
+
     installControls(step);
+    installSwipe(step);
     document.addEventListener('keydown', function (e) {
       var map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
       if (map[e.key]) { e.preventDefault(); step(map[e.key]); }
     });
     window.mzkBuildMaze = rebuild;
     window.mzkRestart = rebuild;
+    window.mzkNodeTap = nodeTap;
     rebuild();
   }
 

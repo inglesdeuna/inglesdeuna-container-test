@@ -15,6 +15,23 @@
   var MIN_CANVAS_WIDTH = 760;
   var MAX_STRAIGHT_RUN = 2; // force a turn after at most this many collinear steps
 
+  // Decorative filler icons: every corridor cell that is not a vocabulary
+  // node (e.g. the walk-through cells of a dead-end branch before its final
+  // "wall" picture) gets one of these theme icons instead of an empty tile.
+  // They are purely decorative - students pass over them freely.
+  var THEME_ICONS = {
+    plants: ['🌵', '🌿', '🍀', '🌸', '🌼', '🍃', '🌻', '🌾'],
+    buildings: ['🏢', '🏬', '🏭', '🏛️', '🏦', '🏪', '🏗️', '🧱'],
+    park: ['🌳', '🌲', '⛲', '🌷', '🦋', '🐝', '🍂', '⚽'],
+    home: ['🛋️', '🪟', '🚪', '🖼️', '🕯️', '🪴', '📺', '🛏️']
+  };
+  var DEFAULT_THEME = 'plants';
+
+  function normalizeTheme(theme) {
+    theme = (theme || '').toString().trim().toLowerCase();
+    return THEME_ICONS[theme] ? theme : DEFAULT_THEME;
+  }
+
   var DIRS = [
     { x: 1, y: 0 },
     { x: -1, y: 0 },
@@ -222,6 +239,10 @@
     var nodes = [];
     var allCells = mainCells.map(function (c) { return { x: c.x, y: c.y }; });
     var connectors = [];
+    // Cells that belong to a branch corridor but are not the branch's final
+    // "wall" picture node - these would otherwise render as blank floor
+    // tiles, so they get a themed decorative filler icon instead.
+    var fillerCells = [];
 
     for (var i = 0; i < mainCells.length; i++) {
       nodes.push({ id: 'path_' + i, index: i, gx: mainCells[i].x, gy: mainCells[i].y, kind: 'path', vocabularyId: pathSequence[i], attachAfterIndex: null });
@@ -236,7 +257,10 @@
       var built = buildBranch(attachCell, mainDir, used, rng);
       if (!built) continue; // no free neighbour left for this dead end; skip rather than overlap
 
-      built.cells.forEach(function (c) { allCells.push({ x: c.x, y: c.y }); });
+      built.cells.forEach(function (c, idx) {
+        allCells.push({ x: c.x, y: c.y });
+        if (idx < built.cells.length - 1) fillerCells.push({ x: c.x, y: c.y });
+      });
       connectors.push([attachCell, built.entry]);
       for (var s = 1; s < built.cells.length; s++) connectors.push([built.cells[s - 1], built.cells[s]]);
 
@@ -305,11 +329,13 @@
 
     var cellsPx = allCells.map(toPx);
     var connectorsPx = connectors.map(function (pair) { return [toPx(pair[0]), toPx(pair[1])]; });
+    var fillerCellsPx = fillerCells.map(toPx);
 
     return {
       nodes: nodes,
       cells: cellsPx,
       connectors: connectorsPx,
+      fillerCells: fillerCellsPx,
       cellSize: CELL,
       width: Math.round(finalWidth),
       height: Math.round(rawHeight),
@@ -427,6 +453,29 @@
     return g;
   }
 
+  /**
+   * Draws a decorative, non-interactive theme icon (plants/buildings/park/
+   * home) used to fill dead-end corridor cells that carry no vocabulary
+   * picture, so students never see a plain blank floor tile. `seed` picks
+   * a varied-but-deterministic icon from the theme's set.
+   */
+  function renderFillerIcon(NS, theme, seed, cellSize) {
+    var icons = THEME_ICONS[normalizeTheme(theme)];
+    var icon = icons[Math.abs(seed || 0) % icons.length];
+    var g = document.createElementNS(NS, 'g');
+    g.setAttribute('class', 'mzk-filler');
+    g.setAttribute('style', 'pointer-events:none');
+    var text = document.createElementNS(NS, 'text');
+    text.setAttribute('x', 0);
+    text.setAttribute('y', 0);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    text.setAttribute('font-size', Math.round((cellSize || CELL) * 0.34));
+    text.textContent = icon;
+    g.appendChild(text);
+    return g;
+  }
+
   function loadArrowMode() {
     if (!global.document) return;
     document.addEventListener('DOMContentLoaded', function () {
@@ -440,6 +489,9 @@
   global.generateMazeLayout = generateMazeLayout;
   global.mzkRenderMazeBase = renderMazeBase;
   global.mzkRenderEndpointIcon = renderEndpointIcon;
+  global.mzkRenderFillerIcon = renderFillerIcon;
+  global.mzkThemeIcons = THEME_ICONS;
+  global.mzkNormalizeTheme = normalizeTheme;
   global.mzkShuffleArray = function (arr) { return shuffle(arr, Math.random); };
   loadArrowMode();
 }(typeof window !== 'undefined' ? window : this));
