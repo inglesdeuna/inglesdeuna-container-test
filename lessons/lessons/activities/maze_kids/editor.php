@@ -227,10 +227,14 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:700;margin-
 .mzke-seq-list{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;min-height:60px;padding:10px;border:2px dashed #CDC7F3;border-radius:10px}
 .mzke-seq-item{background:#F8F7FF;border:1px solid #7F77DD;border-radius:8px;padding:6px 10px;font-size:12px;display:flex;align-items:center;gap:6px}
 .mzke-seq-item .num{font-family:'Fredoka',sans-serif;font-weight:700;color:#7F77DD}
+.mzke-seq-item .mzke-node-thumb{width:28px;height:28px;border-radius:6px;overflow:hidden;background:#fff;flex:none;display:flex;align-items:center;justify-content:center}
+.mzke-seq-item .mzke-node-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 .mzke-seq-item button{background:none;border:none;color:#ef4444;cursor:pointer;font-weight:700}
 .mzke-bank-picker{display:flex;flex-wrap:wrap;gap:8px}
-.mzke-bank-picker-item{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.mzke-bank-picker-item{background:#fff;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:6px}
 .mzke-bank-picker-item:hover{border-color:#7F77DD}
+.mzke-bank-picker-item .mzke-node-thumb{width:24px;height:24px;border-radius:6px;overflow:hidden;background:#f3f4f6;flex:none;display:flex;align-items:center;justify-content:center}
+.mzke-bank-picker-item .mzke-node-thumb img{width:100%;height:100%;object-fit:cover;display:block}
 
 .mzke-branch-item{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px;margin-bottom:8px;display:flex;gap:10px;align-items:end;flex-wrap:wrap}
 .mzke-branch-item select{margin-bottom:0}
@@ -398,7 +402,13 @@ function mzkeSyncPicker(){
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'mzke-bank-picker-item';
-        btn.textContent = (item.word || '(no word)');
+        const thumb = document.createElement('span');
+        thumb.className = 'mzke-node-thumb';
+        if (item.image_url) thumb.innerHTML = `<img src="${item.image_url}" alt="">`;
+        btn.appendChild(thumb);
+        const label = document.createElement('span');
+        label.textContent = (item.word || '(no word)');
+        btn.appendChild(label);
         btn.onclick = () => { mzkePath.push(item.id); mzkeSyncAll(); };
         picker.appendChild(btn);
     });
@@ -414,7 +424,8 @@ function mzkeRenderSeqList(){
         const b = mzkeBankById(vid);
         const el = document.createElement('div');
         el.className = 'mzke-seq-item';
-        el.innerHTML = `<span class="num">${idx+1}.</span><span>${b.word || vid}</span><button type="button">✖</button>`;
+        const thumbHtml = b.image_url ? `<span class="mzke-node-thumb"><img src="${b.image_url}" alt=""></span>` : '';
+        el.innerHTML = `<span class="num">${idx+1}.</span>${thumbHtml}<span>${b.word || vid}</span><button type="button">✖</button>`;
         el.querySelector('button').onclick = () => { mzkePath.splice(idx, 1); mzkeSyncAll(); };
         list.appendChild(el);
     });
