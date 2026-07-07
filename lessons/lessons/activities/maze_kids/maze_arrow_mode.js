@@ -121,7 +121,8 @@
       if (!pathNodes.length || !pathNodes[index]) return;
       var here = pathNodes[index];
       for (var i = 0; i < branchNodes.length; i++) {
-        if (branchNodes[i].attachAfterIndex === index && dir(here, branchNodes[i]) === which) {
+        var branchEntry = { x: branchNodes[i].entryX != null ? branchNodes[i].entryX : branchNodes[i].x, y: branchNodes[i].entryY != null ? branchNodes[i].entryY : branchNodes[i].y };
+        if (branchNodes[i].attachAfterIndex === index && dir(here, branchEntry) === which) {
           reset('Wall animal! Go back to START.');
           return;
         }
