@@ -44,6 +44,14 @@
     return dy >= 0 ? 'down' : 'up';
   }
 
+  // Base arrow glyph (see makeToken) points right, so 'right' maps to 0deg.
+  function angleForDir(d) {
+    if (d === 'down') return 90;
+    if (d === 'left') return 180;
+    if (d === 'up') return -90;
+    return 0;
+  }
+
   function installControls(step) {
     var stage = document.querySelector('.mzk-stage');
     if (!stage || stage.querySelector('.mzk-arrow-controls')) return;
@@ -114,10 +122,11 @@
     var token = null;
     var pathNodes = [];
     var branchNodes = [];
+    var facing = 'right';
 
     function placeToken() {
       if (!token || !pathNodes[index]) return;
-      token.setAttribute('transform', 'translate(' + pathNodes[index].x + ',' + pathNodes[index].y + ')');
+      token.setAttribute('transform', 'translate(' + pathNodes[index].x + ',' + pathNodes[index].y + ') rotate(' + angleForDir(facing) + ')');
     }
 
     function rebuild() {
@@ -130,6 +139,8 @@
       branchNodes = layout.nodes.filter(function (n) { return n.kind === 'branch'; });
       cleanNodeLabels(svg);
       index = 0;
+      var startNode = layout.nodes.filter(function (n) { return n.kind === 'start'; })[0];
+      facing = (startNode && pathNodes[0]) ? dir(startNode, pathNodes[0]) : 'right';
       token = makeToken(svg);
       placeToken();
       var hero = document.querySelector('.mzk-hero p');
@@ -143,22 +154,23 @@
       }
     }
 
-    function reset(msg) {
+    function reset(msg, soundId) {
       index = 0;
       placeToken();
       updateProgress();
       if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback(msg || 'Wrong way. Start again.', 'bad');
-      var snd = document.getElementById('mzkLoseAudio');
+      var snd = document.getElementById(soundId || 'mzkLoseAudio');
       if (snd && typeof window.mzkPlay === 'function') window.mzkPlay(snd);
     }
 
     function step(which) {
       if (!pathNodes.length || !pathNodes[index]) return;
+      facing = which;
       var here = pathNodes[index];
       for (var i = 0; i < branchNodes.length; i++) {
         var branchEntry = { x: branchNodes[i].entryX != null ? branchNodes[i].entryX : branchNodes[i].x, y: branchNodes[i].entryY != null ? branchNodes[i].entryY : branchNodes[i].y };
         if (branchNodes[i].attachAfterIndex === index && dir(here, branchEntry) === which) {
-          reset('Wall animal! Go back to START.');
+          reset('Dead end! Go back to START.', 'mzkWrongAudio');
           return;
         }
       }
