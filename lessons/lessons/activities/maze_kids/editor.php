@@ -462,23 +462,25 @@ function mzkeRenderPreview(){
   layout.nodes.forEach(node=>{
     const isEndpoint = node.kind === 'start' || node.kind === 'home';
     const b = isEndpoint ? {word:'',image_url:''} : (byId[node.vocabularyId] || {word:'',image_url:''});
+    const nodeR = node.kind === 'home' ? Math.round(R * 1.4) : R;
     const g = document.createElementNS(NS, 'g');
     g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
     const c = document.createElementNS(NS, 'circle');
-    c.setAttribute('r', R);
+    c.setAttribute('r', nodeR);
     c.setAttribute('fill', '#fff');
-    c.setAttribute('stroke', node.kind === 'branch' ? '#FCA5A5' : (node.kind === 'start' ? '#F97316' : (node.kind === 'home' ? '#16a34a' : '#7F77DD')));
-    c.setAttribute('stroke-width', '3');
+    c.setAttribute('stroke', 'none');
     g.appendChild(c);
     if (isEndpoint){
-      g.appendChild(mzkRenderEndpointIcon(NS, node.kind));
+      const eIcon = mzkRenderEndpointIcon(NS, node.kind);
+      if (node.kind === 'home') eIcon.setAttribute('transform', 'scale(1.4)');
+      g.appendChild(eIcon);
     } else if (b.image_url){
       const img = document.createElementNS(NS, 'image');
       img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
       img.setAttribute('href', b.image_url);
-      img.setAttribute('x', -R + 5); img.setAttribute('y', -R + 5);
-      img.setAttribute('width', (R - 5) * 2); img.setAttribute('height', (R - 5) * 2);
-      img.setAttribute('clip-path', 'circle(' + (R - 5) + 'px)');
+      img.setAttribute('x', -nodeR + 5); img.setAttribute('y', -nodeR + 5);
+      img.setAttribute('width', (nodeR - 5) * 2); img.setAttribute('height', (nodeR - 5) * 2);
+      img.setAttribute('clip-path', 'circle(' + (nodeR - 5) + 'px)');
       img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
       g.appendChild(img);
     }
@@ -500,7 +502,7 @@ function mzkeRenderPreview(){
     }
     if (isEndpoint){
       const flag = document.createElementNS(NS, 'text');
-      flag.setAttribute('x', 0); flag.setAttribute('y', -R - 11); flag.setAttribute('text-anchor', 'middle');
+      flag.setAttribute('x', 0); flag.setAttribute('y', -nodeR - 11); flag.setAttribute('text-anchor', 'middle');
       flag.setAttribute('font-size', '11'); flag.setAttribute('font-family', 'Nunito, sans-serif'); flag.setAttribute('font-weight', '900');
       flag.setAttribute('fill', node.kind === 'start' ? '#F97316' : '#16a34a');
       flag.textContent = node.kind === 'start' ? 'START' : 'HOME';
