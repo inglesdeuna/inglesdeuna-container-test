@@ -581,6 +581,42 @@ function mzkeRenderPreview(){
     corridorPath.setAttribute('opacity', '0.55');
     svg.appendChild(corridorPath);
 
+    /* dead-end distractor branches: distinct red dashed stroke, never
+       reconnects to the main corridor */
+    if (layout.branchPathD) {
+        const branchPath = document.createElementNS(NS, 'path');
+        branchPath.setAttribute('d', layout.branchPathD);
+        branchPath.setAttribute('fill', 'none');
+        branchPath.setAttribute('stroke', '#FCA5A5');
+        branchPath.setAttribute('stroke-width', '3');
+        branchPath.setAttribute('stroke-dasharray', '4 6');
+        branchPath.setAttribute('stroke-linecap', 'round');
+        branchPath.setAttribute('opacity', '0.8');
+        svg.appendChild(branchPath);
+    }
+
+    /* dead-end cap: small circle + ✕ at the tip of every distractor branch */
+    (layout.branchEndpoints || []).forEach(pt => {
+        const cap = document.createElementNS(NS, 'g');
+        cap.setAttribute('transform', 'translate(' + pt.x + ',' + pt.y + ')');
+        const capCircle = document.createElementNS(NS, 'circle');
+        capCircle.setAttribute('r', 9);
+        capCircle.setAttribute('fill', '#fff');
+        capCircle.setAttribute('stroke', '#FCA5A5');
+        capCircle.setAttribute('stroke-width', '2');
+        cap.appendChild(capCircle);
+        const capMark = document.createElementNS(NS, 'text');
+        capMark.setAttribute('x', 0);
+        capMark.setAttribute('y', 4);
+        capMark.setAttribute('text-anchor', 'middle');
+        capMark.setAttribute('font-size', '11');
+        capMark.setAttribute('font-weight', '900');
+        capMark.setAttribute('fill', '#FCA5A5');
+        capMark.textContent = '✕';
+        cap.appendChild(capMark);
+        svg.appendChild(cap);
+    });
+
     const R = 30;
     layout.nodes.forEach(node => {
         const b = mzkeBankById(node.vocabularyId);
