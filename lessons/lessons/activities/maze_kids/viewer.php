@@ -1,10 +1,12 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) session_start();
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id'])        ? trim((string) $_GET['id'])        : '';
 $unit       = isset($_GET['unit'])      ? trim((string) $_GET['unit'])      : '';
 $returnTo   = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
+$isStaff    = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -56,6 +58,14 @@ function mzk_normalize_payload($raw): array
     foreach (($d['path_sequence'] ?? []) as $vid) {
         $vid = trim((string) $vid);
         if ($vid !== '' && in_array($vid, $bankIds, true)) $pathSequence[] = $vid;
+    }
+
+    /* Self-heal: older/legacy activities may have a filled vocabulary bank
+       but never got an explicit path built (step 3 of the editor). Rather
+       than showing a broken maze, fall back to the bank order so the
+       activity is still playable. */
+    if (count($pathSequence) === 0 && count($bankIds) > 0) {
+        $pathSequence = $bankIds;
     }
 
     $branches = [];
@@ -127,7 +137,38 @@ if ($activityId === '' && !empty($activity['id'])) {
 }
 
 if (count($activity['path_sequence']) === 0) {
-    die('No maze path found for this activity');
+    $editUrl = 'editor.php?unit=' . urlencode($unit) . ($activityId !== '' ? '&id=' . urlencode($activityId) : '');
+    ob_start();
+    ?>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Nunito:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+    body{margin:0!important;padding:0!important;background:#fff!important;font-family:'Nunito','Segoe UI',sans-serif!important}
+    .activity-wrapper{max-width:100%!important;margin:0!important;padding:0!important;background:transparent!important}
+    .top-row,.activity-header,.activity-title,.activity-subtitle{display:none!important}
+    .viewer-content{padding:0!important;margin:0!important;background:transparent!important;border:none!important;box-shadow:none!important}
+    .mzk-empty-page{width:100%;padding:clamp(14px,2.5vw,34px);display:flex;justify-content:center;background:#F8F7FF;box-sizing:border-box}
+    .mzk-empty-card{width:min(560px,100%);background:#fff;border:1px solid #F0EEF8;border-radius:34px;padding:clamp(24px,4vw,40px);box-shadow:0 8px 40px rgba(127,119,221,.13);text-align:center;box-sizing:border-box}
+    .mzk-empty-card .mzk-kicker{display:inline-flex;align-items:center;justify-content:center;padding:7px 14px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+    .mzk-empty-card h1{font-family:'Fredoka',sans-serif;font-size:clamp(22px,4vw,30px);font-weight:700;color:#F97316;margin:0 0 10px}
+    .mzk-empty-card p{font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#9B94BE;margin:0 0 22px;line-height:1.5}
+    .mzk-empty-card a.mzk-empty-btn{display:inline-flex;align-items:center;justify-content:center;padding:13px 24px;border-radius:8px;background:#7F77DD;color:#fff;text-decoration:none;font-weight:900;font-family:'Nunito',sans-serif;font-size:14px;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+    </style>
+    <div class="mzk-empty-page">
+        <div class="mzk-empty-card">
+            <div class="mzk-kicker">Maze</div>
+            <h1>🧩 <?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+            <?php if ($isStaff): ?>
+                <p>Este laberinto todavía no tiene un camino configurado. Agrega imágenes y arma la secuencia del camino en el editor para que los estudiantes puedan jugarlo.</p>
+                <a class="mzk-empty-btn" href="<?php echo htmlspecialchars($editUrl, ENT_QUOTES, 'UTF-8'); ?>">✏️ Configurar laberinto</a>
+            <?php else: ?>
+                <p>Esta actividad todavía no está lista. ¡Vuelve pronto!</p>
+            <?php endif; ?>
+        </div>
+    </div>
+    <?php
+    $content = ob_get_clean();
+    render_activity_viewer($viewerTitle, '🧩', $content);
+    exit;
 }
 
 /* map bank by id for quick lookup on the client */

@@ -46,6 +46,12 @@ function mzk_ed_norm($raw): array {
         if ($vid !== '' && in_array($vid, $bankIds, true)) $pathSequence[] = $vid;
     }
 
+    /* Self-heal: legacy activities may have a filled vocabulary bank but no
+       explicit path yet — default to the bank order so they still work. */
+    if (count($pathSequence) === 0 && count($bankIds) > 0) {
+        $pathSequence = $bankIds;
+    }
+
     $branches = [];
     foreach (($d['distractor_branches'] ?? []) as $br) {
         if (!is_array($br)) continue;
