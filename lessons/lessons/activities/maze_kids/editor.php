@@ -466,6 +466,10 @@ function mzkeAutoSuggestBranches(){
 
 /* ── distractor branch builder ── */
 function mzkeAddBranch(){
+    if (!mzkePath.length) {
+        alert('Primero agrega al menos un nodo a la secuencia del camino (paso 3) antes de crear un callejón sin salida.');
+        return;
+    }
     mzkeBranches.push({ attach_after_index: 0, vocabulary_id: '' });
     mzkeRenderBranches();
     mzkeRenderPreview();
@@ -474,11 +478,25 @@ function mzkeAddBranch(){
 function mzkeRenderBranches(){
     const wrap = document.getElementById('mzkeBranchList');
     wrap.innerHTML = '';
+    if (mzkeBranches.length && !mzkePath.length) {
+        const hint = document.createElement('p');
+        hint.className = 'mzke-help';
+        hint.style.color = '#ef4444';
+        hint.textContent = '⚠ Todavía no hay nodos en la secuencia del camino (paso 3). Agrega nodos allí para poder elegir después de cuál nodo va cada callejón sin salida.';
+        wrap.appendChild(hint);
+    }
     mzkeBranches.forEach((br, idx) => {
         const row = document.createElement('div');
         row.className = 'mzke-branch-item';
 
         const afterSelect = document.createElement('select');
+        if (!mzkePath.length) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '(sin nodos en el camino todavía)';
+            afterSelect.appendChild(opt);
+            afterSelect.disabled = true;
+        }
         mzkePath.forEach((vid, i) => {
             const b = mzkeBankById(vid);
             const opt = document.createElement('option');
@@ -606,6 +624,14 @@ function mzkeSyncAll(){
 }
 
 document.addEventListener('DOMContentLoaded', () => { mzkeSyncAll(); });
+
+document.getElementById('mzkeForm').addEventListener('submit', (e) => {
+    if (!mzkePath.length) {
+        e.preventDefault();
+        alert('Agrega al menos un nodo a la secuencia del camino (paso 3, "Path sequence") antes de guardar. Sin eso, la vista previa y el visor del estudiante no funcionarán.');
+        document.getElementById('mzkeSeqPicker').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+});
 </script>
 <?php
 $content = ob_get_clean();
