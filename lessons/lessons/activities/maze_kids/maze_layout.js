@@ -6,8 +6,10 @@
  * generateMazeLayout(pathSequence, distractorBranches) -> {
  *   nodes: [{ id, index, x, y, kind:'path'|'branch', vocabularyId, attachAfterIndex }],
  *   mainPath: [{x,y}, ...],                // points along the main corridor, one per path node
- *   wallPathD: 'M ... L ...',              // thick outer "wall" stroke (main + branches)
- *   corridorPathD: 'M ... L ...',          // thin dashed walkable stroke (main + branches)
+ *   wallPathD: 'M ... L ...',              // thick outer "wall" stroke — MAIN corridor only
+ *   corridorPathD: 'M ... L ...',          // thin dashed walkable stroke — MAIN corridor only
+ *   branchPathD: 'M ... L ...',            // short dead-end distractor segments, rendered separately
+ *   branchEndpoints: [{x,y}, ...],         // tip of each distractor branch (for the dead-end cap marker)
  *   width, height
  * }
  *
@@ -142,17 +144,21 @@
     });
 
     var mainPathD = pointsToPathD(shiftedMain);
-    var branchesD = branchSegments.map(function (seg) {
+    var branchPathD = branchSegments.map(function (seg) {
       return pointsToPathD([seg.from, seg.to]);
     }).join(' ');
-
-    var combinedD = [mainPathD, branchesD].filter(Boolean).join(' ');
+    var branchEndpoints = branchSegments.map(function (seg) { return seg.to; });
 
     return {
       nodes: nodes,
       mainPath: shiftedMain,
-      wallPathD: combinedD,
-      corridorPathD: combinedD,
+      /* main corridor only — rendered as the double-stroke "path" */
+      wallPathD: mainPathD,
+      corridorPathD: mainPathD,
+      /* dead-end distractor branches — rendered as a distinct dashed red
+         line that never reconnects to the main corridor */
+      branchPathD: branchPathD,
+      branchEndpoints: branchEndpoints,
       width: Math.round((maxX - minX) + PAD * 2),
       height: Math.round((maxY - minY) + PAD * 2)
     };

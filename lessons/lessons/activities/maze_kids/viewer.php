@@ -225,6 +225,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .mzk-node image{pointer-events:none}
 .mzk-node-label{font-family:'Nunito',sans-serif;font-weight:800;font-size:11px;fill:var(--mz-purple-dark);pointer-events:none}
 .mzk-node-badge{fill:var(--mz-purple);}
+.mzk-node-badge-dead{fill:var(--mz-red-light);}
 .mzk-node-badge-text{font-family:'Fredoka',sans-serif;font-weight:700;font-size:13px;fill:#fff;pointer-events:none}
 .mzk-node-flag{font-family:'Nunito',sans-serif;font-weight:900;font-size:10px;letter-spacing:.05em;text-transform:uppercase}
 .mzk-node.shake{animation:mzkShake .4s}
@@ -344,6 +345,43 @@ function mzkBuildMaze(){
     corridorPath.setAttribute('opacity', '0.55');
     svg.appendChild(corridorPath);
 
+    /* dead-end distractor branches: distinct red dashed stroke, never
+       reconnects to the main corridor — impossible to mistake for a valid step */
+    if (layout.branchPathD) {
+        const branchPath = document.createElementNS(NS, 'path');
+        branchPath.setAttribute('d', layout.branchPathD);
+        branchPath.setAttribute('fill', 'none');
+        branchPath.setAttribute('stroke', 'var(--mz-red-light)');
+        branchPath.setAttribute('stroke-width', '3');
+        branchPath.setAttribute('stroke-dasharray', '4 6');
+        branchPath.setAttribute('stroke-linecap', 'round');
+        branchPath.setAttribute('opacity', '0.8');
+        svg.appendChild(branchPath);
+    }
+
+    /* dead-end cap: small circle + ✕ at the tip of every distractor branch */
+    (layout.branchEndpoints || []).forEach(function(pt){
+        const cap = document.createElementNS(NS, 'g');
+        cap.setAttribute('class', 'mzk-deadend-cap');
+        cap.setAttribute('transform', 'translate(' + pt.x + ',' + pt.y + ')');
+        const capCircle = document.createElementNS(NS, 'circle');
+        capCircle.setAttribute('r', 9);
+        capCircle.setAttribute('fill', '#fff');
+        capCircle.setAttribute('stroke', 'var(--mz-red-light)');
+        capCircle.setAttribute('stroke-width', '2');
+        cap.appendChild(capCircle);
+        const capMark = document.createElementNS(NS, 'text');
+        capMark.setAttribute('x', 0);
+        capMark.setAttribute('y', 4);
+        capMark.setAttribute('text-anchor', 'middle');
+        capMark.setAttribute('font-size', '11');
+        capMark.setAttribute('font-weight', '900');
+        capMark.setAttribute('fill', 'var(--mz-red-light)');
+        capMark.textContent = '✕';
+        cap.appendChild(capMark);
+        svg.appendChild(cap);
+    });
+
     const R = 34; /* 68px diameter — preschool-friendly tap target */
 
     layout.nodes.forEach(function(node){
@@ -398,6 +436,23 @@ function mzkBuildMaze(){
             badgeText.setAttribute('y', -R + 12.5);
             badgeText.setAttribute('text-anchor', 'middle');
             badgeText.textContent = String(node.index + 1);
+            g.appendChild(badgeText);
+        } else {
+            /* distractor branch: no order number — a red ✕ badge instead,
+               so it can never be confused with a valid numbered step */
+            const badgeCircle = document.createElementNS(NS, 'circle');
+            badgeCircle.setAttribute('class', 'mzk-node-badge mzk-node-badge-dead');
+            badgeCircle.setAttribute('cx', R - 8);
+            badgeCircle.setAttribute('cy', -R + 8);
+            badgeCircle.setAttribute('r', 12);
+            g.appendChild(badgeCircle);
+
+            const badgeText = document.createElementNS(NS, 'text');
+            badgeText.setAttribute('class', 'mzk-node-badge-text');
+            badgeText.setAttribute('x', R - 8);
+            badgeText.setAttribute('y', -R + 12.5);
+            badgeText.setAttribute('text-anchor', 'middle');
+            badgeText.textContent = '✕';
             g.appendChild(badgeText);
         }
 
