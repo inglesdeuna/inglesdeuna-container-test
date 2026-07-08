@@ -72,7 +72,7 @@
       if (b) step(b.getAttribute('data-dir'));
     });
     panel.appendChild(box);
-    host.appendChild(panel);
+    host.insertBefore(panel, host.firstChild);
   }
 
   function installSwipe(step) {
