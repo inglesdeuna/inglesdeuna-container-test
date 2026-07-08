@@ -86,7 +86,7 @@ function normalize_hangman_payload($rawData): array
     $items = [];
     foreach ($itemsSource as $item) {
         if (is_string($item)) {
-            $word = strtoupper(trim($item));
+            $word = trim($item);
             if ($word !== "") {
                 $items[] = [
                     "id" => uniqid("hang_"),
@@ -102,7 +102,7 @@ function normalize_hangman_payload($rawData): array
             continue;
         }
 
-        $word = strtoupper(trim((string) ($item["word"] ?? "")));
+        $word = trim((string) ($item["word"] ?? ""));
         $hint = trim((string) ($item["hint"] ?? ""));
         $image = trim((string) ($item["image"] ?? ""));
 
@@ -268,7 +268,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $sanitized = [];
 
     foreach ($words as $i => $wordRaw) {
-        $word = strtoupper(trim((string) $wordRaw));
+        $word = trim((string) $wordRaw);
         $hint = trim((string) ($hints[$i] ?? ""));
         $image = trim((string) ($images[$i] ?? ""));
         $itemId = trim((string) ($itemIds[$i] ?? uniqid("hang_")));

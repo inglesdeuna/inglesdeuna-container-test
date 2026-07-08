@@ -56,7 +56,7 @@ $normalizedItems = [];
 
 foreach ($items as $item) {
     if (is_string($item)) {
-        $word = strtoupper(trim($item));
+        $word = trim($item);
         if ($word !== "") {
             $normalizedItems[] = [
                 "word" => $word,
@@ -71,7 +71,7 @@ foreach ($items as $item) {
         continue;
     }
 
-    $word = strtoupper(trim((string) ($item["word"] ?? "")));
+    $word = trim((string) ($item["word"] ?? ""));
     $hint = trim((string) ($item["hint"] ?? ""));
     $image = trim((string) ($item["image"] ?? ""));
 
@@ -296,28 +296,43 @@ body{
 }
 
 .word{
+  --hg-word-font-size:27px;
+  --hg-word-min-width:25px;
+  --hg-word-height:35px;
+  --hg-word-row-gap:14px;
+  --hg-word-gap:8px;
   width:100%;
   margin:8px 0 14px;
   display:flex;
   flex-wrap:wrap;
   justify-content:center;
-  gap:8px 10px;
+  align-items:flex-start;
+  gap:var(--hg-word-row-gap) 14px;
+}
+
+.word-token{
+  display:inline-flex;
+  flex-wrap:nowrap;
+  justify-content:center;
+  gap:var(--hg-word-gap);
+  max-width:100%;
 }
 
 .word-char{
-  min-width:28px;
-  height:38px;
+  min-width:var(--hg-word-min-width);
+  height:var(--hg-word-height);
   display:inline-flex;
   align-items:center;
   justify-content:center;
   border-bottom:2px solid #D7D3F3;
   color:var(--hg-purple);
-  font-size:clamp(20px,3vw,30px);
+  font-size:clamp(17px,3vw,var(--hg-word-font-size));
   font-weight:900;
   line-height:1;
 }
 
 .word-space{min-width:18px;border-bottom:none}
+.word-gap{width:clamp(10px,1.8vw,18px);flex:0 0 auto}
 .word-char.revealed{color:var(--hg-orange);font-style:normal}
 
 .keyboard{
@@ -496,7 +511,16 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
   .hg-placeholder{min-height:104px;font-size:34px}
   .hangman-wrap{width:150px;height:150px;border-radius:22px}
   #hangmanImg{max-width:122px}
-  .word-char{min-width:24px;height:34px;font-size:20px}
+  .word{
+    gap:calc(var(--hg-word-row-gap) - 2px) 10px;
+  }
+  .word-char{
+    min-width:max(18px,calc(var(--hg-word-min-width) - 3px));
+    height:max(30px,calc(var(--hg-word-height) - 4px));
+    font-size:min(20px,var(--hg-word-font-size));
+  }
+  .word-token{gap:max(4px,calc(var(--hg-word-gap) - 1px))}
+  .word-gap{width:12px}
   .keyboard{gap:7px}
   .keyboard button{width:34px;height:34px;border-radius:6px;font-size:12px}
   .controls{display:grid;grid-template-columns:1fr;gap:9px;width:100%}
@@ -674,6 +698,7 @@ const kickerCountEl = document.getElementById("hg-kicker-count");
 
 let index = 0;
 let word = "";
+let displayWord = "";
 let hint = "";
 let hintImage = "";
 let guessed = [];
@@ -693,6 +718,79 @@ function updateProgress(){
   if (progressFillEl) progressFillEl.style.width = pct + '%';
   if (progressCountEl) progressCountEl.textContent = countText;
   if (kickerCountEl) kickerCountEl.textContent = countText;
+}
+
+function toGuessWord(source) {
+  return String(source || "").toUpperCase();
+}
+
+function toDisplayWord(source) {
+  const trimmed = String(source || "").trim();
+  if (!trimmed) return "Test";
+  if (trimmed !== trimmed.toUpperCase()) return trimmed;
+  return trimmed
+    .toLowerCase()
+    .replace(/(^|[.!?]\s+)([a-zà-ÿ])/g, function (_, prefix, letter) {
+      return prefix + letter.toUpperCase();
+    });
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function applyWordSizing() {
+  const wordEl = document.getElementById("word");
+  if (!wordEl) return;
+
+  const tokens = displayWord.split(/\s+/).filter(Boolean);
+  const visibleChars = tokens.join("").length;
+  const longestToken = tokens.reduce(function (max, token) {
+    return Math.max(max, token.length);
+  }, 0);
+
+  let fontSize = 27;
+  let minWidth = 25;
+  let charHeight = 35;
+  let rowGap = 14;
+  let charGap = 8;
+
+  if (visibleChars >= 34 || longestToken >= 13) {
+    fontSize = 17;
+    minWidth = 17;
+    charHeight = 29;
+    rowGap = 10;
+    charGap = 4;
+  } else if (visibleChars >= 27 || longestToken >= 10) {
+    fontSize = 19;
+    minWidth = 19;
+    charHeight = 31;
+    rowGap = 11;
+    charGap = 5;
+  } else if (visibleChars >= 20 || longestToken >= 8) {
+    fontSize = 21;
+    minWidth = 21;
+    charHeight = 33;
+    rowGap = 12;
+    charGap = 6;
+  } else if (visibleChars >= 14 || longestToken >= 6) {
+    fontSize = 24;
+    minWidth = 23;
+    charHeight = 34;
+    rowGap = 13;
+    charGap = 7;
+  }
+
+  wordEl.style.setProperty("--hg-word-font-size", fontSize + "px");
+  wordEl.style.setProperty("--hg-word-min-width", minWidth + "px");
+  wordEl.style.setProperty("--hg-word-height", charHeight + "px");
+  wordEl.style.setProperty("--hg-word-row-gap", rowGap + "px");
+  wordEl.style.setProperty("--hg-word-gap", charGap + "px");
 }
 
 function setKeyboardDisabled(disabledState) {
@@ -755,7 +853,9 @@ function loadWord(){
   if (gameLayout) gameLayout.style.display = 'grid';
 
   const current = items[index] || { word:"TEST", hint:"", image:"" };
-  word = String(current.word || "TEST").toUpperCase();
+  const sourceWord = String(current.word || "Test").trim();
+  word = toGuessWord(sourceWord || "Test");
+  displayWord = toDisplayWord(sourceWord || "Test");
   hint = String(current.hint || "");
   hintImage = String(current.image || "");
 
@@ -768,6 +868,7 @@ function loadWord(){
   hangmanImg.src = "../../hangman/assets/hangman0.png";
 
   updateProgress();
+  applyWordSizing();
   buildKeyboard();
   renderWord();
 }
@@ -837,12 +938,31 @@ function restartActivity() {
 
 function renderWord(revealMissing = false){
   let html = "";
-  for (let l of word) {
-    if (l === " ") html += `<span class="word-char word-space">&nbsp;</span>`;
-    else if (guessed.includes(l)) html += `<span class="word-char">${l}</span>`;
-    else if (revealMissing) html += `<span class="word-char revealed">${l}</span>`;
-    else html += `<span class="word-char">&nbsp;</span>`;
+  let tokenHtml = "";
+
+  function flushToken() {
+    if (!tokenHtml) return;
+    html += `<span class="word-token">${tokenHtml}</span>`;
+    tokenHtml = "";
   }
+
+  for (let i = 0; i < word.length; i++) {
+    const guessedChar = word[i];
+    const visibleChar = displayWord[i] || guessedChar;
+    const safeChar = escapeHtml(visibleChar);
+
+    if (guessedChar === " ") {
+      flushToken();
+      html += `<span class="word-gap" aria-hidden="true"></span>`;
+      continue;
+    }
+
+    if (guessed.includes(guessedChar)) tokenHtml += `<span class="word-char">${safeChar}</span>`;
+    else if (revealMissing) tokenHtml += `<span class="word-char revealed">${safeChar}</span>`;
+    else tokenHtml += `<span class="word-char">&nbsp;</span>`;
+  }
+
+  flushToken();
   document.getElementById("word").innerHTML = html;
 }
 
