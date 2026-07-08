@@ -23,7 +23,10 @@
     plants: ['🌵', '🌿', '🍀', '🌸', '🌼', '🍃', '🌻', '🌾'],
     buildings: ['🏢', '🏬', '🏭', '🏛️', '🏦', '🏪', '🏗️', '🧱'],
     park: ['🌳', '🌲', '⛲', '🌷', '🦋', '🐝', '🍂', '⚽'],
-    home: ['🛋️', '🪟', '🚪', '🖼️', '🕯️', '🪴', '📺', '🛏️']
+    home: ['🛋️', '🪟', '🚪', '🖼️', '🕯️', '🪴', '📺', '🛏️'],
+    clothes: ['👕', '👖', '👗', '🧥', '👟', '🧢', '🧦', '🧤'],
+    animals: ['🐶', '🐱', '🐰', '🐸', '🐵', '🦊', '🐻', '🐼'],
+    shapes: ['🔴', '🔵', '🟡', '🟢', '🟣', '⭐', '🔺', '⬛']
   };
   var DEFAULT_THEME = 'plants';
 
@@ -454,10 +457,10 @@
   }
 
   /**
-   * Draws a decorative, non-interactive theme icon (plants/buildings/park/
-   * home) used to fill dead-end corridor cells that carry no vocabulary
-   * picture, so students never see a plain blank floor tile. `seed` picks
-   * a varied-but-deterministic icon from the theme's set.
+   * Draws a decorative, non-interactive theme icon used to fill dead-end
+   * corridor cells that carry no vocabulary picture, so students never see a
+   * plain blank floor tile. `seed` picks a varied-but-deterministic icon from
+   * the theme's set.
    */
   function renderFillerIcon(NS, theme, seed, cellSize) {
     var icons = THEME_ICONS[normalizeTheme(theme)];
