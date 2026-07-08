@@ -10,7 +10,18 @@
     if (document.getElementById('mzkArrowModeStyle')) return;
     var style = document.createElement('style');
     style.id = 'mzkArrowModeStyle';
-    style.textContent = '.mzk-node-badge,.mzk-node-badge-text{display:none!important}.mzk-node-flag{display:none!important}.mzk-arrow-controls{display:grid;grid-template-columns:56px 56px 56px;grid-template-rows:48px 48px;gap:8px;justify-content:center;margin-top:10px}.mzk-arrow-controls button{border:0;border-radius:12px;background:#7F77DD;color:#fff;font-weight:900;font-size:22px;cursor:pointer}.mzk-arrow-hint{text-align:center;color:#9B94BE;font-size:12px;font-weight:900;margin-top:6px}.mzk-player-token{filter:drop-shadow(0 4px 8px rgba(0,0,0,.18))}';
+    style.textContent = [
+      '.mzk-node-badge,.mzk-node-badge-text{display:none!important}',
+      '.mzk-node-flag{display:none!important}',
+      '.mzk-stage{position:relative!important}',
+      '.mzk-arrow-panel{position:absolute;top:14px;right:14px;z-index:30;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:16px;background:rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(83,74,183,.18);backdrop-filter:blur(6px)}',
+      '.mzk-arrow-controls{display:grid;grid-template-columns:42px 42px 42px;grid-template-rows:38px 38px;gap:5px;margin:0}',
+      '.mzk-arrow-controls button{border:0;border-radius:10px;background:#7F77DD;color:#fff;font-weight:900;font-size:20px;cursor:pointer;line-height:1;box-shadow:0 4px 10px rgba(127,119,221,.22)}',
+      '.mzk-arrow-controls button:active{transform:translateY(1px)}',
+      '.mzk-arrow-hint{text-align:center;color:#534AB7;font-size:10px;font-weight:900;max-width:132px;line-height:1.15;margin:0}',
+      '.mzk-player-token{filter:drop-shadow(0 4px 8px rgba(0,0,0,.18));transition:transform .18s ease}',
+      '@media(max-width:760px){.mzk-arrow-panel{top:8px;right:8px;padding:6px;border-radius:14px}.mzk-arrow-controls{grid-template-columns:36px 36px 36px;grid-template-rows:34px 34px}.mzk-arrow-controls button{font-size:18px}.mzk-arrow-hint{display:none}}'
+    ].join('');
     document.head.appendChild(style);
   }
 
@@ -32,10 +43,12 @@
       var isStart = g.classList.contains('start');
       var isEnd = g.classList.contains('end');
       Array.prototype.slice.call(g.querySelectorAll('.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag')).forEach(function (el) { el.remove(); });
-      if (isStart) g.appendChild(svgText('START ➜', 0, -40, '#F97316', '13'));
-      if (isEnd) g.appendChild(svgText('🏠 HOME', 0, -40, '#16a34a', '13'));
+      if (isStart) g.appendChild(svgText('START', 0, -40, '#F97316', '13'));
+      if (isEnd) g.appendChild(svgText('HOME', 0, -40, '#16a34a', '13'));
     });
   }
+
+  function pointKey(p) { return Math.round(p.x) + ',' + Math.round(p.y); }
 
   function dir(from, to) {
     var dx = to.x - from.x;
@@ -44,7 +57,6 @@
     return dy >= 0 ? 'down' : 'up';
   }
 
-  // Base arrow glyph (see makeToken) points right, so 'right' maps to 0deg.
   function angleForDir(d) {
     if (d === 'down') return 90;
     if (d === 'left') return 180;
@@ -54,32 +66,32 @@
 
   function installControls(step) {
     var stage = document.querySelector('.mzk-stage');
-    if (!stage || stage.querySelector('.mzk-arrow-controls')) return;
+    if (!stage || stage.querySelector('.mzk-arrow-panel')) return;
+    var panel = document.createElement('div');
+    panel.className = 'mzk-arrow-panel';
     var hint = document.createElement('div');
     hint.className = 'mzk-arrow-hint';
-    hint.textContent = 'Use the arrows, tap a picture, or swipe to move from START to HOME. Avoid wall animals.';
+    hint.textContent = 'Move from START to HOME. Avoid wall animals.';
     var box = document.createElement('div');
     box.className = 'mzk-arrow-controls';
-    box.innerHTML = '<span></span><button type="button" data-dir="up">↑</button><span></span><button type="button" data-dir="left">←</button><button type="button" data-dir="down">↓</button><button type="button" data-dir="right">→</button>';
+    box.innerHTML = '<span></span><button type="button" data-dir="up" aria-label="Move up">↑</button><span></span><button type="button" data-dir="left" aria-label="Move left">←</button><button type="button" data-dir="down" aria-label="Move down">↓</button><button type="button" data-dir="right" aria-label="Move right">→</button>';
     box.addEventListener('click', function (e) {
       var b = e.target.closest('button[data-dir]');
       if (b) step(b.getAttribute('data-dir'));
     });
-    stage.appendChild(hint);
-    stage.appendChild(box);
+    panel.appendChild(hint);
+    panel.appendChild(box);
+    stage.appendChild(panel);
   }
 
-  // Lets the mouse/touch swipe directly on the maze stage move the token,
-  // as an alternative to the arrow buttons/keyboard for desktop drag and
-  // mobile swipe gestures. Small movements (taps/clicks on a node) are
-  // ignored here so they fall through to the per-node tap handler.
   function installSwipe(step) {
     var stage = document.querySelector('.mzk-stage');
     if (!stage || stage.dataset.mzkSwipeBound) return;
     stage.dataset.mzkSwipeBound = '1';
-    var SWIPE_THRESHOLD = 28;
+    var threshold = 28;
     var startX = 0, startY = 0, tracking = false;
     stage.addEventListener('pointerdown', function (e) {
+      if (e.target.closest('.mzk-arrow-panel,.mzk-controls')) return;
       tracking = true;
       startX = e.clientX;
       startY = e.clientY;
@@ -90,7 +102,7 @@
       var dx = e.clientX - startX;
       var dy = e.clientY - startY;
       var absX = Math.abs(dx), absY = Math.abs(dy);
-      if (Math.max(absX, absY) < SWIPE_THRESHOLD) return;
+      if (Math.max(absX, absY) < threshold) return;
       step(absX >= absY ? (dx >= 0 ? 'right' : 'left') : (dy >= 0 ? 'down' : 'up'));
     });
     stage.addEventListener('pointercancel', function () { tracking = false; });
@@ -118,82 +130,139 @@
     addStyle();
 
     var originalBuild = window.mzkBuildMaze;
-    var index = 0;
     var token = null;
+    var layout = null;
+    var current = null;
+    var facing = 'right';
+    var graph = {};
     var pathNodes = [];
     var branchNodes = [];
-    var facing = 'right';
+    var startNode = null;
+    var homeNode = null;
+    var pathIndex = 0;
+    var failed = false;
+
+    function samePoint(a, b) { return a && b && pointKey(a) === pointKey(b); }
+
+    function addGraphPoint(p) {
+      var key = pointKey(p);
+      if (!graph[key]) graph[key] = { point: { x: p.x, y: p.y }, neighbors: [] };
+    }
+
+    function addEdge(a, b) {
+      var ak = pointKey(a), bk = pointKey(b);
+      addGraphPoint(a); addGraphPoint(b);
+      graph[ak].neighbors.push({ key: bk, point: { x: b.x, y: b.y } });
+      graph[bk].neighbors.push({ key: ak, point: { x: a.x, y: a.y } });
+    }
+
+    function buildGraph() {
+      graph = {};
+      (layout.connectors || []).forEach(function (pair) { addEdge(pair[0], pair[1]); });
+      (layout.nodes || []).forEach(addGraphPoint);
+    }
 
     function placeToken() {
-      if (!token || !pathNodes[index]) return;
-      token.setAttribute('transform', 'translate(' + pathNodes[index].x + ',' + pathNodes[index].y + ') rotate(' + angleForDir(facing) + ')');
+      if (!token || !current) return;
+      token.setAttribute('transform', 'translate(' + current.x + ',' + current.y + ') rotate(' + angleForDir(facing) + ')');
+    }
+
+    function syncViewerProgress() {
+      if (typeof window.mzkSyncArrowProgress === 'function') window.mzkSyncArrowProgress(pathIndex);
+      else if (typeof window.mzkUpdateProgress === 'function') window.mzkUpdateProgress(pathIndex);
     }
 
     function rebuild() {
+      if (typeof window.mzkClearAnswerPath === 'function') window.mzkClearAnswerPath();
       originalBuild();
       var svg = wrap.querySelector('svg');
       if (!svg) return;
-      var layout;
       try { layout = generateMazeLayout(MZK_PATH, MZK_BRANCHES, MZK_LAYOUT_POSITIONS); } catch (e) { return; }
       pathNodes = layout.nodes.filter(function (n) { return n.kind === 'path'; }).sort(function (a, b) { return a.index - b.index; });
       branchNodes = layout.nodes.filter(function (n) { return n.kind === 'branch'; });
+      startNode = layout.nodes.filter(function (n) { return n.kind === 'start'; })[0] || pathNodes[0];
+      homeNode = layout.nodes.filter(function (n) { return n.kind === 'home'; })[0] || pathNodes[pathNodes.length - 1];
+      buildGraph();
       cleanNodeLabels(svg);
-      index = 0;
-      var startNode = layout.nodes.filter(function (n) { return n.kind === 'start'; })[0];
-      facing = (startNode && pathNodes[0]) ? dir(startNode, pathNodes[0]) : 'right';
+      pathIndex = 0;
+      failed = false;
+      current = { x: startNode.x, y: startNode.y };
+      facing = pathNodes[0] ? dir(current, pathNodes[0]) : 'right';
       token = makeToken(svg);
       placeToken();
+      syncViewerProgress();
+      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('', '');
       var hero = document.querySelector('.mzk-hero p');
       if (hero) hero.textContent = 'Use the arrows, tap a picture, or swipe to move from START to HOME!';
     }
 
-    function updateProgress() {
-      if (typeof window.mzkUpdateProgress === 'function') {
-        window.mzkNextIndex = index;
-        window.mzkUpdateProgress();
-      }
-    }
-
-    function reset(msg, soundId) {
-      index = 0;
-      placeToken();
-      updateProgress();
-      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback(msg || 'Wrong way. Start again.', 'bad');
-      var snd = document.getElementById(soundId || 'mzkLoseAudio');
+    function playSound(id) {
+      var snd = document.getElementById(id || 'mzkLoseAudio');
       if (snd && typeof window.mzkPlay === 'function') window.mzkPlay(snd);
     }
 
-    function step(which) {
-      if (!pathNodes.length || !pathNodes[index]) return;
-      facing = which;
-      var here = pathNodes[index];
-      for (var i = 0; i < branchNodes.length; i++) {
-        var branchEntry = { x: branchNodes[i].entryX != null ? branchNodes[i].entryX : branchNodes[i].x, y: branchNodes[i].entryY != null ? branchNodes[i].entryY : branchNodes[i].y };
-        if (branchNodes[i].attachAfterIndex === index && dir(here, branchEntry) === which) {
-          reset('Dead end! Go back to START.', 'mzkWrongAudio');
-          return;
-        }
-      }
-      var next = pathNodes[index + 1];
-      if (next && dir(here, next) === which) {
-        index++;
-        placeToken();
-        updateProgress();
-        if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('Good! Keep going.', 'good');
-        if (index >= pathNodes.length - 1 && typeof window.mzkFinish === 'function') setTimeout(window.mzkFinish, 350);
-        return;
-      }
-      reset('Wrong way. Follow the path.');
+    function fail(message, soundId) {
+      failed = true;
+      syncViewerProgress();
+      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback(message || 'Wrong way. Restart and try again.', 'bad');
+      playSound(soundId || 'mzkLoseAudio');
     }
 
-    // Lets a click/tap directly on a maze picture move the token, as a
-    // mouse/touch alternative to the arrow buttons and keyboard. Returns
-    // true when the tap was handled here (so the legacy per-node tap
-    // handler in viewer.php does not also run).
+    function completeIfReady() {
+      if (!homeNode || !samePoint(current, homeNode)) return false;
+      if (pathIndex < pathNodes.length) {
+        fail('You found HOME, but you missed part of the path. Restart and try again.', 'mzkWrongAudio');
+        return true;
+      }
+      if (typeof window.mzkFinish === 'function') setTimeout(window.mzkFinish, 250);
+      return true;
+    }
+
+    function markPathNodeIfNeeded() {
+      var next = pathNodes[pathIndex];
+      if (next && samePoint(current, next)) {
+        var group = wrap.querySelector('g.mzk-node[data-node-id="path_' + next.index + '"]');
+        if (group) group.classList.add('done');
+        pathIndex++;
+        syncViewerProgress();
+        if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('Good! Keep going.', 'good');
+        playSound('mzkWinAudio');
+      }
+    }
+
+    function branchAtCurrent() {
+      for (var i = 0; i < branchNodes.length; i++) if (samePoint(current, branchNodes[i])) return branchNodes[i];
+      return null;
+    }
+
+    function step(which) {
+      if (failed || !current || !layout) return;
+      facing = which;
+      var hereKey = pointKey(current);
+      var here = graph[hereKey];
+      if (!here) return;
+      var choices = here.neighbors.filter(function (n) { return dir(current, n.point) === which; });
+      if (!choices.length) {
+        placeToken();
+        fail('Wrong way. Follow the path.', 'mzkLoseAudio');
+        return;
+      }
+      current = { x: choices[0].point.x, y: choices[0].point.y };
+      placeToken();
+      var branch = branchAtCurrent();
+      if (branch) {
+        var group = wrap.querySelector('g.mzk-node[data-node-id="' + branch.id + '"]');
+        if (group) group.classList.add('wrong', 'shake');
+        fail('Dead end! Restart and try another path.', 'mzkWrongAudio');
+        return;
+      }
+      markPathNodeIfNeeded();
+      if (!completeIfReady() && typeof window.mzkSetFeedback === 'function' && pathIndex > 0) window.mzkSetFeedback('Good! Keep going.', 'good');
+    }
+
     function nodeTap(node) {
-      if (!pathNodes.length || !pathNodes[index] || !node) return true;
-      var here = pathNodes[index];
-      step(dir(here, node));
+      if (failed || !current || !node) return true;
+      step(dir(current, node));
       return true;
     }
 
@@ -204,7 +273,10 @@
       if (map[e.key]) { e.preventDefault(); step(map[e.key]); }
     });
     window.mzkBuildMaze = rebuild;
-    window.mzkRestart = rebuild;
+    window.mzkRestart = function () {
+      if (typeof window.mzkResetViewerState === 'function') window.mzkResetViewerState();
+      rebuild();
+    };
     window.mzkNodeTap = nodeTap;
     rebuild();
   }
