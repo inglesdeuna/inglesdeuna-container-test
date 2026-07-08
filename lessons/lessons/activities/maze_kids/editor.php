@@ -59,6 +59,14 @@ function mzk_ed_clean_positions($raw): array {
     return $positions;
 }
 
+function mzk_ed_safe_image_url(string $url): string {
+    $url = trim($url);
+    if ($url === '') return '';
+    if (stripos($url, 'data:') === 0) return '';
+    if (strlen($url) > 2048) return '';
+    return $url;
+}
+
 function mzk_ed_norm($raw): array {
     $df = mzk_ed_default();
     if ($raw === null || $raw === '') return $df;
@@ -69,7 +77,7 @@ function mzk_ed_norm($raw): array {
     foreach (($d['vocabulary_bank'] ?? []) as $item) {
         if (!is_array($item)) continue;
         $word = trim((string)($item['word'] ?? ''));
-        $img  = trim((string)($item['image_url'] ?? ''));
+        $img  = mzk_ed_safe_image_url((string)($item['image_url'] ?? ''));
         if ($word === '' && $img === '') continue;
         $bank[] = [
             'id' => trim((string)($item['id'] ?? uniqid('mzk_'))) ?: uniqid('mzk_'),
@@ -158,8 +166,25 @@ function mzk_ed_load(PDO $pdo, string $unit, string $id): array {
     return array_merge(['id' => (string)($row['id'] ?? '')], mzk_ed_norm($row['data'] ?? null));
 }
 
-function mzk_ed_save(PDO $pdo, string $unit, string $id, array $payload): string {
-    $json = mzk_ed_enc($payload);
+function mzk_ed_should_retry_db(PDOException $e): bool {
+    $msg = $e->getMessage();
+    return strpos($msg, 'SSL SYSCALL error') !== false || strpos($msg, 'server closed the connection') !== false || strpos($msg, 'EOF detected') !== false;
+}
+
+function mzk_ed_new_pdo(): PDO {
+    $databaseUrl = getenv('DATABASE_URL');
+    if (!$databaseUrl) throw new RuntimeException('DATABASE_URL is not defined.');
+    $parsed = parse_url($databaseUrl);
+    $host = $parsed['host'];
+    $port = $parsed['port'] ?? 5432;
+    $user = $parsed['user'];
+    $pass = $parsed['pass'];
+    $db = ltrim($parsed['path'], '/');
+    $dsn = "pgsql:host=$host;port=$port;dbname=$db;sslmode=require;keepalives=1;keepalives_idle=30;keepalives_interval=10;keepalives_count=5";
+    return new PDO($dsn, $user, $pass, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+}
+
+function mzk_ed_save_once(PDO $pdo, string $unit, string $id, string $json): string {
     $tid = $id;
     if ($tid === '') {
         $st = $pdo->prepare("SELECT id FROM activities WHERE unit_id = :unit AND type = 'maze_kids' ORDER BY id ASC LIMIT 1");
@@ -171,9 +196,24 @@ function mzk_ed_save(PDO $pdo, string $unit, string $id, array $payload): string
         $st->execute(['data' => $json, 'id' => $tid]);
         return $tid;
     }
-    $st = $pdo->prepare("INSERT INTO activities(unit_id, type, data, position, created_at) VALUES(:unit, 'maze_kids', :data, (SELECT COALESCE(MAX(position),0)+1 FROM activities WHERE unit_id = :unit2), CURRENT_TIMESTAMP) RETURNING id");
-    $st->execute(['unit' => $unit, 'unit2' => $unit, 'data' => $json]);
+    $st = $pdo->prepare("SELECT COALESCE(MAX(position), 0) + 1 FROM activities WHERE unit_id = :unit");
+    $st->execute(['unit' => $unit]);
+    $position = (int)$st->fetchColumn();
+
+    $st = $pdo->prepare("INSERT INTO activities(unit_id, type, data, position, created_at) VALUES(:unit, 'maze_kids', :data, :position, CURRENT_TIMESTAMP) RETURNING id");
+    $st->execute(['unit' => $unit, 'data' => $json, 'position' => $position]);
     return (string)$st->fetchColumn();
+}
+
+function mzk_ed_save(PDO $pdo, string $unit, string $id, array $payload): string {
+    $json = mzk_ed_enc($payload);
+    try {
+        return mzk_ed_save_once($pdo, $unit, $id, $json);
+    } catch (PDOException $e) {
+        if (!mzk_ed_should_retry_db($e)) throw $e;
+        $retryPdo = mzk_ed_new_pdo();
+        return mzk_ed_save_once($retryPdo, $unit, $id, $json);
+    }
 }
 
 if ($unit === '' && $activityId !== '') $unit = mzk_ed_resolve_unit($pdo, $activityId);
@@ -197,12 +237,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $bank = [];
     foreach ($bankWords as $i => $rw) {
         $word = trim((string)$rw);
-        $imgUrl = trim((string)($bankImgExist[$i] ?? ''));
+        $imgUrl = mzk_ed_safe_image_url((string)($bankImgExist[$i] ?? ''));
         $tmpName = $bankImgUpload['tmp_name'][$i] ?? '';
         $imgErr = $bankImgUpload['error'][$i] ?? UPLOAD_ERR_NO_FILE;
         if ($tmpName !== '' && $imgErr === UPLOAD_ERR_OK) {
             $uploaded = upload_to_cloudinary($tmpName);
-            if ($uploaded) $imgUrl = $uploaded;
+            if ($uploaded) $imgUrl = mzk_ed_safe_image_url($uploaded);
         }
         if ($word === '' && $imgUrl === '') continue;
         $id = trim((string)($bankIds[$i] ?? uniqid('mzk_'))) ?: uniqid('mzk_');
@@ -275,24 +315,24 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 .mzke-section label{display:block;font-weight:800;margin-bottom:6px;font-size:13px;color:#374151}
 .mzke-section input[type=text],.mzke-section select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid #d1d5db;box-sizing:border-box;margin-bottom:12px;font-size:14px;font-family:inherit}
 .mzke-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.mzke-help{margin:-6px 0 10px;color:#6b7280;font-size:12px;font-weight:700}
-.mzke-count-row{display:flex;gap:16px;flex-wrap:wrap;align-items:end;margin-bottom:6px}.mzke-count-field{min-width:190px}.mzke-count-field input{margin-bottom:0}.mzke-btn-update{background:#7F77DD;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:900;font-size:13px}
 .mzke-bank-grid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}.mzke-bank-card{background:#fff;border:2px solid #e5e7eb;border-radius:10px;padding:10px;width:150px;position:relative}.mzke-bank-card.path{border-color:#CDC7F3}.mzke-bank-card.branch{border-color:#FCA5A5}.mzke-bank-card.empty{border-style:dashed}
 .mzke-slot-remove{position:absolute;top:6px;right:6px;background:#9ca3af;color:#fff;border:none;border-radius:999px;width:20px;height:20px;line-height:20px;text-align:center;font-size:12px;font-weight:900;cursor:pointer;padding:0}.mzke-slot-remove:hover{background:#ef4444}
 .mzke-slot-tag{position:absolute;top:6px;left:6px;background:#7F77DD;color:#fff;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:900;font-family:'Fredoka',sans-serif}.mzke-bank-card.branch .mzke-slot-tag{background:#ef4444}
 .mzke-bank-thumb{width:100%;height:90px;border-radius:8px;overflow:hidden;background:#f3f4f6;display:flex;align-items:center;justify-content:center;margin-bottom:8px;margin-top:14px}.mzke-bank-thumb img{width:100%;height:100%;object-fit:contain;display:block}
 .mzke-bank-card input[type=text]{margin-bottom:6px;font-size:13px}.mzke-bank-card input[type=file]{font-size:11px;margin-bottom:6px}
-.mzke-btn-tts-small{background:#F97316;color:#fff;border:none;padding:6px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:800;width:100%}.mzke-btn-save{background:linear-gradient(180deg,#7c3aed,#6d28d9);color:#fff;padding:10px 24px;border:none;border-radius:10px;cursor:pointer;font-weight:900;font-size:15px}.mzke-toolbar{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
+.mzke-btn-update{background:#7F77DD;color:#fff;border:none;padding:10px 18px;border-radius:8px;cursor:pointer;font-weight:900;font-size:13px}
+.mzke-btn-save{background:linear-gradient(180deg,#7c3aed,#6d28d9);color:#fff;padding:10px 24px;border:none;border-radius:10px;cursor:pointer;font-weight:900;font-size:15px}.mzke-toolbar{display:flex;gap:10px;justify-content:center;margin-top:8px;flex-wrap:wrap}
 .mzke-section-sub{margin:0 0 14px;color:#374151;font-size:13px;font-weight:700}.mzke-section-sub b{color:#7F77DD}
 #mzkePreviewWrap{overflow:auto;background:#F8F7FF;border-radius:16px;padding:16px;border:1px solid #EDE9FA;min-height:280px}#mzkePreviewWrap svg{display:block;margin:0 auto;max-width:100%;height:auto}.mzke-preview-note{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:10px;color:#6b7280;font-size:12px;font-weight:800}
-@media(max-width:760px){.mzke-row2{grid-template-columns:1fr}.mzke-count-row{flex-direction:column;align-items:stretch}}
+@media(max-width:760px){.mzke-row2{grid-template-columns:1fr}}
 </style>
 
 <form method="post" enctype="multipart/form-data" class="mzke-wrap" id="mzkeForm">
 <div class="mzke-section"><h3>1. Activity details</h3><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required><div class="mzke-row2"><div><label>Filler theme</label><select id="mzke_theme" name="theme"><option value="plants"<?= $activityTheme==='plants'?' selected':'' ?>>🌿 Plants</option><option value="buildings"<?= $activityTheme==='buildings'?' selected':'' ?>>🏢 Buildings</option><option value="park"<?= $activityTheme==='park'?' selected':'' ?>>🌳 Park</option><option value="home"<?= $activityTheme==='home'?' selected':'' ?>>🛋️ Home</option></select><p class="mzke-help" style="margin-top:-8px">Fills the dead-end squares with matching icons so the maze never shows a blank tile.</p></div><div><label>Difficulty</label><select id="mzke_difficulty" name="difficulty"><option value="easy"<?= $activityDifficulty==='easy'?' selected':'' ?>>Easy</option><option value="medium"<?= $activityDifficulty==='medium'?' selected':'' ?>>Medium</option><option value="hard"<?= $activityDifficulty==='hard'?' selected':'' ?>>Hard</option></select></div></div></div>
 
-<div class="mzke-section"><h3>2. Upload your pictures</h3><p class="mzke-section-sub">Add one picture for every word in the correct path, plus (optionally) a few "wall" pictures for wrong turns. <b>The grid always matches the number of pictures you add — there are never empty spaces.</b> The maze automatically draws a <b>start arrow</b> and a <b>home (house)</b> icon at the two ends of the path; those icons are not pictures you upload.</p><div class="mzke-bank-grid" id="mzkeBankGrid"></div><div class="mzke-toolbar" style="justify-content:flex-start"><button type="button" class="mzke-btn-update" onclick="mzkeAddSlot('path')">+ Add picture</button><button type="button" class="mzke-btn-update" style="background:#ef4444" onclick="mzkeAddSlot('branch')">+ Add wall</button></div></div>
+<div class="mzke-section"><h3>2. Upload your pictures</h3><p class="mzke-section-sub">Add one picture for every word in the correct path, plus optional wall pictures for wrong turns. <b>The preview can use local images, but only Cloudinary URLs are saved to the database.</b></p><div class="mzke-bank-grid" id="mzkeBankGrid"></div><div class="mzke-toolbar" style="justify-content:flex-start"><button type="button" class="mzke-btn-update" onclick="mzkeAddSlot('path')">+ Add picture</button><button type="button" class="mzke-btn-update" style="background:#ef4444" onclick="mzkeAddSlot('branch')">+ Add wall</button></div></div>
 
-<div class="mzke-section"><h3>3. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls. It updates automatically as you fill in pictures above.</span></div><div id="mzkePreviewWrap"></div></div>
+<div class="mzke-section"><h3>3. Live preview</h3><div class="mzke-preview-note"><span>This is exactly how the maze will look to the student: real corridors, turns and dead ends carved out of the walls.</span></div><div id="mzkePreviewWrap"></div></div>
 <div class="mzke-toolbar"><button type="submit" class="mzke-btn-save">Save</button></div>
 <input type="hidden" name="layout_positions_json" id="mzkeLayoutPositionsInput">
 <div id="mzkePathInputs"></div><div id="mzkeBranchInputs"></div>
@@ -302,247 +342,20 @@ if (isset($_GET['saved'])) echo '<p style="color:#16a34a;font-weight:800;margin-
 <script>
 let mzkePathSlots = [];
 let mzkeBranchSlots = [];
-
 function mzkeUid(prefix){return prefix+'_'+Date.now()+Math.floor(Math.random()*100000);}
 function mzkeEscape(s){return String(s||'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
-
-function mzkeInitSlotsFromServer(bank, path, branches, audioUrls){
-  const byId = {};
-  bank.forEach(item=>{byId[item.id]=item;});
-  mzkePathSlots = path.map(vid=>{
-    const b = byId[vid] || {word:'',image_url:''};
-    return {id:vid, word:b.word||'', image_url:b.image_url||'', audio:(audioUrls&&audioUrls[vid])||''};
-  });
-  mzkeBranchSlots = branches.map(br=>{
-    const b = byId[br.vocabulary_id] || {word:'',image_url:''};
-    const id = br.vocabulary_id || mzkeUid('branch');
-    return {id:id, word:b.word||'', image_url:b.image_url||'', audio:(audioUrls&&audioUrls[id])||''};
-  });
-}
-
-function mzkeResizeSlots(arr, newLen, prefix){
-  newLen = Math.max(0, newLen|0);
-  if (arr.length > newLen){
-    const removed = arr.slice(newLen);
-    const hasData = removed.some(s=>s.word||s.image_url);
-    if (hasData && !confirm('Some pictures already added in the removed spaces will be lost. Continue?')) return null;
-    arr = arr.slice(0, newLen);
-  }
-  while (arr.length < newLen) arr.push({id:mzkeUid(prefix), word:'', image_url:''});
-  return arr;
-}
-
-function mzkeAddSlot(kind){
-  mzkeReadSlotsFromDom();
-  if (kind === 'branch') mzkeBranchSlots.push({id:mzkeUid('branch'), word:'', image_url:''});
-  else mzkePathSlots.push({id:mzkeUid('path'), word:'', image_url:''});
-  mzkeRenderAll();
-}
-
-function mzkeRemoveSlot(id, kind){
-  mzkeReadSlotsFromDom();
-  const arr = kind === 'branch' ? mzkeBranchSlots : mzkePathSlots;
-  const slot = arr.find(s=>s.id===id);
-  if (slot && (slot.word || slot.image_url) && !confirm('This picture has content. Remove it anyway?')) return;
-  const idx = arr.findIndex(s=>s.id===id);
-  if (idx > -1) arr.splice(idx, 1);
-  mzkeRenderAll();
-}
-
-function mzkeReadSlotsFromDom(){
-  document.querySelectorAll('#mzkeBankGrid .mzke-bank-card').forEach(card=>{
-    const id = card.getAttribute('data-vocab-id');
-    const kind = card.getAttribute('data-kind');
-    const word = card.querySelector('input[name^="bank_word"]').value.trim();
-    const img = card.querySelector('.mzke-img-existing').value.trim();
-    const arr = kind === 'branch' ? mzkeBranchSlots : mzkePathSlots;
-    const slot = arr.find(s=>s.id===id);
-    if (slot){ slot.word = word; slot.image_url = img; }
-  });
-}
-
-function mzkeSlotCard(slot, kind, label){
-  const div = document.createElement('div');
-  div.className = 'mzke-bank-card ' + kind + (!slot.word && !slot.image_url ? ' empty' : '');
-  div.setAttribute('data-vocab-id', slot.id);
-  div.setAttribute('data-kind', kind);
-  div.innerHTML = `<span class="mzke-slot-tag">${mzkeEscape(label)}</span>
-<button type="button" class="mzke-slot-remove" title="Remove" onclick="mzkeRemoveSlot('${mzkeEscape(slot.id)}','${kind}')">&times;</button>
-<input type="hidden" name="${kind==='branch'?'branch_vocabulary_id[]':'path_vocabulary_id[]'}" value="${mzkeEscape(slot.id)}">
-<input type="hidden" name="bank_id[]" value="${mzkeEscape(slot.id)}">
-<input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value="${mzkeEscape(slot.image_url)}">
-<div class="mzke-bank-thumb">${slot.image_url?`<img src="${mzkeEscape(slot.image_url)}" alt="">`:''}</div>
-<input type="file" name="bank_image_upload[]" accept="image/*" onchange="mzkePrevImg(this)">
-<input type="text" name="bank_word[]" value="${mzkeEscape(slot.word)}" placeholder="word" onchange="mzkeOnWordChange(this)">
-<input type="hidden" name="bank_audio[]" class="mzke-audio-hidden" value="${mzkeEscape(slot.audio||'')}">`;
-  return div;
-}
-
-function mzkePrevImg(fileInput){
-  const card = fileInput.closest('.mzke-bank-card');
-  const thumb = card.querySelector('.mzke-bank-thumb');
-  const hidden = card.querySelector('.mzke-img-existing');
-  const file = fileInput.files[0];
-  if (file){
-    const reader = new FileReader();
-    reader.onload = e => {
-      thumb.innerHTML = `<img src="${e.target.result}" alt="">`;
-      hidden.value = e.target.result;
-      card.classList.remove('empty');
-      mzkeReadSlotsFromDom();
-      mzkeRenderPreview();
-    };
-    reader.readAsDataURL(file);
-  }
-}
-
-function mzkeOnWordChange(input){
-  const card = input.closest('.mzke-bank-card');
-  if (input.value.trim()) card.classList.remove('empty');
-  mzkeReadSlotsFromDom();
-  mzkeRenderPreview();
-}
-
-function mzkeRenderBankGrid(){
-  const grid = document.getElementById('mzkeBankGrid');
-  grid.innerHTML = '';
-  mzkePathSlots.forEach((slot, idx)=>{
-    grid.appendChild(mzkeSlotCard(slot, 'path', String(idx + 1)));
-  });
-  mzkeBranchSlots.forEach((slot, idx)=>{
-    grid.appendChild(mzkeSlotCard(slot, 'branch', 'Wall ' + (idx + 1)));
-  });
-  const inputs = document.getElementById('mzkePathInputs');
-  inputs.innerHTML = '';
-  const binputs = document.getElementById('mzkeBranchInputs');
-  binputs.innerHTML = '';
-  const pathCount = mzkePathSlots.length;
-  const branchCount = mzkeBranchSlots.length;
-  mzkeBranchSlots.forEach((slot, idx)=>{
-    const attachAfter = branchCount > 0
-      ? Math.min(pathCount - 1, Math.max(0, Math.floor((idx + 1) * pathCount / (branchCount + 1))))
-      : 0;
-    const a = document.createElement('input');
-    a.type = 'hidden'; a.name = 'branch_after_index[]'; a.value = attachAfter;
-    binputs.appendChild(a);
-  });
-}
-
-function mzkeRenderPreview(){
-  const wrap = document.getElementById('mzkePreviewWrap');
-  wrap.innerHTML = '';
-  document.getElementById('mzkeLayoutPositionsInput').value = '{}';
-  if (!mzkePathSlots.length){ wrap.textContent = 'Add pictures above to see a preview.'; return; }
-  const byId = {};
-  mzkePathSlots.forEach(s=>{byId[s.id]=s;});
-  mzkeBranchSlots.forEach(s=>{byId[s.id]=s;});
-  const pathIds = mzkePathSlots.map(s=>s.id);
-  const pathCount = pathIds.length;
-  const branchCount = mzkeBranchSlots.length;
-  const branches = mzkeBranchSlots.map((s, idx)=>({
-    vocabulary_id: s.id,
-    attach_after_index: branchCount > 0
-      ? Math.min(pathCount - 1, Math.max(0, Math.floor((idx + 1) * pathCount / (branchCount + 1))))
-      : 0,
-  }));
-  const layout = generateMazeLayout(pathIds, branches);
-  const NS = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 ' + layout.width + ' ' + layout.height);
-  svg.setAttribute('width', Math.min(layout.width, 900));
-  svg.setAttribute('height', layout.height * (Math.min(layout.width, 900) / layout.width));
-  mzkRenderMazeBase(NS, svg, layout, {wallColor:'#CDC7F3', floorColor:'#ffffff', dotColor:'rgba(83,74,183,.10)'});
-  const theme = document.getElementById('mzke_theme') ? document.getElementById('mzke_theme').value : 'plants';
-  (layout.fillerCells || []).forEach((cell, i) => {
-    const fg = mzkRenderFillerIcon(NS, theme, i, layout.cellSize);
-    fg.setAttribute('transform', 'translate(' + cell.x + ',' + cell.y + ')');
-    svg.appendChild(fg);
-  });
-  const R = Math.round(layout.cellSize * 0.32);
-  layout.nodes.forEach(node=>{
-    const isEndpoint = node.kind === 'start' || node.kind === 'home';
-    const b = isEndpoint ? {word:'',image_url:''} : (byId[node.vocabularyId] || {word:'',image_url:''});
-    const nodeR = node.kind === 'home' ? Math.round(R * 1.4) : R;
-    const g = document.createElementNS(NS, 'g');
-    g.setAttribute('transform', 'translate(' + node.x + ',' + node.y + ')');
-    const c = document.createElementNS(NS, 'circle');
-    c.setAttribute('r', nodeR);
-    c.setAttribute('fill', '#fff');
-    c.setAttribute('stroke', 'none');
-    g.appendChild(c);
-    if (isEndpoint){
-      const eIcon = mzkRenderEndpointIcon(NS, node.kind);
-      if (node.kind === 'home') eIcon.setAttribute('transform', 'scale(1.4)');
-      g.appendChild(eIcon);
-    } else if (b.image_url){
-      const img = document.createElementNS(NS, 'image');
-      img.setAttributeNS('http://www.w3.org/1999/xlink', 'href', b.image_url);
-      img.setAttribute('href', b.image_url);
-      img.setAttribute('x', -nodeR + 5); img.setAttribute('y', -nodeR + 5);
-      img.setAttribute('width', (nodeR - 5) * 2); img.setAttribute('height', (nodeR - 5) * 2);
-      img.setAttribute('clip-path', 'circle(' + (nodeR - 5) + 'px)');
-      img.setAttribute('preserveAspectRatio', 'xMidYMid slice');
-      g.appendChild(img);
-    }
-    if (!isEndpoint){
-      const num = document.createElementNS(NS, 'text');
-      num.setAttribute('x', R - 7); num.setAttribute('y', -R + 11); num.setAttribute('text-anchor', 'middle');
-      num.setAttribute('font-size', '13'); num.setAttribute('font-family', 'Fredoka, sans-serif'); num.setAttribute('font-weight', '700');
-      num.setAttribute('fill', '#7F77DD');
-      num.textContent = node.kind === 'path' ? String(node.index + 1) : 'x';
-      g.appendChild(num);
-      if (b.word){
-        const label = document.createElementNS(NS, 'text');
-        label.setAttribute('x', 0); label.setAttribute('y', R + 14); label.setAttribute('text-anchor', 'middle');
-        label.setAttribute('font-size', '10'); label.setAttribute('font-family', 'Nunito, sans-serif'); label.setAttribute('font-weight', '800');
-        label.setAttribute('fill', '#534AB7');
-        label.textContent = b.word;
-        g.appendChild(label);
-      }
-    }
-    if (isEndpoint){
-      const flag = document.createElementNS(NS, 'text');
-      flag.setAttribute('x', 0); flag.setAttribute('y', -nodeR - 11); flag.setAttribute('text-anchor', 'middle');
-      flag.setAttribute('font-size', '11'); flag.setAttribute('font-family', 'Nunito, sans-serif'); flag.setAttribute('font-weight', '900');
-      flag.setAttribute('fill', node.kind === 'start' ? '#F97316' : '#16a34a');
-      flag.textContent = node.kind === 'start' ? 'START' : 'HOME';
-      g.appendChild(flag);
-    }
-    svg.appendChild(g);
-  });
-  wrap.appendChild(svg);
-}
-
-function mzkeRenderAll(){ mzkeRenderBankGrid(); mzkeRenderPreview(); }
-
-document.addEventListener('DOMContentLoaded', ()=>{
-  mzkeInitSlotsFromServer(
-    <?php echo json_encode($vocabularyBank, JSON_UNESCAPED_UNICODE); ?>,
-    <?php echo json_encode($pathSequence, JSON_UNESCAPED_UNICODE); ?>,
-    <?php echo json_encode($distractorBranches, JSON_UNESCAPED_UNICODE); ?>,
-    <?php echo json_encode($audioUrls, JSON_UNESCAPED_UNICODE); ?>
-  );
-  if (!mzkePathSlots.length){
-    mzkePathSlots = mzkeResizeSlots(mzkePathSlots, 2, 'path') || [];
-  }
-  mzkeRenderAll();
-  const themeSelect = document.getElementById('mzke_theme');
-  if (themeSelect) themeSelect.addEventListener('change', mzkeRenderPreview);
-});
-
-document.getElementById('mzkeForm').addEventListener('submit', e=>{
-  document.getElementById('mzkeLayoutPositionsInput').value = '{}';
-  mzkeReadSlotsFromDom();
-  if (!mzkePathSlots.length){
-    e.preventDefault();
-    alert('Set at least 2 pictures in the path before saving.');
-    return;
-  }
-  const incomplete = mzkePathSlots.concat(mzkeBranchSlots).some(s=>!s.word && !s.image_url);
-  if (incomplete && !confirm('Some spaces are still missing a picture or word. Save anyway?')) {
-    e.preventDefault();
-  }
-});
+function mzkeInitSlotsFromServer(bank, path, branches, audioUrls){const byId={};bank.forEach(item=>{byId[item.id]=item;});mzkePathSlots=path.map(vid=>{const b=byId[vid]||{word:'',image_url:''};return {id:vid,word:b.word||'',image_url:b.image_url||'',preview_url:b.image_url||'',audio:(audioUrls&&audioUrls[vid])||''};});mzkeBranchSlots=branches.map(br=>{const b=byId[br.vocabulary_id]||{word:'',image_url:''};const id=br.vocabulary_id||mzkeUid('branch');return {id:id,word:b.word||'',image_url:b.image_url||'',preview_url:b.image_url||'',audio:(audioUrls&&audioUrls[id])||''};});}
+function mzkeAddSlot(kind){mzkeReadSlotsFromDom();if(kind==='branch')mzkeBranchSlots.push({id:mzkeUid('branch'),word:'',image_url:'',preview_url:''});else mzkePathSlots.push({id:mzkeUid('path'),word:'',image_url:'',preview_url:''});mzkeRenderAll();}
+function mzkeRemoveSlot(id,kind){mzkeReadSlotsFromDom();const arr=kind==='branch'?mzkeBranchSlots:mzkePathSlots;const slot=arr.find(s=>s.id===id);if(slot&&(slot.word||slot.image_url||slot.preview_url)&&!confirm('This picture has content. Remove it anyway?'))return;const idx=arr.findIndex(s=>s.id===id);if(idx>-1)arr.splice(idx,1);mzkeRenderAll();}
+function mzkeReadSlotsFromDom(){document.querySelectorAll('#mzkeBankGrid .mzke-bank-card').forEach(card=>{const id=card.getAttribute('data-vocab-id');const kind=card.getAttribute('data-kind');const word=card.querySelector('input[name^="bank_word"]').value.trim();const img=card.querySelector('.mzke-img-existing').value.trim();const preview=card.querySelector('.mzke-img-preview').value.trim();const arr=kind==='branch'?mzkeBranchSlots:mzkePathSlots;const slot=arr.find(s=>s.id===id);if(slot){slot.word=word;slot.image_url=img;slot.preview_url=preview||img;}});}
+function mzkeSlotCard(slot,kind,label){const div=document.createElement('div');const showUrl=slot.preview_url||slot.image_url||'';div.className='mzke-bank-card '+kind+(!slot.word&&!showUrl?' empty':'');div.setAttribute('data-vocab-id',slot.id);div.setAttribute('data-kind',kind);div.innerHTML=`<span class="mzke-slot-tag">${mzkeEscape(label)}</span><button type="button" class="mzke-slot-remove" title="Remove" onclick="mzkeRemoveSlot('${mzkeEscape(slot.id)}','${kind}')">&times;</button><input type="hidden" name="${kind==='branch'?'branch_vocabulary_id[]':'path_vocabulary_id[]'}" value="${mzkeEscape(slot.id)}"><input type="hidden" name="bank_id[]" value="${mzkeEscape(slot.id)}"><input type="hidden" name="bank_image_existing[]" class="mzke-img-existing" value="${mzkeEscape(slot.image_url||'')}"><input type="hidden" class="mzke-img-preview" value="${mzkeEscape(showUrl)}"><div class="mzke-bank-thumb">${showUrl?`<img src="${mzkeEscape(showUrl)}" alt="">`:''}</div><input type="file" name="bank_image_upload[]" accept="image/*" onchange="mzkePrevImg(this)"><input type="text" name="bank_word[]" value="${mzkeEscape(slot.word)}" placeholder="word" oninput="mzkeOnWordChange(this)"><input type="hidden" name="bank_audio[]" class="mzke-audio-hidden" value="${mzkeEscape(slot.audio||'')}">`;return div;}
+function mzkePrevImg(fileInput){const card=fileInput.closest('.mzke-bank-card');const thumb=card.querySelector('.mzke-bank-thumb');const previewHidden=card.querySelector('.mzke-img-preview');const file=fileInput.files[0];if(file){const reader=new FileReader();reader.onload=e=>{thumb.innerHTML=`<img src="${e.target.result}" alt="">`;previewHidden.value=e.target.result;card.classList.remove('empty');mzkeReadSlotsFromDom();mzkeRenderPreview();};reader.readAsDataURL(file);}}
+function mzkeOnWordChange(input){const card=input.closest('.mzke-bank-card');if(input.value.trim())card.classList.remove('empty');mzkeReadSlotsFromDom();mzkeRenderPreview();}
+function mzkeRenderBankGrid(){const grid=document.getElementById('mzkeBankGrid');grid.innerHTML='';mzkePathSlots.forEach((slot,idx)=>grid.appendChild(mzkeSlotCard(slot,'path',String(idx+1))));mzkeBranchSlots.forEach((slot,idx)=>grid.appendChild(mzkeSlotCard(slot,'branch','Wall '+(idx+1))));document.getElementById('mzkePathInputs').innerHTML='';const binputs=document.getElementById('mzkeBranchInputs');binputs.innerHTML='';const pathCount=mzkePathSlots.length;const branchCount=mzkeBranchSlots.length;mzkeBranchSlots.forEach((slot,idx)=>{const attachAfter=branchCount>0?Math.min(pathCount-1,Math.max(0,Math.floor((idx+1)*pathCount/(branchCount+1)))):0;const a=document.createElement('input');a.type='hidden';a.name='branch_after_index[]';a.value=attachAfter;binputs.appendChild(a);});}
+function mzkeRenderPreview(){const wrap=document.getElementById('mzkePreviewWrap');wrap.innerHTML='';document.getElementById('mzkeLayoutPositionsInput').value='{}';if(!mzkePathSlots.length){wrap.textContent='Add pictures above to see a preview.';return;}const byId={};mzkePathSlots.forEach(s=>{byId[s.id]=s;});mzkeBranchSlots.forEach(s=>{byId[s.id]=s;});const pathIds=mzkePathSlots.map(s=>s.id);const pathCount=pathIds.length;const branchCount=mzkeBranchSlots.length;const branches=mzkeBranchSlots.map((s,idx)=>({vocabulary_id:s.id,attach_after_index:branchCount>0?Math.min(pathCount-1,Math.max(0,Math.floor((idx+1)*pathCount/(branchCount+1)))):0}));const layout=generateMazeLayout(pathIds,branches);const NS='http://www.w3.org/2000/svg';const svg=document.createElementNS(NS,'svg');svg.setAttribute('viewBox','0 0 '+layout.width+' '+layout.height);svg.setAttribute('width',Math.min(layout.width,900));svg.setAttribute('height',layout.height*(Math.min(layout.width,900)/layout.width));mzkRenderMazeBase(NS,svg,layout,{wallColor:'#CDC7F3',floorColor:'#ffffff',dotColor:'rgba(83,74,183,.10)'});const theme=document.getElementById('mzke_theme')?document.getElementById('mzke_theme').value:'plants';(layout.fillerCells||[]).forEach((cell,i)=>{const fg=mzkRenderFillerIcon(NS,theme,i,layout.cellSize);fg.setAttribute('transform','translate('+cell.x+','+cell.y+')');svg.appendChild(fg);});const R=Math.round(layout.cellSize*.32);layout.nodes.forEach(node=>{const isEndpoint=node.kind==='start'||node.kind==='home';const b=isEndpoint?{word:'',preview_url:''}:(byId[node.vocabularyId]||{word:'',preview_url:''});const nodeR=node.kind==='home'?Math.round(R*1.4):R;const g=document.createElementNS(NS,'g');g.setAttribute('transform','translate('+node.x+','+node.y+')');const c=document.createElementNS(NS,'circle');c.setAttribute('r',nodeR);c.setAttribute('fill','#fff');c.setAttribute('stroke','none');g.appendChild(c);if(isEndpoint){const eIcon=mzkRenderEndpointIcon(NS,node.kind);if(node.kind==='home')eIcon.setAttribute('transform','scale(1.4)');g.appendChild(eIcon);}else if(b.preview_url||b.image_url){const img=document.createElementNS(NS,'image');const src=b.preview_url||b.image_url;img.setAttributeNS('http://www.w3.org/1999/xlink','href',src);img.setAttribute('href',src);img.setAttribute('x',-nodeR+5);img.setAttribute('y',-nodeR+5);img.setAttribute('width',(nodeR-5)*2);img.setAttribute('height',(nodeR-5)*2);img.setAttribute('clip-path','circle('+(nodeR-5)+'px)');img.setAttribute('preserveAspectRatio','xMidYMid slice');g.appendChild(img);}if(!isEndpoint){const num=document.createElementNS(NS,'text');num.setAttribute('x',R-7);num.setAttribute('y',-R+11);num.setAttribute('text-anchor','middle');num.setAttribute('font-size','13');num.setAttribute('font-family','Fredoka, sans-serif');num.setAttribute('font-weight','700');num.setAttribute('fill','#7F77DD');num.textContent=node.kind==='path'?String(node.index+1):'x';g.appendChild(num);if(b.word){const label=document.createElementNS(NS,'text');label.setAttribute('x',0);label.setAttribute('y',R+14);label.setAttribute('text-anchor','middle');label.setAttribute('font-size','10');label.setAttribute('font-family','Nunito, sans-serif');label.setAttribute('font-weight','800');label.setAttribute('fill','#534AB7');label.textContent=b.word;g.appendChild(label);}}if(isEndpoint){const flag=document.createElementNS(NS,'text');flag.setAttribute('x',0);flag.setAttribute('y',-nodeR-11);flag.setAttribute('text-anchor','middle');flag.setAttribute('font-size','11');flag.setAttribute('font-family','Nunito, sans-serif');flag.setAttribute('font-weight','900');flag.setAttribute('fill',node.kind==='start'?'#F97316':'#16a34a');flag.textContent=node.kind==='start'?'START':'HOME';g.appendChild(flag);}svg.appendChild(g);});wrap.appendChild(svg);}
+function mzkeRenderAll(){mzkeRenderBankGrid();mzkeRenderPreview();}
+document.addEventListener('DOMContentLoaded',()=>{mzkeInitSlotsFromServer(<?php echo json_encode($vocabularyBank, JSON_UNESCAPED_UNICODE); ?>,<?php echo json_encode($pathSequence, JSON_UNESCAPED_UNICODE); ?>,<?php echo json_encode($distractorBranches, JSON_UNESCAPED_UNICODE); ?>,<?php echo json_encode($audioUrls, JSON_UNESCAPED_UNICODE); ?>);if(!mzkePathSlots.length){mzkePathSlots=[{id:mzkeUid('path'),word:'',image_url:'',preview_url:''},{id:mzkeUid('path'),word:'',image_url:'',preview_url:''}];}mzkeRenderAll();const themeSelect=document.getElementById('mzke_theme');if(themeSelect)themeSelect.addEventListener('change',mzkeRenderPreview);});
+document.getElementById('mzkeForm').addEventListener('submit',e=>{document.getElementById('mzkeLayoutPositionsInput').value='{}';mzkeReadSlotsFromDom();if(!mzkePathSlots.length){e.preventDefault();alert('Set at least 2 pictures in the path before saving.');return;}const incomplete=mzkePathSlots.concat(mzkeBranchSlots).some(s=>!s.word&&!s.preview_url&&!s.image_url);if(incomplete&&!confirm('Some spaces are still missing a picture or word. Save anyway?'))e.preventDefault();});
 </script>
 <?php
 $content = ob_get_clean();
