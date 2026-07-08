@@ -11,16 +11,14 @@
     var style = document.createElement('style');
     style.id = 'mzkArrowModeStyle';
     style.textContent = [
-      '.mzk-node-badge,.mzk-node-badge-text{display:none!important}',
-      '.mzk-node-flag{display:none!important}',
+      '.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag,.mzk-node-label{display:none!important}',
       '.mzk-stage{position:relative!important}',
-      '.mzk-arrow-panel{position:absolute;top:14px;left:14px;z-index:30;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px;border-radius:16px;background:rgba(255,255,255,.92);box-shadow:0 10px 28px rgba(83,74,183,.18);backdrop-filter:blur(6px)}',
-      '.mzk-arrow-controls{display:grid;grid-template-columns:42px 42px 42px;grid-template-rows:38px 38px;gap:5px;margin:0}',
-      '.mzk-arrow-controls button{border:0;border-radius:10px;background:#7F77DD;color:#fff;font-weight:900;font-size:20px;cursor:pointer;line-height:1;box-shadow:0 4px 10px rgba(127,119,221,.22)}',
+      '.mzk-arrow-panel{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 10px;border-radius:24px;background:linear-gradient(180deg,#F5F3FF 0%,#FFFFFF 100%);border:1px solid #E6E2FF;box-shadow:0 12px 28px rgba(83,74,183,.14)}',
+      '.mzk-arrow-controls{display:grid;grid-template-columns:54px 54px 54px;grid-template-rows:54px 54px;gap:8px;margin:0}',
+      '.mzk-arrow-controls button{border:0;border-radius:18px;background:#7F77DD;color:#fff;font-weight:900;font-size:28px;cursor:pointer;line-height:1;box-shadow:0 8px 18px rgba(127,119,221,.22)}',
       '.mzk-arrow-controls button:active{transform:translateY(1px)}',
-      '.mzk-arrow-hint{text-align:center;color:#534AB7;font-size:10px;font-weight:900;max-width:132px;line-height:1.15;margin:0}',
       '.mzk-player-token{filter:drop-shadow(0 4px 8px rgba(0,0,0,.18));transition:transform .18s ease}',
-      '@media(max-width:760px){.mzk-arrow-panel{top:8px;left:8px;padding:6px;border-radius:14px}.mzk-arrow-controls{grid-template-columns:36px 36px 36px;grid-template-rows:34px 34px}.mzk-arrow-controls button{font-size:18px}.mzk-arrow-hint{display:none}}'
+      '@media(max-width:760px){.mzk-arrow-panel{padding:10px 6px;border-radius:18px}.mzk-arrow-controls{grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px;gap:6px}.mzk-arrow-controls button{font-size:22px;border-radius:14px}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -40,11 +38,7 @@
 
   function cleanNodeLabels(svg) {
     Array.prototype.slice.call(svg.querySelectorAll('g.mzk-node')).forEach(function (g) {
-      var isStart = g.classList.contains('start');
-      var isEnd = g.classList.contains('end');
-      Array.prototype.slice.call(g.querySelectorAll('.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag')).forEach(function (el) { el.remove(); });
-      if (isStart) g.appendChild(svgText('START', 0, -40, '#F97316', '13'));
-      if (isEnd) g.appendChild(svgText('HOME', 0, -40, '#16a34a', '13'));
+      Array.prototype.slice.call(g.querySelectorAll('.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag,.mzk-node-label')).forEach(function (el) { el.remove(); });
     });
   }
 
@@ -65,13 +59,11 @@
   }
 
   function installControls(step) {
-    var stage = document.querySelector('.mzk-stage');
-    if (!stage || stage.querySelector('.mzk-arrow-panel')) return;
+    var rail = document.getElementById('mzkSideRail');
+    var host = rail || document.querySelector('.mzk-stage');
+    if (!host || host.querySelector('.mzk-arrow-panel')) return;
     var panel = document.createElement('div');
     panel.className = 'mzk-arrow-panel';
-    var hint = document.createElement('div');
-    hint.className = 'mzk-arrow-hint';
-    hint.textContent = 'Move from START to HOME. Avoid wall animals.';
     var box = document.createElement('div');
     box.className = 'mzk-arrow-controls';
     box.innerHTML = '<span></span><button type="button" data-dir="up" aria-label="Move up">↑</button><span></span><button type="button" data-dir="left" aria-label="Move left">←</button><button type="button" data-dir="down" aria-label="Move down">↓</button><button type="button" data-dir="right" aria-label="Move right">→</button>';
@@ -79,9 +71,8 @@
       var b = e.target.closest('button[data-dir]');
       if (b) step(b.getAttribute('data-dir'));
     });
-    panel.appendChild(hint);
     panel.appendChild(box);
-    stage.appendChild(panel);
+    host.appendChild(panel);
   }
 
   function installSwipe(step) {
@@ -192,8 +183,6 @@
       placeToken();
       syncViewerProgress();
       if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('', '');
-      var hero = document.querySelector('.mzk-hero p');
-      if (hero) hero.textContent = 'Use the arrows, tap a picture, or swipe to move from START to HOME!';
     }
 
     function playSound(id) {
