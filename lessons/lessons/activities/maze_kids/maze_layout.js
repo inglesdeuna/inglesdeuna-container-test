@@ -481,7 +481,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       if (!document.getElementById('mzkMazeWrap')) return;
       var s = document.createElement('script');
-      s.src = 'maze_arrow_mode.js?v=3';
+      s.src = 'maze_arrow_mode.js?v=4';
       document.body.appendChild(s);
     });
   }
