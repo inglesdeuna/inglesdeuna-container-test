@@ -13,12 +13,8 @@
   var CELL = 140;
   var PAD = 96;
   var MIN_CANVAS_WIDTH = 760;
-  var MAX_STRAIGHT_RUN = 2; // force a turn after at most this many collinear steps
+  var MAX_STRAIGHT_RUN = 2;
 
-  // Decorative filler icons: every corridor cell that is not a vocabulary
-  // node (e.g. the walk-through cells of a dead-end branch before its final
-  // "wall" picture) gets one of these theme icons instead of an empty tile.
-  // They are purely decorative - students pass over them freely.
   var THEME_ICONS = {
     plants: ['🌵', '🌿', '🍀', '🌸', '🌼', '🍃', '🌻', '🌾'],
     buildings: ['🏢', '🏬', '🏭', '🏛️', '🏦', '🏪', '🏗️', '🧱'],
@@ -57,8 +53,6 @@
     return basis ? (mzkHash(basis) || 1) : 1;
   }
 
-  // Deterministic PRNG (mulberry32) so the same maze data always produces the
-  // same layout for both the editor preview and the student viewer.
   function makeRng(seed) {
     var s = (seed >>> 0) || 1;
     return function () {
@@ -78,12 +72,6 @@
     return a;
   }
 
-  /**
-   * Builds a self-avoiding walk of `count` grid cells with forced turns
-   * (no more than MAX_STRAIGHT_RUN collinear steps in a row), so the main
-   * corridor always winds through the grid instead of drawing a straight
-   * line or a simple back-and-forth snake.
-   */
   function buildMainPath(count, rng) {
     var path = [{ x: 0, y: 0 }];
     var visited = {}; visited[cellKey(0, 0)] = true;
@@ -130,13 +118,6 @@
     return path;
   }
 
-  /**
-   * Extends from `from` in direction `dir` for up to `maxSteps` cells,
-   * stopping early if a cell is already used. Marks every new cell as used
-   * (shared across the whole maze) so branches never overlap the main path
-   * or each other. Returns the list of newly created cells (may be shorter
-   * than maxSteps, or empty if the first step is already blocked).
-   */
   function walk(from, dir, maxSteps, used) {
     var cells = [];
     var cur = from;
@@ -151,13 +132,6 @@
     return cells;
   }
 
-  /**
-   * Builds a dead-end branch as a multi-cell corridor with at least one
-   * forced turn (an "L"), and sometimes two turns that curl back parallel
-   * to the entrance (a "U"). The student can walk into it but must turn
-   * back once they hit the end - there is no visual shortcut telling them
-   * it's wrong ahead of time.
-   */
   function buildBranch(attachCell, mainDir, used, rng) {
     var perpOptions;
     if (mainDir && mainDir.x !== 0) perpOptions = [{ x: 0, y: 1 }, { x: 0, y: -1 }];
@@ -173,8 +147,6 @@
       if (seg.length) { entryDir = perpOptions[i]; chain = chain.concat(seg); break; }
     }
     if (!chain.length) {
-      // Last resort: every preferred direction was already blocked, try any
-      // free neighbour so the dead end can still exist (rare, dense mazes).
       var fallbackDirs = shuffle(DIRS, rng);
       for (var f = 0; f < fallbackDirs.length; f++) {
         var seg2 = walk(attachCell, fallbackDirs[f], 1, used);
@@ -208,11 +180,6 @@
     return { x: ref.x - cur.x, y: ref.y - cur.y };
   }
 
-  /**
-   * Finds a single free neighbour cell for a start/home endpoint marker.
-   * Prefers continuing straight along `preferDir` (so the entrance/exit
-   * lines up with the corridor) and falls back to any free neighbour.
-   */
   function pickEndpointCell(anchor, preferDir, used, rng) {
     var candidates = [];
     if (preferDir) candidates.push(preferDir);
@@ -242,14 +209,37 @@
     var nodes = [];
     var allCells = mainCells.map(function (c) { return { x: c.x, y: c.y }; });
     var connectors = [];
-    // Cells that belong to a branch corridor but are not the branch's final
-    // "wall" picture node - these would otherwise render as blank floor
-    // tiles, so they get a themed decorative filler icon instead.
     var fillerCells = [];
 
     for (var i = 0; i < mainCells.length; i++) {
       nodes.push({ id: 'path_' + i, index: i, gx: mainCells[i].x, gy: mainCells[i].y, kind: 'path', vocabularyId: pathSequence[i], attachAfterIndex: null });
       if (i > 0) connectors.push([mainCells[i - 1], mainCells[i]]);
+    }
+
+    // Reserve START and HOME before dead-end branches are carved. This keeps
+    // the exit as its own free maze cell and prevents HOME from falling back
+    // onto a vocabulary picture when branches use the available neighbour.
+    if (mainCells.length) {
+      var startDir = mainCells.length > 1
+        ? { x: mainCells[0].x - mainCells[1].x, y: mainCells[0].y - mainCells[1].y }
+        : null;
+      var startCell = pickEndpointCell(mainCells[0], startDir, used, rng);
+      if (startCell) {
+        allCells.push({ x: startCell.x, y: startCell.y });
+        connectors.push([startCell, mainCells[0]]);
+        nodes.unshift({ id: 'start', index: -1, gx: startCell.x, gy: startCell.y, kind: 'start', vocabularyId: '', attachAfterIndex: null });
+      }
+
+      var lastIdx = mainCells.length - 1;
+      var homeDir = mainCells.length > 1
+        ? { x: mainCells[lastIdx].x - mainCells[lastIdx - 1].x, y: mainCells[lastIdx].y - mainCells[lastIdx - 1].y }
+        : null;
+      var homeCell = pickEndpointCell(mainCells[lastIdx], homeDir, used, rng);
+      if (homeCell) {
+        allCells.push({ x: homeCell.x, y: homeCell.y });
+        connectors.push([mainCells[lastIdx], homeCell]);
+        nodes.push({ id: 'home', index: pathSequence.length + distractorBranches.length, gx: homeCell.x, gy: homeCell.y, kind: 'home', vocabularyId: '', attachAfterIndex: null });
+      }
     }
 
     for (var b = 0; b < distractorBranches.length; b++) {
@@ -258,7 +248,7 @@
       var attachCell = mainCells[attachIndex] || { x: 0, y: 0 };
       var mainDir = localMainDir(mainCells, attachIndex);
       var built = buildBranch(attachCell, mainDir, used, rng);
-      if (!built) continue; // no free neighbour left for this dead end; skip rather than overlap
+      if (!built) continue;
 
       built.cells.forEach(function (c, idx) {
         allCells.push({ x: c.x, y: c.y });
@@ -278,33 +268,6 @@
         entryGx: built.entry.x,
         entryGy: built.entry.y
       });
-    }
-
-    // Dedicated entrance/exit markers. These are purely decorative (a start
-    // arrow and a home/house icon) and are never one of the teacher's
-    // uploaded vocabulary pictures, so they are appended as extra cells
-    // rather than reusing path_0 / the last path node.
-    if (mainCells.length) {
-      var startDir = mainCells.length > 1
-        ? { x: mainCells[0].x - mainCells[1].x, y: mainCells[0].y - mainCells[1].y }
-        : null;
-      var startCell = pickEndpointCell(mainCells[0], startDir, used, rng);
-      if (startCell) {
-        allCells.push({ x: startCell.x, y: startCell.y });
-        connectors.push([mainCells[0], startCell]);
-        nodes.unshift({ id: 'start', index: -1, gx: startCell.x, gy: startCell.y, kind: 'start', vocabularyId: '', attachAfterIndex: null });
-      }
-
-      var lastIdx = mainCells.length - 1;
-      var homeDir = mainCells.length > 1
-        ? { x: mainCells[lastIdx].x - mainCells[lastIdx - 1].x, y: mainCells[lastIdx].y - mainCells[lastIdx - 1].y }
-        : null;
-      var homeCell = pickEndpointCell(mainCells[lastIdx], homeDir, used, rng);
-      if (homeCell) {
-        allCells.push({ x: homeCell.x, y: homeCell.y });
-        connectors.push([mainCells[lastIdx], homeCell]);
-        nodes.push({ id: 'home', index: pathSequence.length + distractorBranches.length, gx: homeCell.x, gy: homeCell.y, kind: 'home', vocabularyId: '', attachAfterIndex: null });
-      }
     }
 
     var xs = allCells.map(function (c) { return c.x; });
@@ -330,15 +293,11 @@
       }
     });
 
-    var cellsPx = allCells.map(toPx);
-    var connectorsPx = connectors.map(function (pair) { return [toPx(pair[0]), toPx(pair[1])]; });
-    var fillerCellsPx = fillerCells.map(toPx);
-
     return {
       nodes: nodes,
-      cells: cellsPx,
-      connectors: connectorsPx,
-      fillerCells: fillerCellsPx,
+      cells: allCells.map(toPx),
+      connectors: connectors.map(function (pair) { return [toPx(pair[0]), toPx(pair[1])]; }),
+      fillerCells: fillerCells.map(toPx),
       cellSize: CELL,
       width: Math.round(finalWidth),
       height: Math.round(rawHeight),
@@ -347,13 +306,6 @@
     };
   }
 
-  /**
-   * Draws the shared "real maze" background into an existing <svg>: a solid
-   * wall panel with the corridor cells and their connectors carved out of
-   * it in a lighter floor colour. Node circles/images/badges are added on
-   * top by the caller (viewer.php / editor.php), which differ slightly
-   * between the two contexts (click handlers vs. drag handlers).
-   */
   function renderMazeBase(NS, svg, layout, opts) {
     opts = opts || {};
     var wallColor = opts.wallColor || '#CDC7F3';
@@ -430,10 +382,6 @@
     svg.appendChild(cellGroup);
   }
 
-  /**
-   * Draws a fixed icon (never a teacher-uploaded picture) for the maze's
-   * decorative start (arrow) and home (house) endpoint nodes.
-   */
   function renderEndpointIcon(NS, kind) {
     var g = document.createElementNS(NS, 'g');
     if (kind === 'start') {
@@ -456,12 +404,6 @@
     return g;
   }
 
-  /**
-   * Draws a decorative, non-interactive theme icon used to fill dead-end
-   * corridor cells that carry no vocabulary picture, so students never see a
-   * plain blank floor tile. `seed` picks a varied-but-deterministic icon from
-   * the theme's set.
-   */
   function renderFillerIcon(NS, theme, seed, cellSize) {
     var icons = THEME_ICONS[normalizeTheme(theme)];
     var icon = icons[Math.abs(seed || 0) % icons.length];
@@ -484,7 +426,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       if (!document.getElementById('mzkMazeWrap')) return;
       var s = document.createElement('script');
-      s.src = 'maze_arrow_mode.js?v=4';
+      s.src = 'maze_arrow_mode.js?v=6';
       document.body.appendChild(s);
     });
   }
