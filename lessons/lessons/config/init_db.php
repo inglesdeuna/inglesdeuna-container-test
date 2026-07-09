@@ -61,6 +61,12 @@ try {
     );
     ");
 
+    /* Columna dedicada para binarios grandes (ej. PDFs de flipbooks) que no
+       deben almacenarse dentro del JSONB 'data' — insertar un base64 grande
+       ahi obliga a Postgres a construir/parsear el arbol jsonb completo en
+       memoria, lo que puede tumbar la conexion en instancias pequenas. */
+    $pdo->exec("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_data BYTEA");
+
     /* ===============================
        UNIQUE (unit + type)
        =============================== */

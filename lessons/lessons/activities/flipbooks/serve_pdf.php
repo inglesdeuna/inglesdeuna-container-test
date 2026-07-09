@@ -92,14 +92,48 @@ if (!$row) {
 
 $data = json_decode($row['data'] ?? '', true);
 $pdfUrl = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
-$downloadName = safe_pdf_filename($pdfUrl);
+$downloadName = safe_pdf_filename(
+    (isset($data['pdf_filename']) && $data['pdf_filename'] !== '') ? (string) $data['pdf_filename'] : $pdfUrl
+);
 
 if ($pdfUrl === '') {
     http_response_code(404);
     exit('No hay PDF guardado para esta actividad.');
 }
 
-// Handle base64 data URI (new storage method)
+// Handle PDFs stored in the dedicated pdf_data BYTEA column.
+if (str_starts_with($pdfUrl, 'db-pdf://')) {
+    try {
+        $stmt = $pdo->prepare("SELECT pdf_data FROM activities WHERE id = :id LIMIT 1");
+        $stmt->bindValue(':id', $activityId);
+        $stmt->execute();
+        $stmt->bindColumn('pdf_data', $lob, PDO::PARAM_LOB);
+        $stmt->fetch(PDO::FETCH_BOUND);
+    } catch (Throwable $e) {
+        http_response_code(500);
+        exit('Error al leer el PDF desde la base de datos.');
+    }
+
+    if ($lob === null || $lob === false) {
+        http_response_code(404);
+        exit('No se encontró el PDF almacenado.');
+    }
+
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
+    header('Cache-Control: private, max-age=3600');
+
+    if (is_resource($lob)) {
+        fpassthru($lob);
+        fclose($lob);
+    } else {
+        header('Content-Length: ' . strlen((string) $lob));
+        echo $lob;
+    }
+    exit;
+}
+
+// Handle base64 data URI (legacy storage method, migrated on next save).
 if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     $base64 = substr($pdfUrl, strlen('data:application/pdf;base64,'));
     $binary = base64_decode($base64, true);
