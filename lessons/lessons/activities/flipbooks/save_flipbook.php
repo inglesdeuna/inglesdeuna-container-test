@@ -5,17 +5,10 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../core/cloudinary_upload.php';
 
 set_time_limit(300);
-$pdo->exec("SET statement_timeout = 0");
-
-// Self-heal: make sure the dedicated binary column exists. Large PDFs must
-// never be embedded as base64 inside the JSONB 'data' column — building the
-// jsonb tree for a 20-30MB base64 string is what causes Postgres to drop the
-// connection ("server closed the connection unexpectedly") on small/managed
-// instances. A plain BYTEA column avoids that jsonb parsing overhead.
 try {
-    $pdo->exec("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_data BYTEA");
+    $pdo->exec("SET statement_timeout = 0");
 } catch (Throwable $e) {
-    // Ignore — if this fails the base64 fallback below will surface the error.
+    // Non-fatal. Some managed Postgres connections do not allow this per request.
 }
 
 const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
@@ -89,81 +82,13 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     return isset($decoded['secure_url']) ? (string) $decoded['secure_url'] : null;
 }
 
-function store_pdf_in_db(PDO $pdo, string $activityId, string $filePath): ?string
-{
-    if (!is_file($filePath) || filesize($filePath) <= 0) {
-        return null;
-    }
-
-    // pdo_pgsql requires an active transaction for PDO::PARAM_LOB (Large Object)
-    // operations. Without it the pgsql LOB protocol triggers on Render's
-    // SSL-terminated Postgres and drops the connection mid-stream, producing
-    // "SSL SYSCALL error: EOF detected".
-    $stream = fopen($filePath, 'rb');
-    if ($stream === false) {
-        return null;
-    }
-
-    $ok = false;
-    try {
-        $pdo->beginTransaction();
-        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :pdf_data WHERE id = :id");
-        $stmt->bindParam(':pdf_data', $stream, PDO::PARAM_LOB);
-        $stmt->bindValue(':id', $activityId);
-        $ok = $stmt->execute();
-        $pdo->commit();
-    } catch (Throwable $e) {
-        if ($pdo->inTransaction()) {
-            try { $pdo->rollBack(); } catch (Throwable $_) {}
-        }
-        error_log('flipbook: LOB store failed, trying hex fallback: ' . $e->getMessage());
-
-        // Fallback: read the file and send as hex text via decode(:hex,'hex').
-        // This avoids the LOB protocol entirely and is safe over SSL.
-        if (is_resource($stream)) {
-            fclose($stream);
-            $stream = null;
-        }
-        return store_pdf_in_db_hex($pdo, $activityId, $filePath);
-    } finally {
-        if (is_resource($stream)) {
-            fclose($stream);
-        }
-    }
-
-    return $ok ? FLIPBOOK_DB_PDF_PREFIX . $activityId : null;
-}
-
-function store_pdf_in_db_hex(PDO $pdo, string $activityId, string $filePath): ?string
-{
-    $binary = file_get_contents($filePath);
-    if ($binary === false || $binary === '') {
-        return null;
-    }
-
-    try {
-        $hexData = bin2hex($binary);
-        unset($binary);
-        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = decode(:hex_data, 'hex') WHERE id = :id");
-        $stmt->bindValue(':hex_data', $hexData, PDO::PARAM_STR);
-        $stmt->bindValue(':id', $activityId);
-        $ok = $stmt->execute();
-        unset($hexData);
-    } catch (Throwable $e) {
-        error_log('flipbook: hex store failed: ' . $e->getMessage());
-        return null;
-    }
-
-    return $ok ? FLIPBOOK_DB_PDF_PREFIX . $activityId : null;
-}
-
 function clear_pdf_in_db(PDO $pdo, string $activityId): void
 {
     try {
         $stmt = $pdo->prepare("UPDATE activities SET pdf_data = NULL WHERE id = :id");
         $stmt->execute(['id' => $activityId]);
     } catch (Throwable $e) {
-        // Non-fatal cleanup — ignore.
+        // Non-fatal cleanup. Some environments do not have the legacy column.
     }
 }
 
@@ -187,6 +112,8 @@ function store_pdf_locally(string $sourcePath, string $originalName): ?string
         return null;
     }
 
+    @chmod($targetPath, 0664);
+
     return '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $fileName;
 }
 
@@ -194,26 +121,21 @@ function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $o
 {
     $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath);
     if ($cloudinaryUrl !== null && $cloudinaryUrl !== '') {
-        // A previous upload may have left a binary copy in pdf_data; drop it
-        // now that Cloudinary is the source of truth to avoid keeping an
-        // orphaned large blob around.
         clear_pdf_in_db($pdo, $activityId);
         return $cloudinaryUrl;
     }
 
-    // Cloudinary is unavailable/misconfigured (or rejected the raw upload).
-    // Store the PDF in the dedicated pdf_data BYTEA column — this is
-    // resilient to Render's ephemeral filesystem (unlike local disk storage)
-    // and, unlike embedding base64 in the JSONB 'data' column, doesn't force
-    // Postgres to parse a huge jsonb document in memory.
-    $dbUrl = store_pdf_in_db($pdo, $activityId, $sourcePath);
-    if ($dbUrl !== null && $dbUrl !== '') {
-        return $dbUrl;
+    // Important: do not store new PDFs in Postgres. Sending 20-30 MB PDF blobs
+    // through pdo_pgsql (BYTEA/LOB/hex) is what caused Render Postgres to drop
+    // the connection and surface "SQLSTATE[HY000] General error: 7 no connection
+    // to the server" during Save Activity. Use the filesystem fallback when
+    // Cloudinary is unavailable, and keep only the small URL/filename JSON in DB.
+    $localUrl = store_pdf_locally($sourcePath, $originalName);
+    if ($localUrl !== null && $localUrl !== '') {
+        return $localUrl;
     }
 
-    // Last resort only: local disk storage does NOT survive Render
-    // restarts/redeploys, so a PDF stored this way can silently disappear.
-    return store_pdf_locally($sourcePath, $originalName);
+    return null;
 }
 
 function migrate_base64_pdf_if_needed(PDO $pdo, string $activityId, string $pdfUrl): ?string
@@ -285,7 +207,6 @@ try {
     }
 
     $pdfUrl = isset($currentData['pdf_url']) ? (string) $currentData['pdf_url'] : '';
-
     $pdfFilename = isset($currentData['pdf_filename']) ? (string) $currentData['pdf_filename'] : '';
 
     if ($pdfUrl !== '') {
@@ -297,7 +218,7 @@ try {
     }
 
     $pageTextsRaw = $_POST['page_texts'] ?? '[]';
-    $decodedPageTexts = json_decode($pageTextsRaw, true);
+    $decodedPageTexts = json_decode((string) $pageTextsRaw, true);
 
     if (!is_array($decodedPageTexts)) {
         $decodedPageTexts = [];
@@ -341,7 +262,7 @@ try {
                 respond_error('El archivo PDF excede el límite permitido de 30 MB.');
             }
 
-            $extension = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
+            $extension = strtolower(pathinfo((string) $originalName, PATHINFO_EXTENSION));
             if ($extension !== 'pdf') {
                 respond_error('El archivo debe tener extensión .pdf.');
             }
@@ -353,13 +274,13 @@ try {
                 }
             }
 
-            $storedPdfUrl = persist_pdf($pdo, $activityId, $tmpPath, $originalName);
+            $storedPdfUrl = persist_pdf($pdo, $activityId, $tmpPath, (string) $originalName);
             if ($storedPdfUrl === null || $storedPdfUrl === '') {
-                respond_error('No se pudo almacenar el PDF. Verifica la configuracion de Cloudinary o intenta de nuevo.');
+                respond_error('No se pudo almacenar el PDF. Verifica Cloudinary o permisos de la carpeta uploads/pdfs.');
             }
 
             $pdfUrl = $storedPdfUrl;
-            $pdfFilename = $originalName;
+            $pdfFilename = (string) $originalName;
         }
     }
 
