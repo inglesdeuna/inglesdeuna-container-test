@@ -45,6 +45,7 @@
       Array.prototype.slice.call(g.querySelectorAll('.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag,.mzk-node-label')).forEach(function (el) { el.remove(); });
     });
     Array.prototype.slice.call(svg.querySelectorAll('.mzk-home-exit')).forEach(function (el) { el.remove(); });
+    Array.prototype.slice.call(svg.querySelectorAll('g.mzk-node[data-node-id="home"]')).forEach(function (el) { el.remove(); });
   }
 
   function pointKey(p) { return Math.round(p.x) + ',' + Math.round(p.y); }
@@ -246,6 +247,7 @@
 
     function drawHomeExit(svg) {
       if (!svg || !homeNode) return;
+      Array.prototype.slice.call(svg.querySelectorAll('g.mzk-node[data-node-id="home"]')).forEach(function (el) { el.remove(); });
       var NS = 'http://www.w3.org/2000/svg';
       var g = document.createElementNS(NS, 'g');
       g.setAttribute('class', 'mzk-home-exit');
@@ -255,17 +257,15 @@
       g.setAttribute('aria-label', 'Home exit');
       var bg = document.createElementNS(NS, 'rect');
       bg.setAttribute('x', -42);
-      bg.setAttribute('y', -54);
+      bg.setAttribute('y', -34);
       bg.setAttribute('width', 84);
-      bg.setAttribute('height', 62);
-      bg.setAttribute('rx', 16);
+      bg.setAttribute('height', 52);
+      bg.setAttribute('rx', 18);
       bg.setAttribute('fill', '#ffffff');
       bg.setAttribute('stroke', '#16a34a');
       bg.setAttribute('stroke-width', 4);
       g.appendChild(bg);
-      var house = svgText('🏠', 0, -28, '#16a34a', '24');
-      g.appendChild(house);
-      var label = svgText('HOME', 0, -8, '#15803d', '15');
+      var label = svgText('HOME', 0, -3, '#15803d', '17');
       g.appendChild(label);
       g.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); completeMaze(); });
       g.addEventListener('keydown', function (e) {
