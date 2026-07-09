@@ -112,7 +112,7 @@ ob_start();
 ?>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
-#roleplay-kids-root{height:100%;min-height:0;background:#fff8f2;font-family:Nunito,system-ui,sans-serif;color:#2f2763}.rk-app{height:100%;min-height:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#fff8f2,#f8f7ff)}.rk-top{background:#fff;border-bottom:1px solid #f0eef8}.rk-title{height:58px;display:grid;place-items:center;font-family:Fredoka,sans-serif;font-size:27px;font-weight:700;color:#f97316}.rk-progress{height:10px;background:#eeedfe;overflow:hidden}.rk-progress-fill{height:100%;background:linear-gradient(90deg,#f97316,#fdba74,#7f77dd);transition:width .25s}.rk-sub{height:42px;display:grid;place-items:center;background:#fff0e6;border-bottom:1px solid #fcddbf;color:#c2580a;font-weight:900}.rk-scroll,.rk-editor-body{flex:1;min-height:0;overflow:auto;padding:18px}.rk-wrap,.rk-editor-wrap{max-width:960px;margin:0 auto}.rk-card,.rk-edit-card,.rk-picker{background:#fff;border:2px solid #ede9fa;border-radius:26px;margin:0 0 18px;box-shadow:0 7px 20px rgba(127,119,221,.08);overflow:hidden}.rk-card.locked{opacity:.45}.rk-head{display:flex;align-items:center;gap:12px;padding:18px 22px 10px}.rk-avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid #ffe8b8;box-shadow:0 0 14px rgba(249,115,22,.25);overflow:hidden;flex:0 0 auto}.rk-avatar img{width:100%;height:100%;object-fit:cover}.rk-avatar-fallback{font-size:30px}.rk-turn-label{font-weight:900;color:#9b8fcc;text-transform:uppercase;letter-spacing:.14em}.rk-turn-label.active{color:#f97316}.rk-block,.rk-said,.rk-model,.rk-improve{margin:0 22px 12px 92px;border-left:6px solid #7f77dd;background:#f1eeff;border-radius:0 16px 16px 0;padding:12px 16px}.rk-model{border-left-color:#1d9e75;background:#e1f5ee}.rk-improve{border-left-color:#f97316;background:#fff0e6}.rk-mini{font-size:12px;font-weight:900;color:#7f77dd;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.rk-bubble{font-weight:900;line-height:1.5}.rk-score-row{display:flex;gap:8px;margin:0 22px 18px 92px}.rk-chip{min-width:80px;text-align:center;border:2px solid #ede9fa;border-radius:16px;background:#fff;padding:8px 10px}.rk-chip b{display:block;color:#f97316;font-size:22px}.rk-chip span{display:block;color:#9b8fcc;font-size:12px;font-weight:900}.rk-turn-box{margin:0 22px 14px 92px;border:3px solid #7f77dd;border-radius:22px;padding:14px 18px;background:#fff}.rk-turn-box.disabled{border-color:#ede9fa;background:#fbfaff}.rk-say-row{display:flex;align-items:center;gap:16px}.rk-mic{border:2px solid #bdb8d8;background:#fff;border-radius:18px;min-width:190px;padding:14px 20px;font-weight:900;font-size:21px;color:#111;cursor:pointer}.rk-mic.listening{background:#7f77dd;color:#fff}.rk-hint{color:#9b8fcc;font-style:italic;font-weight:900}.rk-hidden-input{margin-top:12px;width:100%;border:2px solid #dcd7ff;border-radius:14px;padding:11px 13px;font:900 15px Nunito,sans-serif}.rk-actions{margin:0 22px 20px 92px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.rk-btn{border:2px solid #dcd7ff;border-radius:16px;background:#fff;color:#3d3560;padding:12px 24px;font-weight:900;font-size:16px;cursor:pointer;font-family:Nunito,sans-serif}.rk-primary{background:#f97316;color:#fff;border-color:#f97316}.rk-picker{padding:18px}.rk-picker-title,.rk-edit-title{font-family:Fredoka,sans-serif;color:#f97316;font-size:22px;margin-bottom:12px}.rk-picker-title{text-align:center}.rk-avatar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px}.rk-avatar-choice{border:2px solid #ede9fa;background:#fff;border-radius:18px;padding:8px;cursor:pointer;text-align:center;font-weight:900;color:#7f77dd}.rk-avatar-choice.active{border-color:#f97316;background:#fff0e6;color:#f97316}.rk-avatar-choice .rk-avatar{width:68px;height:68px;margin:0 auto 6px}.rk-edit-head{border-bottom:1px solid #f0eef8;padding:16px 22px}.rk-edit-content{padding:18px 22px}.rk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rk-grid3{display:grid;grid-template-columns:1fr 1fr 140px;gap:14px}.rk-label{display:block;margin:0 0 6px;color:#9b8fcc;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.rk-input,.rk-textarea{width:100%;border:2px solid #dcd7ff;border-radius:13px;background:#fbfaff;color:#221a3f;font:900 16px Nunito,sans-serif;padding:10px 14px;outline:none;box-sizing:border-box}.rk-textarea{min-height:90px;resize:vertical;line-height:1.5}.rk-turn-edit{border:2px solid #ede9fa;border-radius:20px;padding:16px;margin-bottom:14px}.rk-remove{float:right;border:2px solid #d85a30;color:#d85a30;background:#fff;border-radius:12px;padding:5px 10px;font-weight:900;cursor:pointer}.rk-savebar{position:sticky;bottom:0;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:#f8f7ff;padding:18px 0 0}.rk-status{text-align:center;color:#7f77dd;font-weight:900}.rk-complete{display:grid;place-items:center;min-height:100%;padding:28px}.rk-complete-card{text-align:center;background:#fff;border:2px solid #ede9fa;border-radius:28px;padding:42px;max-width:540px;box-shadow:0 8px 26px rgba(127,119,221,.10)}@media(max-width:760px){.rk-block,.rk-said,.rk-model,.rk-improve,.rk-score-row,.rk-turn-box,.rk-actions{margin-left:22px}.rk-grid2,.rk-grid3,.rk-savebar{grid-template-columns:1fr}.rk-say-row{flex-direction:column;align-items:flex-start}.rk-mic{width:100%}}
+#roleplay-kids-root{height:100%;min-height:0;background:#fff8f2;font-family:Nunito,system-ui,sans-serif;color:#2f2763}.rk-app{height:100%;min-height:0;display:flex;flex-direction:column;background:linear-gradient(180deg,#fff8f2,#f8f7ff)}.rk-top{background:#fff;border-bottom:1px solid #f0eef8}.rk-title{height:58px;display:grid;place-items:center;font-family:Fredoka,sans-serif;font-size:27px;font-weight:700;color:#f97316}.rk-progress{height:10px;background:#eeedfe;overflow:hidden}.rk-progress-fill{height:100%;background:linear-gradient(90deg,#f97316,#fdba74,#7f77dd);transition:width .25s}.rk-sub{height:42px;display:grid;place-items:center;background:#fff0e6;border-bottom:1px solid #fcddbf;color:#c2580a;font-weight:900}.rk-scroll,.rk-editor-body{flex:1;min-height:0;overflow:auto;padding:18px}.rk-wrap,.rk-editor-wrap{max-width:960px;margin:0 auto}.rk-card,.rk-edit-card,.rk-picker{background:#fff;border:2px solid #ede9fa;border-radius:26px;margin:0 0 18px;box-shadow:0 7px 20px rgba(127,119,221,.08);overflow:hidden}.rk-card.locked{opacity:.45}.rk-head{display:flex;align-items:center;gap:12px;padding:18px 22px 10px}.rk-avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#fff;border:3px solid #ffe8b8;box-shadow:0 0 14px rgba(249,115,22,.25);overflow:hidden;flex:0 0 auto}.rk-avatar img{width:100%;height:100%;object-fit:cover}.rk-avatar-fallback{font-size:30px}.rk-turn-label{font-weight:900;color:#9b8fcc;text-transform:uppercase;letter-spacing:.14em}.rk-turn-label.active{color:#f97316}.rk-block,.rk-said,.rk-model,.rk-improve{margin:0 22px 12px 92px;border-left:6px solid #7f77dd;background:#f1eeff;border-radius:0 16px 16px 0;padding:12px 16px}.rk-model{border-left-color:#1d9e75;background:#e1f5ee}.rk-improve{border-left-color:#f97316;background:#fff0e6}.rk-mini{font-size:12px;font-weight:900;color:#7f77dd;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px}.rk-bubble{font-weight:900;line-height:1.5}.rk-listen{border:2px solid #f97316;background:#fff0e6;color:#c2580a;border-radius:999px;padding:5px 13px;font:900 12px Nunito,sans-serif;cursor:pointer;margin-left:10px;vertical-align:middle}.rk-listen.speaking{background:#f97316;color:#fff}.rk-score-row{display:flex;gap:8px;margin:0 22px 18px 92px}.rk-chip{min-width:80px;text-align:center;border:2px solid #ede9fa;border-radius:16px;background:#fff;padding:8px 10px}.rk-chip b{display:block;color:#f97316;font-size:22px}.rk-chip span{display:block;color:#9b8fcc;font-size:12px;font-weight:900}.rk-turn-box{margin:0 22px 14px 92px;border:3px solid #7f77dd;border-radius:22px;padding:14px 18px;background:#fff}.rk-turn-box.disabled{border-color:#ede9fa;background:#fbfaff}.rk-say-row{display:flex;align-items:center;gap:16px}.rk-mic{border:2px solid #bdb8d8;background:#fff;border-radius:18px;min-width:190px;padding:14px 20px;font-weight:900;font-size:21px;color:#111;cursor:pointer}.rk-mic.listening{background:#7f77dd;color:#fff}.rk-hint{color:#9b8fcc;font-style:italic;font-weight:900}.rk-hidden-input{margin-top:12px;width:100%;border:2px solid #dcd7ff;border-radius:14px;padding:11px 13px;font:900 15px Nunito,sans-serif}.rk-actions{margin:0 22px 20px 92px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.rk-btn{border:2px solid #dcd7ff;border-radius:16px;background:#fff;color:#3d3560;padding:12px 24px;font-weight:900;font-size:16px;cursor:pointer;font-family:Nunito,sans-serif}.rk-primary{background:#f97316;color:#fff;border-color:#f97316}.rk-picker{padding:18px}.rk-picker-title,.rk-edit-title{font-family:Fredoka,sans-serif;color:#f97316;font-size:22px;margin-bottom:12px}.rk-picker-title{text-align:center}.rk-avatar-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:12px}.rk-avatar-choice{border:2px solid #ede9fa;background:#fff;border-radius:18px;padding:8px;cursor:pointer;text-align:center;font-weight:900;color:#7f77dd}.rk-avatar-choice.active{border-color:#f97316;background:#fff0e6;color:#f97316}.rk-avatar-choice .rk-avatar{width:68px;height:68px;margin:0 auto 6px}.rk-edit-head{border-bottom:1px solid #f0eef8;padding:16px 22px}.rk-edit-content{padding:18px 22px}.rk-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.rk-grid3{display:grid;grid-template-columns:1fr 1fr 140px;gap:14px}.rk-label{display:block;margin:0 0 6px;color:#9b8fcc;font-weight:900;font-size:12px;text-transform:uppercase;letter-spacing:.08em}.rk-input,.rk-textarea{width:100%;border:2px solid #dcd7ff;border-radius:13px;background:#fbfaff;color:#221a3f;font:900 16px Nunito,sans-serif;padding:10px 14px;outline:none;box-sizing:border-box}.rk-textarea{min-height:90px;resize:vertical;line-height:1.5}.rk-turn-edit{border:2px solid #ede9fa;border-radius:20px;padding:16px;margin-bottom:14px}.rk-remove{float:right;border:2px solid #d85a30;color:#d85a30;background:#fff;border-radius:12px;padding:5px 10px;font-weight:900;cursor:pointer}.rk-savebar{position:sticky;bottom:0;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;background:#f8f7ff;padding:18px 0 0}.rk-status{text-align:center;color:#7f77dd;font-weight:900}.rk-complete{display:grid;place-items:center;min-height:100%;padding:28px}.rk-complete-card{text-align:center;background:#fff;border:2px solid #ede9fa;border-radius:28px;padding:42px;max-width:540px;box-shadow:0 8px 26px rgba(127,119,221,.10)}@media(max-width:760px){.rk-block,.rk-said,.rk-model,.rk-improve,.rk-score-row,.rk-turn-box,.rk-actions{margin-left:22px}.rk-grid2,.rk-grid3,.rk-savebar{grid-template-columns:1fr}.rk-say-row{flex-direction:column;align-items:flex-start}.rk-mic{width:100%}}
 </style>
 <div id="roleplay-kids-root"></div>
 <script>
@@ -203,11 +203,6 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
     const out = (Array.isArray(a) ? a : []).map(normTurn);
     return out.length ? out : [normTurn({agent:'Good evening! Are you ready to order?', hint:'Say hello and say what food you want.', ideal:"Good evening! I'd like the pasta, please.", criteria:'Greeting and polite food order.'})];
   }
-
-  function header() {
-    let pct = turns.length ? Math.round(completed / turns.length * 100) : 0;
-    return '<div class="rk-top"><div class="rk-title">Roleplay Kids</div><div class="rk-progress"><div class="rk-progress-fill" style="width:' + pct + '%"></div></div><div class="rk-sub">' + h(scene.scenario) + ' · ' + h(scene.agentRole) + ' / ' + h(scene.studentRole) + '</div></div>';
-  }
   function words(s) {
     return String(s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length > 1);
   }
@@ -220,7 +215,36 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
     let overall = Math.round((acc + flu + voc) / 3);
     return {accuracy: acc, fluency: flu, vocab: voc, overall, improve: (acc >= 6 ? 'Great speaking! ' : 'Good try! Use more words from the model sentence. ') + 'Model answer: ' + (m || 'No model answer configured.')};
   }
+  function speakAgent(i) {
+    const text = turns[i] && turns[i].agent ? turns[i].agent : '';
+    if (!text.trim()) return;
+    if (!('speechSynthesis' in window)) {
+      alert('Text to speech is not supported in this browser.');
+      return;
+    }
+    speechSynthesis.cancel();
+    const btn = root.querySelector('[data-action="listen-agent"][data-index="' + i + '"]');
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US';
+    u.rate = 0.88;
+    u.pitch = 1.05;
+    if (btn) {
+      btn.classList.add('speaking');
+      btn.textContent = '🔊 Playing...';
+    }
+    u.onend = u.onerror = function () {
+      if (btn) {
+        btn.classList.remove('speaking');
+        btn.textContent = '🔊 Listen';
+      }
+    };
+    speechSynthesis.speak(u);
+  }
 
+  function header() {
+    let pct = turns.length ? Math.round(completed / turns.length * 100) : 0;
+    return '<div class="rk-top"><div class="rk-title">Roleplay Kids</div><div class="rk-progress"><div class="rk-progress-fill" style="width:' + pct + '%"></div></div><div class="rk-sub">' + h(scene.scenario) + ' · ' + h(scene.agentRole) + ' / ' + h(scene.studentRole) + '</div></div>';
+  }
   function avatarPick() {
     return '<div class="rk-app">' + header() + '<div class="rk-scroll"><div class="rk-wrap"><div class="rk-picker"><div class="rk-picker-title">Choose your avatar</div><div class="rk-avatar-grid">' +
       LABELS.filter(x => x !== 'TEACHER').map(id => '<button type="button" class="rk-avatar-choice ' + (scene.studentAvatarId === id ? 'active' : '') + '" data-action="choose-avatar" data-id="' + h(id) + '"><div class="rk-avatar">' + img(id) + '</div>' + h(id) + '</button>').join('') +
@@ -231,7 +255,7 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
   }
   function turnCard(t, i) {
     let done = i < completed, act = i === completed, lock = i > completed, sc = scores[i] || {}, ans = answers[i] || '';
-    return '<section class="rk-card ' + (lock ? 'locked' : '') + '"><div class="rk-head"><div class="rk-avatar">' + img(scene.teacherAvatarId) + '</div><div class="rk-turn-label ' + (act ? 'active' : '') + '">TURN ' + (i + 1) + ' · ' + (done ? '✓ completed' : act ? 'active' : '🔒 locked') + '</div></div><div class="rk-block"><div class="rk-mini">' + h(scene.agentRole) + '</div><div class="rk-bubble">' + h(t.agent || '...') + '</div></div>' +
+    return '<section class="rk-card ' + (lock ? 'locked' : '') + '"><div class="rk-head"><div class="rk-avatar">' + img(scene.teacherAvatarId) + '</div><div class="rk-turn-label ' + (act ? 'active' : '') + '">TURN ' + (i + 1) + ' · ' + (done ? '✓ completed' : act ? 'active' : '🔒 locked') + '</div></div><div class="rk-block"><div class="rk-mini">' + h(scene.agentRole) + '<button type="button" class="rk-listen" data-action="listen-agent" data-index="' + i + '">🔊 Listen</button></div><div class="rk-bubble">' + h(t.agent || '...') + '</div></div>' +
       (done ? '<div class="rk-said"><div class="rk-mini">You said</div><div>' + h(ans) + '</div></div><div class="rk-model"><div class="rk-mini" style="color:#1d9e75">Model answer</div><div>' + h(t.ideal) + '</div></div><div class="rk-improve"><div class="rk-mini" style="color:#f97316">Feedback</div><div>' + h(sc.improve || 'Good work!') + '</div></div><div class="rk-score-row"><div class="rk-chip"><b>' + h(sc.fluency || 0) + '</b><span>Fluency</span></div><div class="rk-chip"><b>' + h(sc.accuracy || 0) + '</b><span>Accuracy</span></div><div class="rk-chip"><b>' + h(sc.vocab || 0) + '</b><span>Vocab</span></div></div>' : '') +
       (act ? '<div class="rk-turn-box"><div class="rk-say-row"><div class="rk-avatar">' + img(scene.studentAvatarId) + '</div><button type="button" class="rk-mic" data-action="mic" data-index="' + i + '">🎙 Now say it</button><span class="rk-hint">Hint: ' + h(t.hint || 'Answer naturally') + '</span></div><textarea class="rk-hidden-input" data-answer="1" placeholder="Speech will appear here. You can also type...">' + h(activeInput) + '</textarea></div>' + (shown[i] ? '<div class="rk-model"><div class="rk-mini" style="color:#1d9e75">Model answer</div><div>' + h(t.ideal) + '</div></div>' : '') + '<div class="rk-actions"><button type="button" class="rk-btn" data-action="show-answer">Show answer</button><button type="button" class="rk-btn rk-primary" data-action="next">' + (i >= turns.length - 1 ? 'Finish' : 'Next') + '</button></div>' : '') +
       (lock ? '<div class="rk-turn-box disabled"><span class="rk-hint">Finish the previous turn to unlock this one.</span></div>' : '') + '</section>';
@@ -255,7 +279,6 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
     let sc2 = root.querySelector('.rk-scroll,.rk-editor-body');
     if (sc2) sc2.scrollTop = top;
   }
-
   function next() {
     let i = completed;
     if (!activeInput.trim() && !shown[i]) {
@@ -269,7 +292,6 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
     if (completed >= turns.length) view = 'complete';
     render();
   }
-
   function mic(i) {
     let SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
@@ -314,12 +336,12 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
       activeInput = el.value;
     }
   });
-
   root.addEventListener('click', async function (e) {
     let b = e.target.closest('[data-action]');
     if (!b) return;
     e.preventDefault();
     let a = b.dataset.action;
+    if (a === 'listen-agent') speakAgent(Number(b.dataset.index));
     if (a === 'choose-avatar') { scene.studentAvatarId = b.dataset.id; render(); }
     if (a === 'teacher-avatar') { scene.teacherAvatarId = b.dataset.id; render(); }
     if (a === 'start') { view = 'player'; render(); }
