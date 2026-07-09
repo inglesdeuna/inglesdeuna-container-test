@@ -7,7 +7,19 @@ require_once __DIR__ . '/../../core/cloudinary_upload.php';
 set_time_limit(300);
 $pdo->exec("SET statement_timeout = 0");
 
+// Self-heal: make sure the dedicated binary column exists. Large PDFs must
+// never be embedded as base64 inside the JSONB 'data' column — building the
+// jsonb tree for a 20-30MB base64 string is what causes Postgres to drop the
+// connection ("server closed the connection unexpectedly") on small/managed
+// instances. A plain BYTEA column avoids that jsonb parsing overhead.
+try {
+    $pdo->exec("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_data BYTEA");
+} catch (Throwable $e) {
+    // Ignore — if this fails the base64 fallback below will surface the error.
+}
+
 const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
+const FLIPBOOK_DB_PDF_PREFIX = 'db-pdf://';
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -77,14 +89,47 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     return isset($decoded['secure_url']) ? (string) $decoded['secure_url'] : null;
 }
 
-function store_pdf_as_base64(string $filePath): ?string
+function store_pdf_in_db(PDO $pdo, string $activityId, string $filePath): ?string
 {
-    $binary = @file_get_contents($filePath);
-    if ($binary === false || $binary === '') {
+    if (!is_file($filePath) || filesize($filePath) <= 0) {
         return null;
     }
 
-    return 'data:application/pdf;base64,' . base64_encode($binary);
+    $stream = fopen($filePath, 'rb');
+    if ($stream === false) {
+        return null;
+    }
+
+    try {
+        // Stream the file straight into a BYTEA column instead of loading a
+        // base64 copy into memory / into the JSONB 'data' column. This keeps
+        // memory usage low and avoids Postgres having to parse a huge jsonb
+        // document, which was crashing the connection for large PDFs.
+        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :pdf_data WHERE id = :id");
+        $stmt->bindParam(':pdf_data', $stream, PDO::PARAM_LOB);
+        $stmt->bindValue(':id', $activityId);
+        $ok = $stmt->execute();
+    } finally {
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+    }
+
+    if (!$ok) {
+        return null;
+    }
+
+    return FLIPBOOK_DB_PDF_PREFIX . $activityId;
+}
+
+function clear_pdf_in_db(PDO $pdo, string $activityId): void
+{
+    try {
+        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = NULL WHERE id = :id");
+        $stmt->execute(['id' => $activityId]);
+    } catch (Throwable $e) {
+        // Non-fatal cleanup — ignore.
+    }
 }
 
 function store_pdf_locally(string $sourcePath, string $originalName): ?string
@@ -110,20 +155,25 @@ function store_pdf_locally(string $sourcePath, string $originalName): ?string
     return '/lessons/lessons/activities/flipbooks/uploads/pdfs/' . $fileName;
 }
 
-function persist_pdf(string $sourcePath, string $originalName): ?string
+function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $originalName): ?string
 {
     $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath);
     if ($cloudinaryUrl !== null && $cloudinaryUrl !== '') {
+        // A previous upload may have left a binary copy in pdf_data; drop it
+        // now that Cloudinary is the source of truth to avoid keeping an
+        // orphaned large blob around.
+        clear_pdf_in_db($pdo, $activityId);
         return $cloudinaryUrl;
     }
 
     // Cloudinary is unavailable/misconfigured (or rejected the raw upload).
-    // Store the PDF as a base64 data URI in the database — this is
-    // resilient to Render's ephemeral filesystem, unlike local disk storage,
-    // which is lost on every container restart/redeploy.
-    $base64Url = store_pdf_as_base64($sourcePath);
-    if ($base64Url !== null && $base64Url !== '') {
-        return $base64Url;
+    // Store the PDF in the dedicated pdf_data BYTEA column — this is
+    // resilient to Render's ephemeral filesystem (unlike local disk storage)
+    // and, unlike embedding base64 in the JSONB 'data' column, doesn't force
+    // Postgres to parse a huge jsonb document in memory.
+    $dbUrl = store_pdf_in_db($pdo, $activityId, $sourcePath);
+    if ($dbUrl !== null && $dbUrl !== '') {
+        return $dbUrl;
     }
 
     // Last resort only: local disk storage does NOT survive Render
@@ -131,7 +181,7 @@ function persist_pdf(string $sourcePath, string $originalName): ?string
     return store_pdf_locally($sourcePath, $originalName);
 }
 
-function migrate_base64_pdf_if_needed(string $pdfUrl): ?string
+function migrate_base64_pdf_if_needed(PDO $pdo, string $activityId, string $pdfUrl): ?string
 {
     $prefix = 'data:application/pdf;base64,';
     if (!str_starts_with($pdfUrl, $prefix)) {
@@ -154,12 +204,13 @@ function migrate_base64_pdf_if_needed(string $pdfUrl): ?string
     }
 
     $bytesWritten = file_put_contents($tmpFile, $binary);
+    unset($binary);
     if ($bytesWritten === false || $bytesWritten <= 0) {
         @unlink($tmpFile);
         return null;
     }
 
-    $storedUrl = persist_pdf($tmpFile, 'flipbook_migrated.pdf');
+    $storedUrl = persist_pdf($pdo, $activityId, $tmpFile, 'flipbook_migrated.pdf');
     @unlink($tmpFile);
 
     return $storedUrl;
@@ -200,8 +251,10 @@ try {
 
     $pdfUrl = isset($currentData['pdf_url']) ? (string) $currentData['pdf_url'] : '';
 
+    $pdfFilename = isset($currentData['pdf_filename']) ? (string) $currentData['pdf_filename'] : '';
+
     if ($pdfUrl !== '') {
-        $migratedPdfUrl = migrate_base64_pdf_if_needed($pdfUrl);
+        $migratedPdfUrl = migrate_base64_pdf_if_needed($pdo, $activityId, $pdfUrl);
         if ($migratedPdfUrl === null || $migratedPdfUrl === '') {
             respond_error('No se pudo procesar el PDF existente. Vuelve a subir el archivo.');
         }
@@ -265,12 +318,13 @@ try {
                 }
             }
 
-            $storedPdfUrl = persist_pdf($tmpPath, $originalName);
+            $storedPdfUrl = persist_pdf($pdo, $activityId, $tmpPath, $originalName);
             if ($storedPdfUrl === null || $storedPdfUrl === '') {
                 respond_error('No se pudo almacenar el PDF. Verifica la configuracion de Cloudinary o intenta de nuevo.');
             }
 
             $pdfUrl = $storedPdfUrl;
+            $pdfFilename = $originalName;
         }
     }
 
@@ -282,6 +336,7 @@ try {
     $payload['type'] = 'flipbook';
     $payload['title'] = $title;
     $payload['pdf_url'] = $pdfUrl;
+    $payload['pdf_filename'] = $pdfFilename;
     $payload['listen_enabled'] = $listenEnabled;
     $payload['language'] = $language;
     $payload['page_count'] = $pageCount;

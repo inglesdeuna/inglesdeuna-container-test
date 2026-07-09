@@ -28,7 +28,7 @@ if ($activityId === '') {
     die('Activity ID not specified.');
 }
 
-$stmt = $pdo->prepare("SELECT * FROM activities WHERE id = :id LIMIT 1");
+$stmt = $pdo->prepare("SELECT id, unit_id, type, data, created_at FROM activities WHERE id = :id LIMIT 1");
 $stmt->execute(['id' => $activityId]);
 $activity = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -44,6 +44,7 @@ if (!is_array($rawData)) {
 $payload = [
     'title'          => isset($rawData['title']) ? (string) $rawData['title'] : 'Downloadable',
     'pdf_url'        => isset($rawData['pdf_url']) ? (string) $rawData['pdf_url'] : '',
+    'pdf_filename'   => isset($rawData['pdf_filename']) ? (string) $rawData['pdf_filename'] : '',
 ];
 
 $existingPdfServeUrl = '';
@@ -52,7 +53,9 @@ if ($payload['pdf_url'] !== '') {
 }
 
 $currentFileName = '';
-if ($payload['pdf_url'] !== '') {
+if ($payload['pdf_filename'] !== '') {
+    $currentFileName = $payload['pdf_filename'];
+} elseif ($payload['pdf_url'] !== '') {
     $path = parse_url($payload['pdf_url'], PHP_URL_PATH);
     $currentFileName = basename($path ?: $payload['pdf_url']);
 }
