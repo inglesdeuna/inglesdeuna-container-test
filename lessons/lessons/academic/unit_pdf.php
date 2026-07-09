@@ -33,6 +33,7 @@ $activityPatch = <<<'PHP'
 /* ── VOCABULARY / FLASHCARDS ───────────────────────────────── */
 function pdf_pick(array $a, array $keys, string $fallback = ''): string { foreach ($keys as $key) { if (isset($a[$key]) && trim((string)$a[$key]) !== '') return trim((string)$a[$key]); } return $fallback; }
 function pdf_list($raw): array { if (is_array($raw)) return array_values(array_filter(array_map('trim', array_map('strval', $raw)), static fn($v)=>$v!=='')); $s=trim((string)$raw); if($s==='')return []; return array_values(array_filter(array_map('trim', preg_split('/\s*(?:,|\n|;|\|)\s*/',$s)?:[]), static fn($v)=>$v!=='')); }
+function pdf_answer_line_count(string $text): int { $t=trim(preg_replace('/\s+/u',' ',strip_tags($text))); if($t==='')return 1; $chars=mb_strlen($t,'UTF-8'); $words=preg_split('/\s+/u',$t,-1,PREG_SPLIT_NO_EMPTY)?:[]; $wc=count($words); preg_match_all('/[.!?]+(?:\s|$)/u',$t,$m); $sent=count($m[0]); if($sent===0&&$wc>0)$sent=1; if($wc<=3||($sent<=1&&$chars<=140))return 1; if($chars<=280||$sent<=2)return 2; return 3; }
 
 function ws_flashcards(array $d, int $n, bool $k): string {
     $cards = is_array($d['cards'] ?? null) ? $d['cards'] : [];
@@ -115,14 +116,8 @@ function ws_writing(array $d, int $n, bool $k): string {
         $in = trim((string)($it['instruction'] ?? ''));
         $qt = trim((string)($it['prompt_text'] ?? ($it['question'] ?? ($it['prompt'] ?? ''))));
         $an = trim((string)($it['answer'] ?? ($it['model_answer'] ?? '')));
-        $combined = mb_strtolower($in.' '.$qt, 'UTF-8');
-        $len = mb_strlen($qt.' '.$in, 'UTF-8');
-        $numLines = 5;
-        if (preg_match('/translate|translation|traducir|traduce|traduccion|traducción|english|ingles|inglés/u', $combined)) $numLines = 8;
-        if (preg_match('/paragraph|describe|summarize|summary|resumen|resume/u', $combined)) $numLines = max($numLines, 7);
-        if ($len > 280) $numLines = max($numLines, 7);
-        if ($len > 520) $numLines = max($numLines, 9);
-        $numLines = min(10, $numLines);
+        $lineSource = $an !== '' ? $an : trim($qt.' '.$in);
+        $numLines = pdf_answer_line_count($lineSource);
         $out .= '<div class="ws-wb wp-item">';
         $out .= '<div class="ws-qt"><span class="qnum">'.($qi+1).'</span>'.h($qt !== '' ? $qt : ($in ?: 'Write your answer.')).'</div>';
         if ($in !== '' && $qt !== '') $out .= '<div class="ws-wi">'.h($in).'</div>';
@@ -147,6 +142,7 @@ function ws_dictation(array $d, int $n, bool $k): string {
         if (!is_array($item)) continue;
         $en = pdf_pick($item, ['en','answer','text','sentence']);
         $img = pdf_pick($item, ['img','image']);
+        $numLines = pdf_answer_line_count($en);
         $rowClass = $img !== '' ? 'dt-with-img' : 'dt-no-img';
         $out .= '<div class="dt-item '.$rowClass.'">';
         $out .= '<div class="dt-num">'.($i+1).'.</div>';
@@ -155,9 +151,8 @@ function ws_dictation(array $d, int $n, bool $k): string {
         }
         $out .= '<div class="dt-write">';
         if ($k && $en !== '') $out .= '<div class="ws-ans dt-ans">'.h($en).'</div>';
-        $out .= '<div class="ws-open-lines dt-lines">';
-        for ($l = 0; $l < 4; $l++) $out .= '<div class="ws-open-line"></div>';
-        $out .= '</div></div></div>';
+        $out .= '<div class="ws-open-lines dt-lines">'.str_repeat('<div class="ws-open-line"></div>', $numLines).'</div>';
+        $out .= '</div></div>';
     }
     return $out.ws_foot();
 }
@@ -194,7 +189,26 @@ function ws_pronunciation(array $d, int $n, bool $k): string {
 PHP;
 
 $roleplayPatch = <<<'PHP'
-function ws_roleplay(array $d,int $n,bool $k): string { $scene=is_array($d['scene']??null)?$d['scene']:$d; $title=pdf_pick($scene,['title'],pdf_pick($d,['title'],'Roleplay')); $out=ws_head($n,'Roleplay Activity',$title,'Read the description. Practice the dialogue with a partner.',$k,'card-open rp-card'); $desc=pdf_pick($scene,['scenario','description','instructions']); if($desc!=='')$out.='<div class="rp-desc"><span class="rp-label">Description</span>'.nl2br(h($desc)).'</div>'; $turns=[]; foreach(['turns','dialogue','dialogs','lines','items'] as $key){ if(isset($d[$key])&&is_array($d[$key])){$turns=$d[$key];break;} } foreach($turns as $i=>$turn){ if(!is_array($turn))continue; $a=pdf_pick($turn,['agent','teacherLine','agentLine','prompt','question']); $s=pdf_pick($turn,['ideal','studentLine','answer','model','hint']); $out.='<div class="rp-turn"><div class="rp-turn-num">'.($i+1).'</div>'; if($a!=='')$out.='<div class="rp-line"><strong>Agent:</strong> '.nl2br(h($a)).'</div>'; if($s!=='')$out.='<div class="rp-line"><strong>Student:</strong> '.nl2br(h($s)).'</div>'; $out.='</div>'; } $out.='<div class="rp-class"><span class="rp-label">Class activity</span><div class="rp-pdf-lines">'.str_repeat('<div class="writeline"></div>',6).'</div></div>'; return $out.ws_foot(); }
+function ws_roleplay(array $d,int $n,bool $k): string {
+    $scene=is_array($d['scene']??null)?$d['scene']:$d;
+    $title=pdf_pick($scene,['title'],pdf_pick($d,['title'],'Roleplay'));
+    $out=ws_head($n,'Roleplay Activity',$title,'Read the description. Practice the dialogue with a partner.',$k,'card-open rp-card');
+    $desc=pdf_pick($scene,['scenario','description','instructions']);
+    if($desc!=='')$out.='<div class="rp-desc"><span class="rp-label">Description</span>'.nl2br(h($desc)).'</div>';
+    $turns=[];
+    foreach(['turns','dialogue','dialogs','lines','items'] as $key){ if(isset($d[$key])&&is_array($d[$key])){$turns=$d[$key];break;} }
+    foreach($turns as $i=>$turn){
+        if(!is_array($turn))continue;
+        $a=pdf_pick($turn,['agent','teacherLine','agentLine','prompt','question']);
+        $s=pdf_pick($turn,['ideal','studentLine','answer','model','hint']);
+        $out.='<div class="rp-turn"><div class="rp-turn-num">'.($i+1).'</div>';
+        if($a!=='')$out.='<div class="rp-line"><strong>Agent:</strong> '.nl2br(h($a)).'</div>';
+        if($s!=='')$out.='<div class="rp-line"><strong>Student:</strong> '.nl2br(h($s)).'</div>';
+        $out.='</div>';
+    }
+    if(empty($turns))$out.='<div class="rp-pdf-lines"><div class="ws-open-line"></div><div class="ws-open-line"></div><div class="ws-open-line"></div></div>';
+    return $out.ws_foot();
+}
 PHP;
 
 $source = preg_replace('/\/\* ── VOCABULARY \/ FLASHCARDS[\s\S]*?\/\* ── QUIZ/s', $activityPatch."\n\n/* ── QUIZ", $source, 1);
@@ -210,21 +224,10 @@ $html = ob_get_clean();
 
 $worksheetCss = <<<'CSS'
 :root{--ink:#111;--ink-soft:#9B8FCC;--orange:#F97316;--orange-light:#FFF0E6;--orange-dark:#B35112;--purple:#7F77DD;--purple-dark:#3C3489;--purple-text:#534AB7;--lila:#F5F3FF;--line:#EDE9FA;--dot:#D5D0F0}.ws-sec,.section{margin-bottom:36px!important}.sec-head,.section-head{display:flex!important;align-items:baseline!important;gap:12px!important;margin:0 0 14px!important}.snum,.num{width:26px!important;height:26px!important;border-radius:50%!important;background:var(--orange)!important;color:#fff!important;font-family:'Fredoka',Arial,sans-serif!important;font-weight:600!important;font-size:13px!important;display:flex!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important}.sec-meta{display:flex!important;align-items:baseline!important;gap:12px!important;flex-wrap:wrap!important}.sec-kicker,.kind{font-size:10px!important;font-weight:700!important;letter-spacing:.06em!important;color:var(--purple)!important;text-transform:uppercase!important}.sec-title{font-family:'Fredoka',Arial,sans-serif!important;font-size:17px!important;margin:0!important;color:var(--ink)!important}.instructions{font-size:13px!important;color:#4A4A4A!important;font-style:italic!important;margin:0 0 16px 38px!important}.card-box,.card{border:1.5px solid var(--line)!important;border-radius:14px!important;padding:22px 26px!important;background:#fff!important;box-shadow:none!important}.ibox{display:none!important}.writeline,.ws-open-line,.fc-bline,.pr-blank{border:0!important;border-bottom:2px solid var(--ink)!important;height:1px!important;background:transparent!important;opacity:1!important}.fc-print-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important}.fc-print-card{border:1.5px solid var(--line)!important;border-radius:14px!important;padding:14px!important;break-inside:avoid!important}.fc-print-img{height:95px!important;background:var(--lila)!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin-bottom:10px!important;overflow:hidden!important}.fc-print-img img{max-width:100%!important;max-height:100%!important;object-fit:contain!important}.fc-print-word,.pr-print-word{font-family:'Fredoka',Arial,sans-serif!important;font-weight:700!important;color:var(--purple-dark)!important;font-size:15px!important;margin-bottom:4px!important}.fc-print-ipa,.pr-print-ipa{font-style:italic!important;color:var(--orange-dark)!important;font-size:12px!important;margin-bottom:5px!important}.fc-print-meaning,.pr-print-meaning{font-size:12px!important;line-height:1.35!important;color:var(--ink)!important;margin-bottom:5px!important}.fc-print-example,.pr-print-example{font-size:11px!important;line-height:1.35!important;color:#4A4A4A!important}.rp-pdf-lines{display:grid!important;gap:28px!important;margin-top:10px!important}.rp-turn{position:relative!important;padding-left:34px!important;margin-bottom:14px!important}.rp-turn-num{position:absolute!important;left:0!important;top:0!important;width:22px!important;height:22px!important;border-radius:50%!important;background:var(--purple)!important;color:#fff!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:10px!important;font-weight:700!important}
-/* ── Print-friendly main text: instructions, questions, options, word banks, labels, activity text ── */
-.instructions,.ws-qt,.ws-opt,.ws-chip,.ws-blbl,.rc-text,.ws-fb,.ws-ot,.mt,.ws-ma,.dt-ans,.pr-ans,.rp-desc,.rp-line,.fc-print-meaning,.fc-print-example,.pr-print-meaning,.pr-print-example{font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1.6!important}
-/* ── Roomier writing spacing so students have comfortable space to write ── */
-.ws-qb{margin-bottom:24px!important}
-.ws-opt{min-height:44px!important;padding:9px 12px!important}
-.ws-open-lines,.ws-lines{gap:34px!important;margin-top:14px!important}
-.ws-open-line,.ws-line{height:38px!important}
-.ws-open-line::before{bottom:-18px!important}
-.rp-pdf-lines{gap:32px!important}
-/* ── Pronunciation: flashcard-style print layout, large image on top, info underneath ── */
+.instructions,.ws-qt,.ws-opt,.ws-chip,.ws-blbl,.rc-text,.ws-fb,.ws-ot,.mt,.ws-ma,.dt-ans,.pr-ans,.rp-desc,.rp-line,.fc-print-meaning,.fc-print-example,.pr-print-meaning,.pr-print-example{font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1.6!important}.ws-qb{margin-bottom:24px!important}.ws-opt{min-height:44px!important;padding:9px 12px!important}.ws-open-lines,.ws-lines{gap:34px!important;margin-top:14px!important}.ws-open-line,.ws-line{height:38px!important}.ws-open-line::before{bottom:-18px!important}.rp-pdf-lines{gap:32px!important}
 .pr-card-print{padding:18px 22px!important}.pr-print-grid{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:18px!important}.pr-print-card{position:relative!important;border:1.5px solid var(--line)!important;border-radius:14px!important;padding:36px 14px 14px!important;break-inside:avoid!important;background:#fff!important}.pr-print-card-num{position:absolute!important;top:8px!important;left:8px!important;width:22px!important;height:22px!important;border-radius:50%!important;background:var(--purple)!important;color:#fff!important;font-family:Verdana,sans-serif!important;font-size:10px!important;font-weight:800!important;display:flex!important;align-items:center!important;justify-content:center!important;z-index:2!important}.pr-print-img{height:118px!important;background:var(--lila)!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:-22px 0 10px!important;overflow:hidden!important}.pr-print-img img{max-width:100%!important;max-height:100%!important;object-fit:contain!important}.pr-print-word{font-size:15px!important;display:block!important;clear:both!important}.pr-print-ipa{font-size:12px!important}.pr-print-meaning{font-size:12px!important}.pr-print-example{font-size:11px!important}
-/* ── Writing practice: more answer lines for translation/summarize prompts without oversized gaps ── */
-.wp-print .wp-item{margin-bottom:26px!important;break-inside:avoid!important}.wp-print .wp-lines{display:grid!important;gap:16px!important;margin-top:16px!important}.wp-print .wp-lines .ws-open-line{height:12px!important;min-height:12px!important;border-bottom:2px solid #111!important}.wp-print .ws-wi{font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;font-style:italic!important;line-height:1.45!important;margin-top:8px!important;color:#2F2A55!important}
-/* ── Dictation: image only when available; no empty image box; compact line spacing like DISEÑO DICTADO ── */
-.dictation-print{padding:18px 24px!important}.dt-item{display:flex!important;align-items:flex-start!important;gap:10px!important;margin:0 0 24px!important;break-inside:avoid!important}.dt-num{width:22px!important;min-width:22px!important;font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1!important;padding-top:6px!important}.dt-img{width:150px!important;height:138px!important;min-width:150px!important;flex:0 0 150px!important;background:#fff!important;border:0!important;border-radius:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}.dt-img img{width:100%!important;height:100%!important;object-fit:contain!important}.dt-img-empty{display:none!important}.dt-write{flex:1!important;min-width:0!important}.dt-lines{display:grid!important;gap:22px!important;margin-top:6px!important}.dt-with-img .dt-lines{margin-top:8px!important}.dt-no-img .dt-write{flex-basis:100%!important}.dt-no-img .dt-lines{margin-top:2px!important}.dt-lines .ws-open-line{height:0!important;min-height:0!important;border-bottom:2px solid #111!important}
+.wp-print .wp-item{margin-bottom:22px!important;break-inside:avoid!important}.wp-print .wp-lines{display:grid!important;gap:16px!important;margin-top:16px!important}.wp-print .wp-lines .ws-open-line{height:12px!important;min-height:12px!important;border-bottom:2px solid #111!important}.wp-print .ws-wi{font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;font-style:italic!important;line-height:1.45!important;margin-top:8px!important;color:#2F2A55!important}
+.dictation-print{padding:18px 24px!important}.dt-item{display:flex!important;align-items:flex-start!important;gap:10px!important;margin:0 0 22px!important;break-inside:avoid!important}.dt-num{width:22px!important;min-width:22px!important;font-family:Verdana,sans-serif!important;font-weight:700!important;font-size:14px!important;line-height:1!important;padding-top:6px!important}.dt-img{width:150px!important;height:138px!important;min-width:150px!important;flex:0 0 150px!important;background:#fff!important;border:0!important;border-radius:0!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:hidden!important}.dt-img img{width:100%!important;height:100%!important;object-fit:contain!important}.dt-img-empty{display:none!important}.dt-write{flex:1!important;min-width:0!important}.dt-lines{display:grid!important;gap:16px!important;margin-top:6px!important}.dt-with-img .dt-lines{margin-top:8px!important}.dt-no-img .dt-write{flex-basis:100%!important}.dt-no-img .dt-lines{margin-top:2px!important}.dt-lines .ws-open-line{height:12px!important;min-height:12px!important;border-bottom:2px solid #111!important}
 CSS;
 if (strpos($html,'</style>')!==false) $html=preg_replace('/<\/style>/',$worksheetCss."\n</style>",$html,1); else $html=str_replace('</head>','<style>'.$worksheetCss.'</style></head>',$html);
 echo $html;
