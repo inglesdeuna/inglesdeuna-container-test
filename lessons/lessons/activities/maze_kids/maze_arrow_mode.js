@@ -58,6 +58,40 @@
     return 0;
   }
 
+  function goHome() {
+    var returnTo = typeof window.MZK_RETURN_TO === 'string' ? window.MZK_RETURN_TO : '';
+    if (returnTo) {
+      window.location.href = returnTo;
+      return;
+    }
+    window.history.back();
+  }
+
+  function installHomeButton() {
+    var controls = document.getElementById('mzkControls');
+    if (!controls || document.getElementById('mzkHomeBtn')) return;
+    var btn = document.createElement('button');
+    btn.className = 'mzk-btn';
+    btn.id = 'mzkHomeBtn';
+    btn.type = 'button';
+    btn.textContent = 'Home';
+    btn.addEventListener('click', goHome);
+    controls.insertBefore(btn, controls.firstChild);
+    window.mzkGoHome = goHome;
+  }
+
+  function ensureCorrectMoveAudio() {
+    var audio = document.getElementById('mzkCorrectMoveAudio');
+    if (audio) return audio;
+    audio = document.createElement('audio');
+    audio.id = 'mzkCorrectMoveAudio';
+    audio.src = '../../hangman/assets/realcorrect.mp3';
+    audio.preload = 'auto';
+    audio.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(audio);
+    return audio;
+  }
+
   function installControls(step) {
     var rail = document.getElementById('mzkSideRail');
     var host = rail || document.querySelector('.mzk-stage');
@@ -119,6 +153,7 @@
     if (window.__mzkArrowModeInstalled) return;
     window.__mzkArrowModeInstalled = true;
     addStyle();
+    ensureCorrectMoveAudio();
 
     var originalBuild = window.mzkBuildMaze;
     var token = null;
@@ -166,6 +201,7 @@
     function rebuild() {
       if (typeof window.mzkClearAnswerPath === 'function') window.mzkClearAnswerPath();
       originalBuild();
+      installHomeButton();
       var svg = wrap.querySelector('svg');
       if (!svg) return;
       try { layout = generateMazeLayout(MZK_PATH, MZK_BRANCHES, MZK_LAYOUT_POSITIONS); } catch (e) { return; }
@@ -215,7 +251,6 @@
         pathIndex++;
         syncViewerProgress();
         if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('Good! Keep going.', 'good');
-        playSound('mzkWinAudio');
       }
     }
 
@@ -245,6 +280,7 @@
         fail('Dead end! Restart and try another path.', 'mzkWrongAudio');
         return;
       }
+      playSound('mzkCorrectMoveAudio');
       markPathNodeIfNeeded();
       if (!completeIfReady() && typeof window.mzkSetFeedback === 'function' && pathIndex > 0) window.mzkSetFeedback('Good! Keep going.', 'good');
     }
@@ -256,6 +292,7 @@
     }
 
     installControls(step);
+    installHomeButton();
     installSwipe(step);
     document.addEventListener('keydown', function (e) {
       var map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
