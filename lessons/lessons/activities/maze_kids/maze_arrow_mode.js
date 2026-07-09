@@ -18,6 +18,10 @@
       '.mzk-arrow-controls button{border:0;border-radius:18px;background:#7F77DD;color:#fff;font-weight:900;font-size:28px;cursor:pointer;line-height:1;box-shadow:0 8px 18px rgba(127,119,221,.22)}',
       '.mzk-arrow-controls button:active{transform:translateY(1px)}',
       '.mzk-player-token{filter:drop-shadow(0 4px 8px rgba(0,0,0,.18));transition:transform .18s ease}',
+      '.mzk-home-exit{cursor:pointer;filter:drop-shadow(0 5px 10px rgba(22,163,74,.18))}',
+      '.mzk-home-exit text{pointer-events:none}',
+      '.mzk-confetti-piece{position:fixed;top:-16px;z-index:99999;font-size:18px;line-height:1;pointer-events:none;animation:mzkConfettiFall 1.4s ease-out forwards}',
+      '@keyframes mzkConfettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(92vh) rotate(540deg);opacity:0}}',
       '@media(max-width:760px){.mzk-arrow-panel{min-height:128px;padding:10px;border-radius:24px}.mzk-arrow-controls{grid-template-columns:44px 44px 44px;grid-template-rows:44px 44px;gap:6px}.mzk-arrow-controls button{font-size:22px;border-radius:14px}}'
     ].join('');
     document.head.appendChild(style);
@@ -40,6 +44,7 @@
     Array.prototype.slice.call(svg.querySelectorAll('g.mzk-node')).forEach(function (g) {
       Array.prototype.slice.call(g.querySelectorAll('.mzk-node-badge,.mzk-node-badge-text,.mzk-node-flag,.mzk-node-label')).forEach(function (el) { el.remove(); });
     });
+    Array.prototype.slice.call(svg.querySelectorAll('.mzk-home-exit')).forEach(function (el) { el.remove(); });
   }
 
   function pointKey(p) { return Math.round(p.x) + ',' + Math.round(p.y); }
@@ -90,6 +95,20 @@
     audio.setAttribute('aria-hidden', 'true');
     document.body.appendChild(audio);
     return audio;
+  }
+
+  function fireConfetti() {
+    var icons = ['🎉', '✨', '⭐', '🎊', '💜', '🧡'];
+    for (var i = 0; i < 34; i++) {
+      var s = document.createElement('span');
+      s.className = 'mzk-confetti-piece';
+      s.textContent = icons[i % icons.length];
+      s.style.left = (6 + Math.random() * 88) + 'vw';
+      s.style.animationDelay = (Math.random() * 0.25) + 's';
+      s.style.fontSize = (14 + Math.random() * 12) + 'px';
+      document.body.appendChild(s);
+      setTimeout((function (el) { return function () { if (el && el.parentNode) el.parentNode.removeChild(el); }; }(s)), 1800);
+    }
   }
 
   function installControls(step) {
@@ -198,29 +217,6 @@
       else if (typeof window.mzkUpdateProgress === 'function') window.mzkUpdateProgress(pathIndex);
     }
 
-    function rebuild() {
-      if (typeof window.mzkClearAnswerPath === 'function') window.mzkClearAnswerPath();
-      originalBuild();
-      installHomeButton();
-      var svg = wrap.querySelector('svg');
-      if (!svg) return;
-      try { layout = generateMazeLayout(MZK_PATH, MZK_BRANCHES, MZK_LAYOUT_POSITIONS); } catch (e) { return; }
-      pathNodes = layout.nodes.filter(function (n) { return n.kind === 'path'; }).sort(function (a, b) { return a.index - b.index; });
-      branchNodes = layout.nodes.filter(function (n) { return n.kind === 'branch'; });
-      startNode = layout.nodes.filter(function (n) { return n.kind === 'start'; })[0] || pathNodes[0];
-      homeNode = layout.nodes.filter(function (n) { return n.kind === 'home'; })[0] || pathNodes[pathNodes.length - 1];
-      buildGraph();
-      cleanNodeLabels(svg);
-      pathIndex = 0;
-      failed = false;
-      current = { x: startNode.x, y: startNode.y };
-      facing = pathNodes[0] ? dir(current, pathNodes[0]) : 'right';
-      token = makeToken(svg);
-      placeToken();
-      syncViewerProgress();
-      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('', '');
-    }
-
     function playSound(id) {
       var snd = document.getElementById(id || 'mzkLoseAudio');
       if (snd && typeof window.mzkPlay === 'function') window.mzkPlay(snd);
@@ -233,14 +229,54 @@
       playSound(soundId || 'mzkLoseAudio');
     }
 
-    function completeIfReady() {
-      if (!homeNode || !samePoint(current, homeNode)) return false;
+    function completeMaze() {
+      if (!homeNode) return false;
       if (pathIndex < pathNodes.length) {
         fail('You found HOME, but you missed part of the path. Restart and try again.', 'mzkWrongAudio');
         return true;
       }
+      current = { x: homeNode.x, y: homeNode.y };
+      placeToken();
+      syncViewerProgress();
+      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('Home! Maze complete!', 'good');
+      fireConfetti();
       if (typeof window.mzkFinish === 'function') setTimeout(window.mzkFinish, 250);
       return true;
+    }
+
+    function drawHomeExit(svg) {
+      if (!svg || !homeNode) return;
+      var NS = 'http://www.w3.org/2000/svg';
+      var g = document.createElementNS(NS, 'g');
+      g.setAttribute('class', 'mzk-home-exit');
+      g.setAttribute('transform', 'translate(' + homeNode.x + ',' + homeNode.y + ')');
+      g.setAttribute('role', 'button');
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('aria-label', 'Home exit');
+      var bg = document.createElementNS(NS, 'rect');
+      bg.setAttribute('x', -42);
+      bg.setAttribute('y', -54);
+      bg.setAttribute('width', 84);
+      bg.setAttribute('height', 62);
+      bg.setAttribute('rx', 16);
+      bg.setAttribute('fill', '#ffffff');
+      bg.setAttribute('stroke', '#16a34a');
+      bg.setAttribute('stroke-width', 4);
+      g.appendChild(bg);
+      var house = svgText('🏠', 0, -28, '#16a34a', '24');
+      g.appendChild(house);
+      var label = svgText('HOME', 0, -8, '#15803d', '15');
+      g.appendChild(label);
+      g.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); completeMaze(); });
+      g.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); completeMaze(); }
+      });
+      svg.appendChild(g);
+    }
+
+    function completeIfReady() {
+      if (!homeNode || !samePoint(current, homeNode)) return false;
+      return completeMaze();
     }
 
     function markPathNodeIfNeeded() {
@@ -257,6 +293,30 @@
     function branchAtCurrent() {
       for (var i = 0; i < branchNodes.length; i++) if (samePoint(current, branchNodes[i])) return branchNodes[i];
       return null;
+    }
+
+    function rebuild() {
+      if (typeof window.mzkClearAnswerPath === 'function') window.mzkClearAnswerPath();
+      originalBuild();
+      installHomeButton();
+      var svg = wrap.querySelector('svg');
+      if (!svg) return;
+      try { layout = generateMazeLayout(MZK_PATH, MZK_BRANCHES, MZK_LAYOUT_POSITIONS); } catch (e) { return; }
+      pathNodes = layout.nodes.filter(function (n) { return n.kind === 'path'; }).sort(function (a, b) { return a.index - b.index; });
+      branchNodes = layout.nodes.filter(function (n) { return n.kind === 'branch'; });
+      startNode = layout.nodes.filter(function (n) { return n.kind === 'start'; })[0] || pathNodes[0];
+      homeNode = layout.nodes.filter(function (n) { return n.kind === 'home'; })[0] || pathNodes[pathNodes.length - 1];
+      buildGraph();
+      cleanNodeLabels(svg);
+      drawHomeExit(svg);
+      pathIndex = 0;
+      failed = false;
+      current = { x: startNode.x, y: startNode.y };
+      facing = pathNodes[0] ? dir(current, pathNodes[0]) : 'right';
+      token = makeToken(svg);
+      placeToken();
+      syncViewerProgress();
+      if (typeof window.mzkSetFeedback === 'function') window.mzkSetFeedback('', '');
     }
 
     function step(which) {
@@ -287,6 +347,7 @@
 
     function nodeTap(node) {
       if (failed || !current || !node) return true;
+      if (node.kind === 'home') return completeMaze();
       step(dir(current, node));
       return true;
     }
