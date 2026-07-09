@@ -95,31 +95,66 @@ function store_pdf_in_db(PDO $pdo, string $activityId, string $filePath): ?strin
         return null;
     }
 
+    // pdo_pgsql requires an active transaction for PDO::PARAM_LOB (Large Object)
+    // operations. Without it the pgsql LOB protocol triggers on Render's
+    // SSL-terminated Postgres and drops the connection mid-stream, producing
+    // "SSL SYSCALL error: EOF detected".
     $stream = fopen($filePath, 'rb');
     if ($stream === false) {
         return null;
     }
 
+    $ok = false;
     try {
-        // Stream the file straight into a BYTEA column instead of loading a
-        // base64 copy into memory / into the JSONB 'data' column. This keeps
-        // memory usage low and avoids Postgres having to parse a huge jsonb
-        // document, which was crashing the connection for large PDFs.
+        $pdo->beginTransaction();
         $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :pdf_data WHERE id = :id");
         $stmt->bindParam(':pdf_data', $stream, PDO::PARAM_LOB);
         $stmt->bindValue(':id', $activityId);
         $ok = $stmt->execute();
+        $pdo->commit();
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) {
+            try { $pdo->rollBack(); } catch (Throwable $_) {}
+        }
+        error_log('flipbook: LOB store failed, trying hex fallback: ' . $e->getMessage());
+
+        // Fallback: read the file and send as hex text via decode(:hex,'hex').
+        // This avoids the LOB protocol entirely and is safe over SSL.
+        if (is_resource($stream)) {
+            fclose($stream);
+            $stream = null;
+        }
+        return store_pdf_in_db_hex($pdo, $activityId, $filePath);
     } finally {
         if (is_resource($stream)) {
             fclose($stream);
         }
     }
 
-    if (!$ok) {
+    return $ok ? FLIPBOOK_DB_PDF_PREFIX . $activityId : null;
+}
+
+function store_pdf_in_db_hex(PDO $pdo, string $activityId, string $filePath): ?string
+{
+    $binary = file_get_contents($filePath);
+    if ($binary === false || $binary === '') {
         return null;
     }
 
-    return FLIPBOOK_DB_PDF_PREFIX . $activityId;
+    try {
+        $hexData = bin2hex($binary);
+        unset($binary);
+        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = decode(:hex_data, 'hex') WHERE id = :id");
+        $stmt->bindValue(':hex_data', $hexData, PDO::PARAM_STR);
+        $stmt->bindValue(':id', $activityId);
+        $ok = $stmt->execute();
+        unset($hexData);
+    } catch (Throwable $e) {
+        error_log('flipbook: hex store failed: ' . $e->getMessage());
+        return null;
+    }
+
+    return $ok ? FLIPBOOK_DB_PDF_PREFIX . $activityId : null;
 }
 
 function clear_pdf_in_db(PDO $pdo, string $activityId): void
