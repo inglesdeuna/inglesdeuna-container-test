@@ -289,15 +289,21 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
     background: var(--light-purple-bg);
     border-radius: 14px;
     padding: 18px 20px;
-    font-size: 16px;
+    font-size: 20px;
     font-weight: 600;
     color: var(--medium-purple);
     line-height: 1.6;
-    text-align: center;
+    text-align: right;
     margin-bottom: 1.25rem;
     min-height: auto;
     display: block;
     font-family: 'Nunito', sans-serif;
+}
+
+/* ALL-CAPS label tokens in sentences (e.g. NEGATIVE:, AFFIRMATIVE:) */
+.fb-caps-label {
+    color: var(--orange);
+    font-weight: 800;
 }
 
 /* Blank empty state */
