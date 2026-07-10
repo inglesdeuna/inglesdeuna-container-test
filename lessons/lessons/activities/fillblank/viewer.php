@@ -293,7 +293,7 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
     font-weight: 600;
     color: var(--medium-purple);
     line-height: 1.6;
-    text-align: right;
+    text-align: left;
     margin-bottom: 1.25rem;
     min-height: auto;
     display: block;
