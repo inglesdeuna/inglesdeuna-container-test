@@ -182,6 +182,13 @@ document.addEventListener('DOMContentLoaded', function () {
       .replace(/'/g, '&#39;');
   }
 
+  /* Wrap all-caps tokens (2+ uppercase letters, optional trailing colon)
+     in an orange span so NEGATIVE:, AFFIRMATIVE:, etc. render in orange. */
+  function highlightCaps(text) {
+    var escaped = escHtml(text);
+    return escaped.replace(/\b([A-Z]{2,}:?)/g, '<span class="fb-caps-label">$1</span>');
+  }
+
   function splitTextByBlanks(text) {
     var source = String(text || '');
     return source.split(/___+/g);
@@ -245,12 +252,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
     for (var i = 0; i < blankCount; i++) {
       var leftPart = parts[i] !== undefined ? parts[i] : '';
-      html += escHtml(leftPart).replace(/\n/g, '<br>');
+      html += highlightCaps(leftPart).replace(/\n/g, '<br>');
 
       var value = String(values[i] || '');
 
       if (!isAnswered) {
-        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 16px Nunito,sans-serif;color:#5A51C0;padding:0 4px;min-width:44px;max-width:100%;width:4ch;height:24px;"> ';
+        html += ' <input class="fb-blank" data-blank-input="' + i + '" type="text" autocomplete="off" value="' + escHtml(value) + '" style="border:none;border-bottom:2.5px solid #7F77DD;border-radius:0;background:transparent;outline:none;text-align:center;font:700 20px Nunito,sans-serif;color:#5A51C0;padding:0 4px;min-width:44px;max-width:100%;width:4ch;height:28px;"> ';
       } else {
         var correct = String(answers[i] || '');
         var ok = normalize(value) === normalize(correct);
@@ -266,7 +273,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
-    html += escHtml(parts[blankCount] !== undefined ? parts[blankCount] : '').replace(/\n/g, '<br>');
+    html += highlightCaps(parts[blankCount] !== undefined ? parts[blankCount] : '').replace(/\n/g, '<br>');
     sentenceEl.innerHTML = html;
   }
 
