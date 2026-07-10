@@ -110,7 +110,7 @@ foreach ($blocks as $block) {
     $answers = isset($block['answers']) && is_array($block['answers']) ? $block['answers'] : [];
     $image   = isset($block['image']) ? trim((string) $block['image']) : '';
 
-    if (empty($answers)) continue;
+    if ($text === '' && empty($answers) && $image === '') continue;
 
     $jsQuestions[] = [
         'instruction' => $instruction,
