@@ -627,7 +627,7 @@ body {
 /* ---- Passage section (text / listening modes) ---- */
 .mc-passage-section {
     width:min(860px,100%);
-    margin:0 auto 20px;
+    margin:0 auto 24px;
 }
 
 .mc-passage-card {
@@ -635,31 +635,37 @@ body {
     border:1px solid var(--mc-lila);
     border-radius:24px;
     box-shadow:0 8px 40px rgba(127,119,221,.13);
-    padding:24px 28px;
+    padding:28px 32px;
 }
 
 .mc-passage-label {
     display:inline-flex;
     align-items:center;
     gap:6px;
-    font-size:11px;
+    font-size:12px;
     font-weight:800;
     text-transform:uppercase;
     letter-spacing:.08em;
     color:var(--mc-purple);
     background:var(--mc-purple-soft);
-    padding:4px 12px;
+    padding:5px 14px;
     border-radius:999px;
-    margin-bottom:14px;
+    margin-bottom:18px;
 }
 
 .mc-passage-body {
-    font-family:'Lora', Georgia, 'Times New Roman', serif;
-    font-size:15.5px;
-    line-height:1.85;
-    color:#2d2d2d;
+    font-family:'Nunito', sans-serif;
+    font-size:19px;
+    line-height:1.9;
+    color:#1a1a2e;
     white-space:pre-wrap;
     word-break:break-word;
+    border-left:4px solid var(--mc-purple);
+    padding-left:18px;
+    background:var(--mc-bg);
+    border-radius:0 12px 12px 0;
+    padding:14px 18px;
+    border-left:4px solid var(--mc-purple);
 }
 
 .mc-passage-audio-bar {
@@ -667,7 +673,7 @@ body {
     justify-content:center;
     padding-top:16px;
     border-top:1px solid var(--mc-lila);
-    margin-top:16px;
+    margin-top:18px;
     gap:10px;
     flex-wrap:wrap;
 }
@@ -677,8 +683,8 @@ body {
     border-radius:999px;
     background:var(--mc-purple);
     color:#fff;
-    padding:10px 22px;
-    font-size:14px;
+    padding:11px 26px;
+    font-size:15px;
     font-weight:700;
     font-family:'Nunito',sans-serif;
     cursor:pointer;
@@ -691,8 +697,12 @@ body {
 }
 
 @media(max-width:760px) {
-    .mc-passage-card { padding:16px 14px; }
-    .mc-passage-body { font-size:14.5px; }
+    .mc-passage-card { padding:18px 16px; }
+    .mc-passage-body { font-size:17px; }
+}
+
+@media(max-width:480px) {
+    .mc-passage-body { font-size:16px; }
 }
 </style>
 
