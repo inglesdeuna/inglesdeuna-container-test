@@ -74,6 +74,7 @@ $activityTypes = [
     "quiz" => "Quiz",
     "lets_classify" => "Let's Classify",
     "review_match"  => "Review Match",
+    "story_kids"    => "Story (Kids)",
 ];
 
 /* ===============================
