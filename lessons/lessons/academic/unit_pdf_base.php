@@ -241,10 +241,17 @@ function ws_quiz(array $d, int $n, bool $k): string {
 
 /* ── MULTIPLE CHOICE ─────────────────────────────────────── */
 function ws_mc(array $d, int $n, bool $k): string {
-    $qs   = is_array($d['questions'] ?? null) ? $d['questions'] : [];
+    $qs      = is_array($d['questions'] ?? null) ? $d['questions'] : [];
+    $passage = trim((string)($d['passage'] ?? ''));
     $ltrs = ['A','B','C','D'];
     $out  = ws_head($n, 'Multiple Choice', trim((string)($d['title'] ?? '')),
                     'Circle the letter of the correct answer.', $k);
+    if ($passage !== '') {
+        $out .= '<div class="ws-mc-passage">'
+              . '<div class="ws-mc-passage-lbl">📖 Reading Passage</div>'
+              . '<div class="ws-mc-passage-body">'.nl2br(h($passage)).'</div>'
+              . '</div>';
+    }
     foreach ($qs as $qi => $q) {
         $qt   = trim((string)($q['question'] ?? ''));
         $qtp  = $q['question_type'] ?? 'text';
@@ -1071,6 +1078,14 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
            border-radius: 10px; padding: 10px 13px; margin-bottom: 12px; color: var(--ink); }
 .ws-rc-hl { color: #C2580A; font-weight: 800; border-bottom: 2px solid var(--ora);
             background: #FFF0E6; border-radius: 3px; padding: 0 2px; }
+
+/* ── MC passage block (reading passage shown before questions) ── */
+.ws-mc-passage { border: 1.5px solid var(--lila2); border-left: 4px solid var(--lila);
+                 border-radius: 10px; background: #F8F7FE; padding: 11px 14px;
+                 margin-bottom: 14px; break-inside: avoid; page-break-inside: avoid; }
+.ws-mc-passage-lbl { font-size: 9px; font-weight: 800; text-transform: uppercase;
+                     letter-spacing: .07em; color: var(--lila); margin-bottom: 7px; }
+.ws-mc-passage-body { font-size: 12px; line-height: 1.75; color: var(--ink); white-space: pre-wrap; word-break: break-word; }
 
 /* ── MC image options ── */
 .mc-img-opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 7px; }
