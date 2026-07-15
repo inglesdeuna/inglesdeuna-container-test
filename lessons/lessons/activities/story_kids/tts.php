@@ -96,13 +96,14 @@ if ($apiKey === '') {
     exit;
 }
 
+// Use the with-timestamps endpoint to get character-level alignment data
 $payload = json_encode([
     'text'          => $text,
     'model_id'      => 'eleven_multilingual_v2',
     'output_format' => 'mp3_44100_128',
 ], JSON_UNESCAPED_UNICODE);
 
-$ch = curl_init('https://api.elevenlabs.io/v1/text-to-speech/' . rawurlencode($voiceId));
+$ch = curl_init('https://api.elevenlabs.io/v1/text-to-speech/' . rawurlencode($voiceId) . '/with-timestamps');
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -110,18 +111,18 @@ curl_setopt($ch, CURLOPT_TIMEOUT, 60);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [
     'xi-api-key: ' . $apiKey,
     'Content-Type: application/json',
-    'Accept: audio/mpeg',
+    'Accept: application/json',
 ]);
 
-$audio   = curl_exec($ch);
-$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlErr  = curl_error($ch);
+$rawResponse = curl_exec($ch);
+$httpCode    = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$curlErr     = curl_error($ch);
 curl_close($ch);
 
-if ($curlErr !== '' || $httpCode !== 200 || !is_string($audio) || strlen($audio) < 100) {
+if ($curlErr !== '' || $httpCode !== 200 || !is_string($rawResponse) || strlen($rawResponse) < 10) {
     $msg = $curlErr !== '' ? $curlErr : "ElevenLabs API returned HTTP {$httpCode}";
-    if (is_string($audio) && $audio !== '') {
-        $j = json_decode($audio, true);
+    if (is_string($rawResponse) && $rawResponse !== '') {
+        $j = json_decode($rawResponse, true);
         if (isset($j['detail']['message'])) $msg = (string) $j['detail']['message'];
         elseif (isset($j['detail']) && is_string($j['detail'])) $msg = (string) $j['detail'];
     }
@@ -129,6 +130,52 @@ if ($curlErr !== '' || $httpCode !== 200 || !is_string($audio) || strlen($audio)
     header('Content-Type: application/json');
     echo json_encode(['error' => $msg]);
     exit;
+}
+
+$tsData = json_decode($rawResponse, true);
+if (!is_array($tsData) || empty($tsData['audio_base64'])) {
+    http_response_code(502);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Unexpected response from ElevenLabs']);
+    exit;
+}
+
+$audio = base64_decode($tsData['audio_base64']);
+if ($audio === false || strlen($audio) < 100) {
+    http_response_code(502);
+    header('Content-Type: application/json');
+    echo json_encode(['error' => 'Failed to decode audio from ElevenLabs']);
+    exit;
+}
+
+// Build word-level timings from character alignment
+$wordTimings = [];
+$alignment   = $tsData['alignment'] ?? [];
+$chars       = $alignment['characters'] ?? [];
+$starts      = $alignment['character_start_times_seconds'] ?? [];
+$ends        = $alignment['character_end_times_seconds'] ?? [];
+
+if (count($chars) > 0 && count($chars) === count($starts) && count($chars) === count($ends)) {
+    $curWord  = '';
+    $wStart   = null;
+    $wEnd     = null;
+    for ($i = 0, $n = count($chars); $i < $n; $i++) {
+        $c = (string) $chars[$i];
+        if ($c === ' ' || $c === "\n" || $c === "\r" || $c === "\t") {
+            if ($curWord !== '') {
+                $wordTimings[] = ['word' => $curWord, 'start' => (float)$wStart, 'end' => (float)$wEnd];
+                $curWord = '';
+                $wStart  = null;
+            }
+        } else {
+            if ($curWord === '') $wStart = $starts[$i];
+            $curWord .= $c;
+            $wEnd = $ends[$i];
+        }
+    }
+    if ($curWord !== '') {
+        $wordTimings[] = ['word' => $curWord, 'start' => (float)$wStart, 'end' => (float)$wEnd];
+    }
 }
 
 // Upload to Cloudinary so the URL is persistent
@@ -147,4 +194,4 @@ if ($audioUrl === null || $audioUrl === '') {
 }
 
 header('Content-Type: application/json');
-echo json_encode(['audio_url' => $audioUrl]);
+echo json_encode(['audio_url' => $audioUrl, 'word_timings' => $wordTimings]);
