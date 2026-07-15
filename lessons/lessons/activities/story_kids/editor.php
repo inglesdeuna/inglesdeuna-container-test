@@ -39,11 +39,17 @@ function stke_normalize($raw): array
     $pages = [];
     foreach ($d['pages'] ?? [] as $p) {
         if (!is_array($p)) continue;
+        $kw = $p['keywords'] ?? [];
+        if (!is_array($kw)) $kw = [];
+        $wt = $p['word_timings'] ?? [];
+        if (!is_array($wt)) $wt = [];
         $pages[] = [
-            'id'        => (int)($p['id'] ?? 0),
-            'image_url' => trim((string)($p['image_url'] ?? '')),
-            'text'      => trim((string)($p['text'] ?? '')),
-            'audio_url' => trim((string)($p['audio_url'] ?? '')),
+            'id'          => (int)($p['id'] ?? 0),
+            'image_url'   => trim((string)($p['image_url'] ?? '')),
+            'text'        => trim((string)($p['text'] ?? '')),
+            'audio_url'   => trim((string)($p['audio_url'] ?? '')),
+            'keywords'    => array_values(array_filter(array_map('trim', array_map('strval', $kw)))),
+            'word_timings'=> $wt,
         ];
     }
     return [
@@ -90,11 +96,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !isset($_POST['action'])) {
         $text     = trim((string)($p['text'] ?? ''));
         $audioUrl = trim((string)($p['audio_url'] ?? ''));
         if ($imgUrl === '' && $text === '') continue;
+        $kw = $p['keywords'] ?? [];
+        if (!is_array($kw)) $kw = [];
+        $wt = $p['word_timings'] ?? [];
+        if (!is_array($wt)) $wt = [];
         $cleanPages[] = [
-            'id'        => $idx++,
-            'image_url' => $imgUrl,
-            'text'      => $text,
-            'audio_url' => $audioUrl,
+            'id'          => $idx++,
+            'image_url'   => $imgUrl,
+            'text'        => $text,
+            'audio_url'   => $audioUrl,
+            'keywords'    => array_values(array_filter(array_map('trim', array_map('strval', $kw)))),
+            'word_timings'=> $wt,
         ];
     }
 
@@ -550,6 +562,21 @@ ob_start();
         textarea.value = page.text || '';
         textarea.addEventListener('input', () => { page.text = textarea.value; });
 
+        /* keywords */
+        const kwLabel = document.createElement('label');
+        kwLabel.className = 'stke-label';
+        kwLabel.style.marginTop = '4px';
+        kwLabel.textContent = 'Key Words (comma-separated, shown in red)';
+        const kwInput = document.createElement('input');
+        kwInput.type = 'text';
+        kwInput.className = 'stke-input';
+        kwInput.style.fontSize = '14px';
+        kwInput.placeholder = 'e.g. banana, lunch, school';
+        kwInput.value = (page.keywords || []).join(', ');
+        kwInput.addEventListener('input', () => {
+            page.keywords = kwInput.value.split(',').map(s => s.trim()).filter(s => s !== '');
+        });
+
         /* audio row */
         const audioLabel = document.createElement('label');
         audioLabel.className = 'stke-label';
@@ -581,7 +608,7 @@ ob_start();
             audioRow.appendChild(buildAudioPlayer(page.audio_url));
         }
 
-        right.append(textLabel, textarea, audioLabel, audioRow);
+        right.append(textLabel, textarea, kwLabel, kwInput, audioLabel, audioRow);
         body.append(imgBox, right);
         card.append(hdr, body);
         return card;
@@ -653,6 +680,7 @@ ob_start();
                 genBtn.innerHTML = '🔊 Generate Audio';
                 if (d.audio_url) {
                     page.audio_url = d.audio_url;
+                    if (Array.isArray(d.word_timings)) page.word_timings = d.word_timings;
                     // Remove old player if any
                     const old = audioRow.querySelector('.stke-audio-player');
                     if (old) old.remove();
@@ -692,7 +720,7 @@ ob_start();
 
     /* ── Add page ── */
     addBtn.addEventListener('click', () => {
-        pages.push({ id: nextId++, image_url: '', text: '', audio_url: '' });
+        pages.push({ id: nextId++, image_url: '', text: '', audio_url: '', keywords: [], word_timings: [] });
         render();
     });
 
