@@ -55,10 +55,16 @@ if (!$isPreview && $token !== '') {
          JOIN eval_exams e ON e.id = l.exam_id
          WHERE l.token = ?
            AND (l.expires_at IS NULL OR l.expires_at > NOW())
-           AND l.uses_count < l.max_uses
+           AND (
+             l.uses_count < l.max_uses
+             OR EXISTS (
+               SELECT 1 FROM eval_results r
+               WHERE r.link_id = l.id AND r.id = ? AND r.status = 'started'
+             )
+           )
          LIMIT 1"
     );
-    $stmt->execute([$token]);
+    $stmt->execute([$token, $resultId]);
     $link = $stmt->fetch(PDO::FETCH_ASSOC);
 }
 
