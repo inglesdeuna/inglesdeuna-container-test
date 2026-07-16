@@ -57,6 +57,24 @@ if (!$link && in_array($levelGet, ['A2','B1','B2'], true)) {
     if ($link) $token = $link['token'];
 }
 
+// ─── Special case: result step — allow viewing results even if link exhausted ──
+// After submit, uses_count == max_uses, so the normal query fails. Re-query
+// without the uses_count guard but verify the result belongs to this link.
+if (!$link && $step === 'result' && $resultId > 0 && $token !== '') {
+    $stmt = $pdo->prepare(
+        "SELECT l.*, e.title AS exam_title, e.time_limit_min, e.cefr_level AS exam_cefr,
+                e.id AS exam_id_val, e.status AS exam_status, e.is_placement
+         FROM eval_links l
+         JOIN eval_exams e ON e.id = l.exam_id
+         JOIN eval_results r ON r.link_id = l.id AND r.id = ?
+         WHERE l.token = ?
+           AND (l.expires_at IS NULL OR l.expires_at > NOW())
+         LIMIT 1"
+    );
+    $stmt->execute([$resultId, $token]);
+    $link = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+}
+
 // ─── Validate ─────────────────────────────────────────────────────────────────
 if (!$link) {
     // Check if admin is previewing
