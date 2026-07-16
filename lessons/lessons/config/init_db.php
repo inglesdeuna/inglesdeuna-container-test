@@ -183,6 +183,7 @@ try {
     try {
         $pdo->exec("CREATE INDEX IF NOT EXISTS student_assignments_student_id_idx ON student_assignments (student_id);");
         $pdo->exec("CREATE INDEX IF NOT EXISTS student_assignments_teacher_id_idx ON student_assignments (teacher_id);");
+        $pdo->exec("CREATE UNIQUE INDEX IF NOT EXISTS student_assignments_unique_enrollment ON student_assignments (student_id, program, course_id, COALESCE(level_id,''), unit_id);");
     } catch (Exception $e) {
         // índice ya existe
     }
