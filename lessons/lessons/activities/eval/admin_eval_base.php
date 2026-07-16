@@ -120,10 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $maxUses      = (int) ($_POST['max_uses'] ?? 999);
         $token        = bin2hex(random_bytes(16));
 
-        // Compute expires_at: start of available_date + duration_hours
+        // Compute expires_at: if available_date is today or past, start from NOW so the
+        // link is not already expired at creation time; if it's a future date, start from midnight.
         if ($availDate !== '') {
-            $expiresTs = strtotime($availDate . ' 00:00:00') + ($durationHrs * 3600);
-            $expires   = date('Y-m-d H:i:s', $expiresTs);
+            $availMidnight = strtotime($availDate . ' 00:00:00');
+            $startTs       = max($availMidnight, time());
+            $expiresTs     = $startTs + ($durationHrs * 3600);
+            $expires       = date('Y-m-d H:i:s', $expiresTs);
         } else {
             $expires = null;
         }
@@ -230,8 +233,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $maxUses     = (int) ($_POST['max_uses']      ?? 999);
         if ($linkId > 0) {
             if ($availDate !== '') {
-                $expiresTs = strtotime($availDate . ' 00:00:00') + ($durationHrs * 3600);
-                $expiresAt = date('Y-m-d H:i:s', $expiresTs);
+                $availMidnight = strtotime($availDate . ' 00:00:00');
+                $startTs       = max($availMidnight, time());
+                $expiresAt     = date('Y-m-d H:i:s', $startTs + ($durationHrs * 3600));
             } else {
                 $expiresAt = null;
             }
@@ -1144,7 +1148,7 @@ tr:hover td{background:#FAFAFE;}
                      min="1" max="720" value="24"
                      onchange="updateExpiryPreview()">
               <small id="expiry-preview" style="color:var(--muted);font-size:11px;margin-top:4px;display:block;">
-                Expira: <?= date('d/m/Y') ?> a las 23:59
+                Expira: <?= date('d/m/Y', strtotime('+24 hours')) ?> a las <?= date('H:i', strtotime('+24 hours')) ?>
               </small>
             </div>
             <div class="form-group">
@@ -1907,8 +1911,10 @@ function updateExpiryPreview() {
   if (!d || !h || !p) return;
   var date = d.value, hrs = parseInt(h.value) || 24;
   if (!date) { p.textContent = ''; return; }
-  var start = new Date(date + 'T00:00:00');
-  var end   = new Date(start.getTime() + hrs * 3600 * 1000);
+  var midnight = new Date(date + 'T00:00:00');
+  var now      = new Date();
+  var start    = midnight > now ? midnight : now;
+  var end      = new Date(start.getTime() + hrs * 3600 * 1000);
   p.textContent = 'Expira: ' + pad2(end.getDate()) + '/' + pad2(end.getMonth()+1) + '/' + end.getFullYear()
                 + ' a las ' + pad2(end.getHours()) + ':' + pad2(end.getMinutes());
 }
@@ -1920,8 +1926,10 @@ function updateEditPreview() {
   if (!d || !h || !p) return;
   var date = d.value, hrs = parseInt(h.value) || 24;
   if (!date) { p.textContent = 'Sin fecha de expiración.'; return; }
-  var start = new Date(date + 'T00:00:00');
-  var end   = new Date(start.getTime() + hrs * 3600 * 1000);
+  var midnight = new Date(date + 'T00:00:00');
+  var now      = new Date();
+  var start    = midnight > now ? midnight : now;
+  var end      = new Date(start.getTime() + hrs * 3600 * 1000);
   p.textContent = 'Expira: ' + pad2(end.getDate()) + '/' + pad2(end.getMonth()+1) + '/' + end.getFullYear()
                 + ' a las ' + pad2(end.getHours()) + ':' + pad2(end.getMinutes());
 }
