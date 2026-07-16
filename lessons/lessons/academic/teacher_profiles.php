@@ -328,28 +328,49 @@ function load_students_for_teacher_admin(string $teacherId): array
     }
     try {
         $stmt = $pdo->prepare("
-            SELECT
-                sa.id            AS assignment_id,
-                sa.student_id,
-                sa.program,
-                sa.course_id,
-                sa.level_id,
-                sa.period,
-                sa.unit_id,
-                COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id) AS student_name,
-                CASE
-                    WHEN sa.program = 'english'
-                    THEN COALESCE(NULLIF(TRIM(ep.name), ''), sa.level_id)
-                    ELSE COALESCE(NULLIF(TRIM(c.name), ''), sa.course_id)
-                END AS course_name,
-                COALESCE(NULLIF(TRIM(acc.username), ''), '') AS student_username
-            FROM student_assignments sa
-            LEFT JOIN students           s   ON s.id::text    = sa.student_id::text
-            LEFT JOIN student_accounts   acc ON acc.student_id::text = sa.student_id::text
-            LEFT JOIN courses            c   ON c.id::text    = sa.course_id::text AND sa.program <> 'english'
-            LEFT JOIN english_phases     ep  ON ep.id::text   = sa.level_id::text  AND sa.program = 'english'
-            WHERE sa.teacher_id = :teacher_id
-            ORDER BY student_name ASC, sa.id ASC
+            SELECT *
+            FROM (
+                SELECT DISTINCT ON (
+                    TRIM(sa.student_id::text),
+                    COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text),
+                    COALESCE(NULLIF(TRIM(sa.period), ''), ''),
+                    COALESCE(NULLIF(TRIM(sa.program), ''), 'technical')
+                )
+                    sa.id            AS assignment_id,
+                    sa.student_id,
+                    sa.program,
+                    sa.course_id,
+                    sa.level_id,
+                    sa.period,
+                    sa.unit_id,
+                    COALESCE(NULLIF(TRIM(s.name), ''), sa.student_id::text) AS student_name,
+                    CASE
+                        WHEN sa.program = 'english'
+                        THEN COALESCE(NULLIF(TRIM(ep.name), ''), sa.level_id::text)
+                        ELSE COALESCE(NULLIF(TRIM(c.name), ''), sa.course_id::text)
+                    END AS course_name,
+                    COALESCE(NULLIF(TRIM(acc.username), ''), '') AS student_username
+                FROM student_assignments sa
+                LEFT JOIN students s ON s.id::text = sa.student_id::text
+                LEFT JOIN LATERAL (
+                    SELECT acc2.username
+                    FROM student_accounts acc2
+                    WHERE TRIM(acc2.student_id::text) = TRIM(sa.student_id::text)
+                      AND NULLIF(TRIM(acc2.username), '') IS NOT NULL
+                    ORDER BY acc2.updated_at DESC NULLS LAST, acc2.id DESC
+                    LIMIT 1
+                ) acc ON TRUE
+                LEFT JOIN courses c ON c.id::text = sa.course_id::text AND sa.program <> 'english'
+                LEFT JOIN english_phases ep ON ep.id::text = sa.level_id::text AND sa.program = 'english'
+                WHERE sa.teacher_id = :teacher_id
+                ORDER BY
+                    TRIM(sa.student_id::text),
+                    COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text),
+                    COALESCE(NULLIF(TRIM(sa.period), ''), ''),
+                    COALESCE(NULLIF(TRIM(sa.program), ''), 'technical'),
+                    sa.id ASC
+            ) sub
+            ORDER BY student_name ASC, assignment_id ASC
         ");
         $stmt->execute(['teacher_id' => $teacherId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
