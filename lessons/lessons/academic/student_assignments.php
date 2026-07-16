@@ -110,6 +110,52 @@ function table_has_column(PDO $pdo, string $tableName, string $columnName): bool
     }
 }
 
+/**
+ * One-time migration: removes duplicate enrollment rows and adds a unique index
+ * to prevent future duplicates. Safe to call on every page load (idempotent).
+ */
+function run_enrollment_dedup_migration(): void
+{
+    $pdo = get_pdo_connection();
+    if (!$pdo) {
+        return;
+    }
+
+    try {
+        // Check if the unique index already exists
+        $stmt = $pdo->query("
+            SELECT 1 FROM pg_indexes
+            WHERE schemaname = 'public'
+              AND tablename  = 'student_assignments'
+              AND indexname  = 'student_assignments_unique_enrollment'
+            LIMIT 1
+        ");
+        if ($stmt && $stmt->fetchColumn()) {
+            return; // already migrated
+        }
+
+        // Remove duplicates, keeping the row with the latest updated_at
+        $pdo->exec("
+            DELETE FROM student_assignments
+            WHERE id NOT IN (
+                SELECT DISTINCT ON (student_id, program, course_id, COALESCE(level_id,''), unit_id)
+                    id
+                FROM student_assignments
+                ORDER BY student_id, program, course_id, COALESCE(level_id,''), unit_id,
+                         updated_at DESC NULLS LAST
+            )
+        ");
+
+        // Create unique index to prevent future duplicates
+        $pdo->exec("
+            CREATE UNIQUE INDEX IF NOT EXISTS student_assignments_unique_enrollment
+            ON student_assignments (student_id, program, course_id, COALESCE(level_id,''), unit_id)
+        ");
+    } catch (Throwable $e) {
+        // Non-fatal: log silently, page continues working
+    }
+}
+
 function find_name_by_id(array $rows, string $id, string $fallback = 'N/D'): string
 {
     foreach ($rows as $row) {
@@ -800,14 +846,9 @@ function save_student_assignment_to_database(array $record): bool
             ) VALUES (
                 :id, :student_id, :teacher_id, :program, :course_id, :level_id, :period, :unit_id, :student_username, :student_temp_password, :updated_at
             )
-            ON CONFLICT (id) DO UPDATE SET
-                student_id = EXCLUDED.student_id,
+            ON CONFLICT (student_id, program, course_id, COALESCE(level_id,''), unit_id) DO UPDATE SET
                 teacher_id = EXCLUDED.teacher_id,
-                program = EXCLUDED.program,
-                course_id = EXCLUDED.course_id,
-                level_id = EXCLUDED.level_id,
                 period = EXCLUDED.period,
-                unit_id = EXCLUDED.unit_id,
                 student_username = EXCLUDED.student_username,
                 student_temp_password = EXCLUDED.student_temp_password,
                 updated_at = EXCLUDED.updated_at
@@ -1072,6 +1113,9 @@ ensure_data_files($baseDir, [
     $studentAssignmentsFile,
     $studentAccountsFile,
 ]);
+
+/* Run once: clean existing duplicates and add unique index */
+run_enrollment_dedup_migration();
 
 /* ===============================
    CARGA PRINCIPAL
@@ -1615,7 +1659,7 @@ if ($selectedProgram === 'technical' && $editRecord) {
                         </div>
 
                         <div class="field full">
-                            <button class="button-primary" type="submit">Guardar asignación y crear acceso del estudiante</button>
+                            <button class="button-primary" type="submit" id="assignSubmitBtn" onclick="this.disabled=true;this.form.submit();">Guardar asignación y crear acceso del estudiante</button>
                         </div>
                     </div>
                 </form>
