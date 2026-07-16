@@ -157,7 +157,8 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .usk-answer-row.drag-over{border-color:var(--us-purple);background:#FAFAFE}
 
 /* ── slots ── */
-.usk-slot{width:54px;height:64px;border-radius:12px;border:1.5px solid #CDC7F3;border-bottom-width:4px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:28px;font-weight:600;color:#4A3FC2;cursor:default;transition:border-color .12s,background .12s}
+.usk-slot{width:54px;height:64px;border-radius:12px;border:1.5px solid #CDC7F3;border-bottom-width:4px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:28px;font-weight:600;color:#4A3FC2;cursor:default;touch-action:manipulation;transition:border-color .12s,background .12s}
+.usk-slot.drop-target{border-color:var(--us-orange);background:#FFF0E6}
 .usk-slot.empty{border-style:dashed;color:#CDC7F3;font-size:22px}
 .usk-slot.filled{background:#F8F7FF;border-color:var(--us-purple);border-bottom-color:var(--us-purple-dark);cursor:pointer}
 .usk-slot.correct{background:var(--us-green-soft);border-color:var(--us-green);border-bottom-color:var(--us-green-dark);color:var(--us-green-dark);cursor:default}
@@ -168,10 +169,11 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 .usk-bank{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;min-height:64px;width:100%;margin-top:4px}
 
 /* ── letter chips ── */
-.usk-chip{width:54px;height:64px;border-radius:12px;border:1.5px solid #CDC7F3;border-bottom-width:4px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:28px;font-weight:600;color:#4A3FC2;cursor:grab;user-select:none;transition:transform .13s,box-shadow .13s,border-color .13s}
+.usk-chip{width:54px;height:64px;border-radius:12px;border:1.5px solid #CDC7F3;border-bottom-width:4px;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-family:'Fredoka',sans-serif;font-size:28px;font-weight:600;color:#4A3FC2;cursor:grab;user-select:none;touch-action:manipulation;transition:transform .13s,box-shadow .13s,border-color .13s}
 .usk-chip:hover{transform:translateY(-2px) scale(1.07);border-color:#AFA9EC;border-bottom-color:#7F77DD;box-shadow:0 6px 16px rgba(127,119,221,.18)}
 .usk-chip:active{cursor:grabbing;transform:scale(.97)}
 .usk-chip.used{opacity:0;pointer-events:none;width:0;height:0;border:none;margin:0;padding:0;overflow:hidden;flex-basis:0}
+.usk-chip.selected-touch{border-color:var(--us-orange);border-bottom-color:#C2580A;background:#FFF0E6;transform:translateY(-3px) scale(1.08);box-shadow:0 8px 20px rgba(249,115,22,.25)}
 
 /* ── feedback ── */
 #uskFeedback{text-align:center;font-family:'Nunito',sans-serif;font-size:13px;font-weight:900;min-height:18px;margin-top:6px;color:var(--us-purple-dark)}
@@ -309,6 +311,11 @@ let uskDragging = null;
 let uskCurrentAudio = null;
 let uskCurrentAudioUrl = '';
 let uskIsSpeaking = false;
+let uskTouchSel = null; // bankIndex of chip selected via tap on touch devices
+
+const isTouchLike = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)
+    || ('ontouchstart' in window)
+    || navigator.maxTouchPoints > 0;
 
 /* ── utils ── */
 function uskShuffle(a){ return a.slice().sort(()=>Math.random()-.5); }
@@ -325,7 +332,7 @@ function uskUpdateProgress(){
 
 /* ── render word ── */
 function uskRender(){
-    uskBlocked = false; uskAttempts = 0; uskDragging = null;
+    uskBlocked = false; uskAttempts = 0; uskDragging = null; uskTouchSel = null;
     uskStopAudio();
 
     const w = USK_WORDS[uskIdx];
@@ -381,12 +388,14 @@ function uskRender(){
         c.className  = 'usk-chip';
         c.textContent = item.l;
         c.dataset.bi  = bi;
-        c.draggable   = true;
-        c.ondragstart = e => {
-            if (uskBlocked || uskUsed[bi]) { e.preventDefault(); return; }
-            uskDragging = { bi };
-            e.dataTransfer.effectAllowed = 'move';
-        };
+        if (!isTouchLike) {
+            c.draggable   = true;
+            c.ondragstart = e => {
+                if (uskBlocked || uskUsed[bi]) { e.preventDefault(); return; }
+                uskDragging = { bi };
+                e.dataTransfer.effectAllowed = 'move';
+            };
+        }
         c.onclick = () => uskChipClick(bi);
         bank.appendChild(c);
     });
@@ -407,7 +416,9 @@ function uskPlace(bi, si){
     slot.textContent = uskOrder[bi].l;
     slot.className   = 'usk-slot filled';
     slot.dataset.bi  = bi;
+    chip.classList.remove('selected-touch');
     chip.classList.add('used');
+    if (uskTouchSel === bi) uskTouchSel = null;
     setTimeout(uskAutoCheck, 60);
 }
 
@@ -427,6 +438,25 @@ function uskRemove(si, bi){
 /* ── click interactions ── */
 function uskChipClick(bi){
     if (uskBlocked || uskUsed[bi]) return;
+    if (isTouchLike) {
+        /* touch: tap to select; tap again to deselect */
+        if (uskTouchSel === bi) {
+            uskTouchSel = null;
+            const c = uskGetChip(bi);
+            if (c) c.classList.remove('selected-touch');
+            return;
+        }
+        /* deselect previous */
+        if (uskTouchSel !== null) {
+            const prev = uskGetChip(uskTouchSel);
+            if (prev) prev.classList.remove('selected-touch');
+        }
+        uskTouchSel = bi;
+        const c = uskGetChip(bi);
+        if (c) c.classList.add('selected-touch');
+        return;
+    }
+    /* mouse: place in first empty slot */
     const slots = [...uskGetSlots()];
     const si = slots.findIndex(s => s.classList.contains('empty'));
     if (si === -1) return;
@@ -437,7 +467,19 @@ function uskSlotClick(si){
     if (uskBlocked) return;
     const slots = uskGetSlots();
     const slot  = slots[si];
-    if (!slot || slot.classList.contains('empty') || slot.classList.contains('correct')) return;
+    if (!slot) return;
+
+    /* touch: if a chip is selected, place it in this slot */
+    if (isTouchLike && uskTouchSel !== null) {
+        if (slot.classList.contains('empty')) {
+            const bi = uskTouchSel;
+            uskTouchSel = null;
+            uskPlace(bi, si);
+        }
+        return;
+    }
+
+    if (slot.classList.contains('empty') || slot.classList.contains('correct')) return;
     const bi = (slot.dataset.bi !== undefined && slot.dataset.bi !== '') ? +slot.dataset.bi : null;
     if (bi === null) return;
     uskRemove(si, bi);
@@ -536,6 +578,12 @@ function uskHint(){
 /* ── clear wrong / unfilled slots ── */
 function uskClear(){
     if (uskBlocked) return;
+    /* clear any touch selection */
+    if (uskTouchSel !== null) {
+        const prev = uskGetChip(uskTouchSel);
+        if (prev) prev.classList.remove('selected-touch');
+        uskTouchSel = null;
+    }
     const slots = uskGetSlots();
     [...slots].forEach((s, i) => {
         if (!s.classList.contains('empty') && !s.classList.contains('correct')) {
