@@ -140,51 +140,65 @@ function load_teacher_students(PDO $pdo, string $teacherId): array
 {
         try {
                 $stmt = $pdo->prepare("
-                        SELECT
-                            sa.id AS assignment_id,
-                            TRIM(sa.student_id::text) AS student_id,
-                            COALESCE(
-                                NULLIF(TRIM(acc.username), ''),
-                                NULLIF(TRIM(s.name), ''),
-                                NULLIF(TRIM(sa.student_username), ''),
-                                TRIM(sa.student_id::text)
-                            ) AS student_name,
-                            CASE WHEN sa.program = 'english'
-                                     THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
-                                     ELSE sa.course_id::text
-                            END AS course_id,
-                            CASE WHEN sa.program = 'english'
-                                     THEN COALESCE(NULLIF(TRIM(ep.name), ''), 'Fase ingles')
-                                     ELSE COALESCE(NULLIF(TRIM(c.name), ''), 'Curso')
-                            END AS course_name,
-                            COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
-                            CASE WHEN sa.program = 'english' THEN ''
-                                     ELSE COALESCE(NULLIF(TRIM(sa.period), ''), '')
-                            END AS period,
-                            COALESCE((
-                                SELECT COUNT(DISTINCT sur.unit_id)
-                                FROM student_unit_results sur
-                                WHERE sur.assignment_id = sa.id
-                            ), 0) AS units_completed,
-                            COALESCE((
-                                SELECT AVG(CAST(sur.completion_percent AS NUMERIC))
-                                FROM student_unit_results sur
-                                WHERE sur.assignment_id = sa.id
-                            ), 0) AS avg_completion
-                        FROM student_assignments sa
-                                                LEFT JOIN students s ON TRIM(s.id::text) = TRIM(sa.student_id::text)
-                                                LEFT JOIN LATERAL (
-                                                        SELECT sa2.username
-                                                        FROM student_accounts sa2
-                                                        WHERE TRIM(sa2.student_id::text) = TRIM(sa.student_id::text)
-                                                            AND NULLIF(TRIM(sa2.username), '') IS NOT NULL
-                                                        ORDER BY sa2.updated_at DESC NULLS LAST, sa2.id DESC
-                                                        LIMIT 1
-                                                ) acc ON TRUE
-                        LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
-                        LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
-                        WHERE sa.teacher_id = :teacher_id
-                        ORDER BY student_name ASC, sa.id ASC
+                        SELECT *
+                        FROM (
+                            SELECT DISTINCT ON (
+                                TRIM(sa.student_id::text),
+                                COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text),
+                                COALESCE(NULLIF(TRIM(sa.period), ''), ''),
+                                COALESCE(NULLIF(TRIM(sa.program), ''), 'technical')
+                            )
+                                sa.id AS assignment_id,
+                                TRIM(sa.student_id::text) AS student_id,
+                                COALESCE(
+                                    NULLIF(TRIM(acc.username), ''),
+                                    NULLIF(TRIM(s.name), ''),
+                                    NULLIF(TRIM(sa.student_username), ''),
+                                    TRIM(sa.student_id::text)
+                                ) AS student_name,
+                                CASE WHEN sa.program = 'english'
+                                         THEN COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text)
+                                         ELSE sa.course_id::text
+                                END AS course_id,
+                                CASE WHEN sa.program = 'english'
+                                         THEN COALESCE(NULLIF(TRIM(ep.name), ''), 'Fase ingles')
+                                         ELSE COALESCE(NULLIF(TRIM(c.name), ''), 'Curso')
+                                END AS course_name,
+                                COALESCE(NULLIF(TRIM(sa.program), ''), 'technical') AS program,
+                                CASE WHEN sa.program = 'english' THEN ''
+                                         ELSE COALESCE(NULLIF(TRIM(sa.period), ''), '')
+                                END AS period,
+                                COALESCE((
+                                    SELECT COUNT(DISTINCT sur.unit_id)
+                                    FROM student_unit_results sur
+                                    WHERE sur.assignment_id = sa.id
+                                ), 0) AS units_completed,
+                                COALESCE((
+                                    SELECT AVG(CAST(sur.completion_percent AS NUMERIC))
+                                    FROM student_unit_results sur
+                                    WHERE sur.assignment_id = sa.id
+                                ), 0) AS avg_completion
+                            FROM student_assignments sa
+                            LEFT JOIN students s ON TRIM(s.id::text) = TRIM(sa.student_id::text)
+                            LEFT JOIN LATERAL (
+                                SELECT sa2.username
+                                FROM student_accounts sa2
+                                WHERE TRIM(sa2.student_id::text) = TRIM(sa.student_id::text)
+                                    AND NULLIF(TRIM(sa2.username), '') IS NOT NULL
+                                ORDER BY sa2.updated_at DESC NULLS LAST, sa2.id DESC
+                                LIMIT 1
+                            ) acc ON TRUE
+                            LEFT JOIN courses c ON (sa.program <> 'english' AND c.id::text = sa.course_id::text)
+                            LEFT JOIN english_phases ep ON (sa.program = 'english' AND ep.id::text = sa.level_id::text)
+                            WHERE sa.teacher_id = :teacher_id
+                            ORDER BY
+                                TRIM(sa.student_id::text),
+                                COALESCE(NULLIF(TRIM(sa.level_id::text), ''), sa.course_id::text),
+                                COALESCE(NULLIF(TRIM(sa.period), ''), ''),
+                                COALESCE(NULLIF(TRIM(sa.program), ''), 'technical'),
+                                sa.id ASC
+                        ) sub
+                        ORDER BY student_name ASC, assignment_id ASC
                 ");
                 $stmt->execute(['teacher_id' => $teacherId]);
                 return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
