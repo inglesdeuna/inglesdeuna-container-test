@@ -694,6 +694,89 @@ tr:hover td{background:#FAFAFE;}
   .stats-row{grid-template-columns:1fr 1fr;}
   .form-row,.form-row-3{grid-template-columns:1fr;}
 }
+
+/* ── Workflow hero cards ── */
+.wf-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:0;}
+.wf-card{
+  display:flex;flex-direction:column;gap:8px;
+  background:#fff;border:1.5px solid #EDE9FA;border-radius:16px;
+  padding:18px 20px;text-decoration:none;color:inherit;
+  transition:all .18s;cursor:pointer;
+  position:relative;overflow:hidden;
+}
+.wf-card::before{
+  content:'';position:absolute;inset:0;
+  opacity:0;transition:opacity .18s;border-radius:16px;
+}
+.wf-card:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(127,119,221,.15);}
+.wf-card.wf-assign::before{background:linear-gradient(135deg,#FFF8F5,#FFF0E6);}
+.wf-card.wf-create::before{background:linear-gradient(135deg,#F5F3FF,#EDE9FA);}
+.wf-card.wf-results::before{background:linear-gradient(135deg,#F0FDF4,#DCFCE7);}
+.wf-card:hover::before{opacity:1;}
+.wf-card > *{position:relative;}
+.wf-icon{font-size:26px;line-height:1;}
+.wf-title{font-family:'Fredoka One',sans-serif;font-size:15px;color:#1a1a2e;line-height:1.2;}
+.wf-desc{font-size:11.5px;font-weight:600;color:#9B8FCC;line-height:1.5;}
+.wf-cta{
+  display:inline-flex;align-items:center;gap:5px;
+  margin-top:6px;font-size:12px;font-weight:800;
+}
+.wf-assign .wf-cta{color:#F97316;}
+.wf-create .wf-cta{color:#7F77DD;}
+.wf-results .wf-cta{color:#16A34A;}
+@media(max-width:900px){.wf-cards{grid-template-columns:1fr;}}
+
+/* ── Editor: inline action bar ── */
+.eval-editor-actions{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;}
+.eval-editor-actions a{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:9px 14px;border-radius:10px;
+  text-decoration:none;font-weight:800;font-size:12.5px;
+  border:1.5px solid #EDE9FA;background:#fff;color:#534AB7;
+}
+.eval-editor-actions .online{background:#7F77DD;color:#fff;border-color:#7F77DD;}
+.eval-editor-actions .print{background:#fff;color:#374151;}
+.eval-editor-actions .blocks{background:#F97316;color:#fff;border-color:#F97316;}
+
+/* ── Config card: collapsible ── */
+.config-collapsible-card .card-head{cursor:pointer;user-select:none;}
+.config-collapsible-card .card-head h3{display:flex;align-items:center;gap:8px;}
+.config-collapsible-card .card-head h3::before{
+  content:'▾';display:inline-flex;align-items:center;justify-content:center;
+  width:20px;height:20px;border-radius:7px;background:#EEEDFE;
+  color:#534AB7;font-size:13px;transition:transform .18s ease;
+}
+.config-collapsible-card.is-collapsed .card-head h3::before{transform:rotate(-90deg);}
+.config-collapsible-card.is-collapsed .card-body{display:none;}
+.config-toggle-btn{
+  margin-left:auto;border:1.5px solid #EDE9FA;background:#fff;
+  color:#534AB7;border-radius:9px;padding:6px 10px;
+  font-size:11px;font-weight:800;cursor:pointer;font-family:'Nunito',sans-serif;
+}
+.config-collapsible-card.is-collapsed .config-toggle-btn .open-lbl{display:inline;}
+.config-collapsible-card.is-collapsed .config-toggle-btn .close-lbl{display:none;}
+.config-collapsible-card:not(.is-collapsed) .config-toggle-btn .open-lbl{display:none;}
+.config-collapsible-card:not(.is-collapsed) .config-toggle-btn .close-lbl{display:inline;}
+
+/* ── Assign type picker ── */
+.atype-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:19px;}
+.atype-btn{
+  display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+  background:#fff;border:2px solid #EDE9FA;border-radius:14px;
+  padding:14px 16px;cursor:pointer;text-align:left;
+  transition:all .15s;font-family:'Nunito',sans-serif;
+}
+.atype-btn .at-icon{font-size:22px;line-height:1;}
+.atype-btn .at-label{font-size:13px;font-weight:800;color:#1a1a2e;}
+.atype-btn .at-desc{font-size:11px;font-weight:600;color:#9B8FCC;line-height:1.4;}
+.atype-btn:hover{border-color:#C4B9E8;background:#F5F3FF;}
+.atype-btn.active-group{border-color:#7F77DD;background:#F5F3FF;}
+.atype-btn.active-group .at-label{color:#534AB7;}
+.atype-btn.active-individual{border-color:#F97316;background:#FFF8F5;}
+.atype-btn.active-individual .at-label{color:#F97316;}
+.atype-btn.active-print{border-color:#374151;background:#F9FAFB;}
+.atype-btn.active-print .at-label{color:#374151;}
+@media(max-width:900px){.atype-row{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -731,9 +814,9 @@ tr:hover td{background:#FAFAFE;}
     <button class="es-item <?= $tab==='list'?'active':'' ?>" onclick="showTab('list')">
       <i class="ti ti-clipboard-list" aria-hidden="true"></i>Todos los exámenes</button>
     <button class="es-item <?= $tab==='editor'?'active':'' ?>" onclick="showTab('editor')">
-      <i class="ti ti-plus" aria-hidden="true"></i>Crear examen</button>
+      <i class="ti ti-pencil-plus" aria-hidden="true"></i>Nuevo examen</button>
     <button class="es-item <?= $tab==='links'?'active':'' ?>" onclick="showTab('links')">
-      <i class="ti ti-link" aria-hidden="true"></i>Links activos</button>
+      <i class="ti ti-send" aria-hidden="true"></i>Asignar / Enviar</button>
     <button class="es-item <?= $tab==='results'?'active':'' ?>" onclick="showTab('results')">
       <i class="ti ti-chart-bar" aria-hidden="true"></i>Resultados</button>
     <button class="es-item <?= $tab==='cefr'?'active':'' ?>" onclick="showTab('cefr')">
@@ -768,6 +851,29 @@ tr:hover td{background:#FAFAFE;}
 
     <!-- TAB: Lista de exámenes -->
     <div id="tab-list" class="tab-panel">
+
+      <!-- Workflow guide cards -->
+      <div class="wf-cards">
+        <button class="wf-card wf-assign" onclick="showTab('links')" type="button">
+          <div class="wf-icon">📋</div>
+          <div class="wf-title">Asignar examen</div>
+          <div class="wf-desc">Genera un link de grupo o individual para que estudiantes presenten un examen sin necesidad de cuenta.</div>
+          <span class="wf-cta">Ir a Asignar / Enviar →</span>
+        </button>
+        <a class="wf-card wf-create" href="quiz_from_scratch.php">
+          <div class="wf-icon">✏️</div>
+          <div class="wf-title">Crear examen desde cero</div>
+          <div class="wf-desc">Construye un examen personalizado con bloques evaluables: Multiple Choice, Fill in Blank, Writing, Dictation y más.</div>
+          <span class="wf-cta">Empezar ahora →</span>
+        </a>
+        <a class="wf-card wf-results" href="eval_results.php">
+          <div class="wf-icon">📊</div>
+          <div class="wf-title">Ver resultados</div>
+          <div class="wf-desc">Analiza el rendimiento de tus estudiantes, descarga CSV y registra notas de exámenes impresos.</div>
+          <span class="wf-cta">Abrir dashboard →</span>
+        </a>
+      </div>
+
       <div class="stats-row">
         <div class="stat-box"><span class="stat-label">Exámenes activos</span><span class="stat-value ora"><?= $statsActiveExams ?></span></div>
         <div class="stat-box"><span class="stat-label">Presentados este mes</span><span class="stat-value ora"><?= $statsThisMonth ?></span></div>
@@ -776,7 +882,7 @@ tr:hover td{background:#FAFAFE;}
       </div>
 
       <div class="card">
-        <div class="card-head"><h3>Exámenes</h3><button class="btn btn-primary" onclick="showTab('editor')">+ Crear examen</button></div>
+        <div class="card-head"><h3>Mis exámenes</h3><a class="btn btn-primary btn-sm" href="quiz_from_scratch.php"><i class="ti ti-plus" aria-hidden="true"></i>Nuevo examen</a></div>
         <div class="filter-row">
           <input type="text" id="search-exam" placeholder="Buscar..." oninput="filterExams()">
           <select id="filter-level" onchange="filterExams()">
@@ -803,14 +909,16 @@ tr:hover td{background:#FAFAFE;}
             <td><?= (int)$ex['q_count'] ?> preguntas / <?= (int)$ex['time_limit_min'] ?> min</td>
             <td><span class="badge badge-<?= h($ex['status']) ?>"><?= h($ex['status']) ?></span></td>
             <td>
-              <a class="btn btn-primary btn-sm" href="?tab=links&exam_id=<?= $ex['id'] ?>">Enviar</a>
-              <a class="btn btn-secondary btn-sm" href="?tab=editor&exam_id=<?= $ex['id'] ?>">Editar</a>
+              <a class="btn btn-primary btn-sm" href="?tab=links&exam_id=<?= $ex['id'] ?>" style="background:#F97316;border-color:#F97316;">📤 Asignar</a>
+              <a class="btn btn-secondary btn-sm" href="quiz_from_scratch.php?mode=edit&exam_id=<?= $ex['id'] ?>">Actividades</a>
+              <a class="btn btn-secondary btn-sm" href="?tab=editor&exam_id=<?= $ex['id'] ?>">Config</a>
+              <a class="btn btn-secondary btn-sm" href="quiz_print.php?exam_id=<?= $ex['id'] ?>&mode=student" target="_blank" title="Versión imprimible">🖨</a>
               <a class="btn btn-secondary btn-sm" href="eval_results.php?exam_id=<?= $ex['id'] ?>">Resultados</a>
               <form method="POST" style="display:inline"
                     onsubmit="return confirm('¿Eliminar el examen «<?= h(addslashes($ex['title'])) ?>» y todos sus links y resultados? Esta acción no se puede deshacer.')">
                 <input type="hidden" name="action"   value="delete_exam">
                 <input type="hidden" name="exam_id"  value="<?= $ex['id'] ?>">
-                <button type="submit" class="btn btn-danger btn-sm">🗑 Eliminar</button>
+                <button type="submit" class="btn btn-danger btn-sm">🗑</button>
               </form>
             </td>
           </tr>
@@ -823,6 +931,16 @@ tr:hover td{background:#FAFAFE;}
     <!-- TAB: Editor de preguntas -->
     <div id="tab-editor" class="tab-panel">
 
+      <?php if ($currentExamId > 0): ?>
+      <!-- Inline action bar for selected exam -->
+      <div class="eval-editor-actions">
+        <a class="online" target="_blank" href="eval_viewer.php?preview=1&exam_id=<?= $currentExamId ?>"><i class="ti ti-eye" aria-hidden="true"></i>Preview online</a>
+        <a class="print" target="_blank" href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=student"><i class="ti ti-printer" aria-hidden="true"></i>Preview impreso</a>
+        <a class="print" target="_blank" href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=key"><i class="ti ti-key" aria-hidden="true"></i>Clave de respuestas</a>
+        <a class="blocks" href="quiz_from_scratch.php?mode=edit&exam_id=<?= $currentExamId ?>"><i class="ti ti-layout-grid" aria-hidden="true"></i>Actividades del examen</a>
+      </div>
+      <?php endif; ?>
+
       <!-- Shortcut to full quiz creator -->
       <?php if (!$currentExam): ?>
       <div style="background:linear-gradient(135deg,#FFF8F5,#FFF0E6);border:1.5px solid #FDDCB5;border-radius:14px;padding:18px 22px;display:flex;align-items:center;gap:16px;margin-bottom:19px;">
@@ -831,16 +949,16 @@ tr:hover td{background:#FAFAFE;}
           <div style="font-family:'Fredoka One',sans-serif;font-size:16px;color:#1a1a2e;margin-bottom:4px">Crear quiz completo desde cero</div>
           <div style="font-size:12px;font-weight:600;color:#9B8FCC;line-height:1.5">Editor completo con los 5 tipos de pregunta: Multiple Choice, Fill in Blank, Reading Comprehension, Writing Practice y Dictation.</div>
         </div>
-        <a href="quiz_creator.php" class="btn btn-primary" style="flex-shrink:0;font-size:13px;padding:10px 18px;">
+        <a href="quiz_from_scratch.php" class="btn btn-primary" style="flex-shrink:0;font-size:13px;padding:10px 18px;">
           <i class="ti ti-external-link" aria-hidden="true"></i>Abrir editor completo
         </a>
       </div>
       <?php endif; ?>
 
-      <div class="card">
+      <div class="card config-collapsible-card<?= $currentExamId ? '' : '' ?>" id="config-card">
         <div class="card-head">
-          <h3><?= $currentExam ? 'Editar examen: ' . h($currentExam['title']) : 'Configuración rápida' ?></h3>
-          <span style="font-size:11px;font-weight:600;color:#9B8FCC;">Datos básicos del examen</span>
+          <h3><?= $currentExam ? 'Configuración — ' . h($currentExam['title']) : 'Configuración rápida' ?></h3>
+          <button type="button" class="config-toggle-btn"><span class="open-lbl">Abrir configuración</span><span class="close-lbl">Cerrar configuración</span></button>
         </div>
         <div class="card-body">
         <form method="POST">
@@ -976,8 +1094,31 @@ tr:hover td{background:#FAFAFE;}
 
     <!-- TAB: Links -->
     <div id="tab-links" class="tab-panel">
+
+      <!-- Type picker -->
+      <div class="atype-row" id="atype-row">
+        <button type="button" class="atype-btn active-group" data-atype="group" onclick="switchAssignType('group')">
+          <span class="at-icon">📋</span>
+          <span class="at-label">Grupo (link compartible)</span>
+          <span class="at-desc">Un solo link para varios estudiantes. Úsalo en clase o compártelo por WhatsApp.</span>
+        </button>
+        <button type="button" class="atype-btn" data-atype="individual" onclick="switchAssignType('individual')">
+          <span class="at-icon">👤</span>
+          <span class="at-label">Individual (link personal)</span>
+          <span class="at-desc">Link pre-relleno con los datos del estudiante. Ideal para exámenes de placement.</span>
+        </button>
+        <button type="button" class="atype-btn" data-atype="print" onclick="switchAssignType('print')">
+          <span class="at-icon">🖨️</span>
+          <span class="at-label">Imprimir examen</span>
+          <span class="at-desc">Genera la versión imprimible del examen y la clave de respuestas en PDF.</span>
+        </button>
+      </div>
+
+      <!-- Form: Grupo -->
+      <div id="assign-form-group">
       <div class="card">
-        <h3>Link de grupo</h3>
+        <div class="card-head"><h3>📋 Link de grupo</h3><span style="font-size:11px;font-weight:600;color:#9B8FCC;">Un link para toda la clase</span></div>
+        <div class="card-body">
         <form method="POST">
           <input type="hidden" name="action" value="generate_group_link">
           <div class="form-row">
@@ -1013,10 +1154,15 @@ tr:hover td{background:#FAFAFE;}
           </div>
           <button type="submit" class="btn btn-primary">Generar link de grupo</button>
         </form>
+        </div>
+      </div>
       </div>
 
+      <!-- Form: Individual -->
+      <div id="assign-form-individual" style="display:none;">
       <div class="card">
-        <h3>Link individual</h3>
+        <div class="card-head"><h3>👤 Link individual</h3><span style="font-size:11px;font-weight:600;color:#9B8FCC;">Pre-rellena los datos del estudiante</span></div>
+        <div class="card-body">
         <form method="POST">
           <input type="hidden" name="action" value="generate_individual_link">
           <div class="form-row">
@@ -1054,8 +1200,33 @@ tr:hover td{background:#FAFAFE;}
           </div>
           <button type="submit" class="btn btn-primary">Generar link individual</button>
         </form>
+        </div>
+      </div>
       </div>
 
+      <!-- Form: Imprimir -->
+      <div id="assign-form-print" style="display:none;">
+      <?php if ($currentExamId > 0): ?>
+      <div class="card">
+        <div class="card-head"><h3>🖨️ Versión imprimible</h3><span style="font-size:11px;font-weight:600;color:#9B8FCC;"><?= h($currentExam['title'] ?? '') ?></span></div>
+        <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
+          <a class="btn" href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=student" target="_blank" style="background:#F97316;color:#fff;border-color:#F97316;font-size:14px;padding:12px 20px;">
+            <i class="ti ti-printer" aria-hidden="true"></i>Imprimir examen (estudiante)
+          </a>
+          <a class="btn btn-purple" href="quiz_print.php?exam_id=<?= $currentExamId ?>&mode=key" target="_blank" style="font-size:14px;padding:12px 20px;">
+            <i class="ti ti-key" aria-hidden="true"></i>Imprimir clave de respuestas
+          </a>
+        </div>
+      </div>
+      <?php else: ?>
+      <div class="card">
+        <div class="card-body" style="text-align:center;padding:32px;color:#9B8FCC;font-weight:600;">
+          Selecciona un examen desde "Mis exámenes" para ver las opciones de impresión.
+          <div style="margin-top:14px;"><button class="btn btn-secondary" onclick="showTab('list')">Ver exámenes</button></div>
+        </div>
+      </div>
+      <?php endif; ?>
+      </div>
       <?php if (!empty($examLinks)): ?>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;">
@@ -1150,7 +1321,8 @@ tr:hover td{background:#FAFAFE;}
         <div class="card-head">
           <h3>Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="openPrintedModal()">+ Nota impresa</button>
+            <a class="btn btn-secondary btn-sm" href="eval_results.php<?= $currentExamId ? '?exam_id='.$currentExamId : '' ?>"><i class="ti ti-chart-bar" aria-hidden="true"></i>Dashboard completo</a>
+            <button class="btn btn-primary btn-sm" onclick="openPrintedModal()">+ Nota impresa</button>
           </div>
         </div>
         <?php if (!$currentExamId): ?>
@@ -1455,6 +1627,7 @@ tr:hover td{background:#FAFAFE;}
 
 <script>
 const INITIAL_TAB = <?= json_encode($tab) ?>;
+const INITIAL_ATYPE = <?= json_encode($_GET['atype'] ?? 'group') ?>;
 
 function showTab(name) {
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -1464,6 +1637,41 @@ function showTab(name) {
   const active = document.querySelector('.es-item[onclick*="\'' + name + '\'"]');
   if (active) active.classList.add('active');
 }
+
+/* ── Assign type picker ── */
+function switchAssignType(type) {
+  ['group','individual','print'].forEach(function(t) {
+    var form = document.getElementById('assign-form-' + t);
+    var btn  = document.querySelector('[data-atype="' + t + '"]');
+    if (form) form.style.display = (t === type) ? '' : 'none';
+    if (btn) {
+      btn.className = 'atype-btn' + (t === type ? ' active-' + t : '');
+    }
+  });
+}
+
+/* ── Config card collapsible ── */
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    var card = document.getElementById('config-card');
+    if (!card) return;
+    var storageKey = 'ones_eval_config_collapsed';
+    var saved = localStorage.getItem(storageKey);
+    // Collapse by default if exam is selected (show actions instead), open if creating new
+    var shouldCollapse = (saved === null) ? <?= $currentExamId > 0 ? 'true' : 'false' ?> : (saved === '1');
+    if (shouldCollapse) card.classList.add('is-collapsed');
+
+    var head = card.querySelector('.card-head');
+    if (head) {
+      head.addEventListener('click', function(e) {
+        if (e.target && (e.target.closest('input') || e.target.closest('select') ||
+            e.target.closest('textarea') || e.target.closest('a'))) return;
+        card.classList.toggle('is-collapsed');
+        localStorage.setItem(storageKey, card.classList.contains('is-collapsed') ? '1' : '0');
+      });
+    }
+  });
+})();
 
 function filterExams() {
   const search = document.getElementById('search-exam').value.toLowerCase();
@@ -1756,8 +1964,10 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
   bg.addEventListener('click', e => { if (e.target === bg) bg.classList.remove('open'); });
 });
 
-// Iniciar en el tab correcto
+// Iniciar en el tab y tipo correctos
 showTab(INITIAL_TAB);
+if (INITIAL_TAB === 'links') switchAssignType(INITIAL_ATYPE);
+else switchAssignType('group');
 </script>
 </body>
 </html>
