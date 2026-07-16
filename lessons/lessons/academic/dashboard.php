@@ -1351,47 +1351,6 @@ body{ margin:0; font-family:'Nunito','Segoe UI',sans-serif; background:var(--bg)
                 <div class="empty">No tienes cursos asignados todavía.</div>
             <?php } ?>
 
-            <!-- ─── Placement Tests Card ──────────────────────────────── -->
-            <div class="card" style="margin-top:28px;">
-                <h3 class="activity-title" style="display:flex;align-items:center;gap:10px;">
-                    📋 Placement Tests
-                    <span style="font-size:12px;font-weight:700;background:#EDE9FA;color:#7F77DD;padding:4px 12px;border-radius:999px;letter-spacing:.04em;">ONES</span>
-                </h3>
-                <p class="section-note">
-                    Accede rápidamente a los exámenes de ubicación por nivel para gestionar enlaces y ver resultados.
-                </p>
-                <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-                    <a class="btn btn-green"
-                       href="../activities/placement/index.php?level=A2"
-                       style="background:linear-gradient(135deg,#22c55e,#16a34a);">
-                        🟢 A2 →
-                    </a>
-                    <a class="btn btn-blue"
-                       href="../activities/placement/index.php?level=B1">
-                        🔵 B1 →
-                    </a>
-                    <a class="btn"
-                       href="../activities/placement/index.php?level=B2"
-                       style="background:linear-gradient(135deg,#7F77DD,#5a52c5);color:#fff;box-shadow:0 4px 14px rgba(127,119,221,.25);">
-                        🟣 B2 →
-                    </a>
-                </div>
-                <div class="secondary-actions">
-                    <a href="../activities/placement/index.php"
-                       style="font-size:13px;font-weight:700;color:#7F77DD;text-decoration:none;padding:8px 14px;border-radius:10px;border:1.5px solid #EDE9FA;transition:all .2s;"
-                       onmouseover="this.style.background='#EDE9FA'"
-                       onmouseout="this.style.background=''">
-                        📊 Ver todos los resultados
-                    </a>
-                    <a href="../activities/placement/print.php?level=A2" target="_blank"
-                       style="font-size:13px;font-weight:700;color:#7c7aa0;text-decoration:none;padding:8px 14px;border-radius:10px;border:1.5px solid #EDE9FA;transition:all .2s;"
-                       onmouseover="this.style.background='#EDE9FA'"
-                       onmouseout="this.style.background=''">
-                        🖨️ Imprimir A2
-                    </a>
-                </div>
-            </div>
-
         </main>
     </div>
 </div>
