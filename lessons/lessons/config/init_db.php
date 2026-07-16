@@ -453,6 +453,13 @@ try {
     ");
 
     /* ===============================
+       PLACEMENT TEST MIGRATIONS
+       Idempotent — safe to run on every request.
+       =============================== */
+    $pdo->exec("ALTER TABLE eval_exams ADD COLUMN IF NOT EXISTS is_placement BOOLEAN DEFAULT FALSE");
+    $pdo->exec("ALTER TABLE eval_links ADD COLUMN IF NOT EXISTS student_program TEXT");
+
+    /* ===============================
        QUIZ_SHARE_LINKS
        Enlaces únicos para compartir un quiz existente (por unidad)
        =============================== */
