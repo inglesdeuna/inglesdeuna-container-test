@@ -379,9 +379,30 @@ body {
     justify-content: flex-start;
     cursor: grab;
     user-select: none;
+    touch-action: none;
     position: relative;
     transition: transform .15s cubic-bezier(.34,1.4,.64,1), border-color .15s, box-shadow .15s, background .15s;
     box-shadow: 0 4px 14px rgba(127,119,221,.13);
+    box-sizing: border-box;
+}
+
+/* Floating clone that follows the finger/pointer during a drag */
+.os-drag-clone {
+    position: fixed;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: .88;
+    transform: scale(1.04) rotate(-1.5deg);
+    box-shadow: 0 10px 30px rgba(127,119,221,.32);
+    transition: none !important;
+    border-radius: 18px;
+    background: #ffffff;
+    border: 2px solid #7F77DD;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    padding: 13px 46px 13px 18px;
+    font-family: 'Nunito', sans-serif;
     box-sizing: border-box;
 }
 
@@ -714,6 +735,82 @@ body {
         width: 100%;
     }
 }
+
+/* ── Draggable media panel ──────────────────────────────────────── */
+.os-media-grab {
+    width: 100%;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+    border-radius: 28px 28px 0 0;
+    flex-shrink: 0;
+}
+
+.os-media-grab:active {
+    cursor: grabbing;
+}
+
+.os-media-grab-bar {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 999px;
+    background: #C8C3EF;
+    pointer-events: none;
+}
+
+/* Returned-to-inline button (shown when panel is floating) */
+.os-media-pin-btn {
+    display: none;
+    position: absolute;
+    top: 4px;
+    right: 8px;
+    z-index: 2;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #7F77DD;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-family: 'Nunito', sans-serif;
+}
+
+/* Floating state — panel breaks out of grid and floats freely */
+.os-media-col.os-media-floating {
+    position: fixed !important;
+    z-index: 8888;
+    background: #ffffff;
+    border: 1px solid #EDE9FA;
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(127,119,221,.28);
+    padding: 0;
+    overflow: hidden;
+    width: 280px !important;
+    min-width: 200px;
+    max-width: 90vw;
+}
+
+.os-media-col.os-media-floating .os-media-pin-btn {
+    display: flex;
+}
+
+.os-media-col.os-media-floating .os-media-area,
+.os-media-col.os-media-floating .os-tts-area {
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 0;
+    border: none;
+    box-shadow: none;
+}
 </style>
 
 <div class="os-page">
@@ -734,6 +831,8 @@ body {
             <div class="os-board-inner" id="os-board-inner" data-az-zoom>
 
                 <div class="os-media-col" id="os-media-wrap">
+                    <div class="os-media-grab" id="os-media-grab"><span class="os-media-grab-bar"></span></div>
+                    <button type="button" class="os-media-pin-btn" id="os-media-pin" title="Return to position">✕</button>
                     <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>
                         <?php
                             $osVideoUrl   = (string)($activity['media_url'] ?? '');
@@ -781,7 +880,6 @@ body {
                     <ul class="os-list" id="os-list">
                         <?php foreach ($shuffled as $index => $s): ?>
                             <li class="os-chip"
-                                draggable="true"
                                 data-id="<?= htmlspecialchars($s['id'], ENT_QUOTES, 'UTF-8') ?>">
                                 <span class="os-chip-label"><?= htmlspecialchars($s['text'], ENT_QUOTES, 'UTF-8') ?></span>
                                 <span class="os-chip-badge"><?= (int)($index + 1) ?></span>
@@ -863,9 +961,9 @@ var attempts     = 0;
 var done         = false;
 var positionScores = Array(OS_TOTAL).fill(null);
 var scoreVisible = false;
-var dragged      = null;
+var dragClone    = null;
+var dragChip     = null;
 var touchSel     = null;
-var isTouchDev   = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 
 function playSound(el) {
     try { el.pause(); el.currentTime = 0; el.play(); } catch(e) {}
@@ -1076,88 +1174,110 @@ nextBtn.addEventListener('click', function() {
     showCompleted();
 });
 
-function attachChip(chip) {
-    chip.addEventListener('dragstart', function(e) {
-        if (done) {
-            e.preventDefault();
-            return;
-        }
-
-        dragged = chip;
-        e.dataTransfer.effectAllowed = 'move';
-        setTimeout(function(){ chip.classList.add('os-dragging'); }, 0);
-    });
-
-    chip.addEventListener('dragend', function() {
-        chip.classList.remove('os-dragging');
-        dragged = null;
-
+function handleTap(chip) {
+    if (done) return;
+    if (touchSel && touchSel !== chip) {
+        var r1 = touchSel.getBoundingClientRect();
+        var r2 = chip.getBoundingClientRect();
+        listEl.insertBefore(touchSel, r1.top < r2.top ? chip.nextSibling : chip);
+        touchSel.classList.remove('os-selected');
+        touchSel = null;
         if (!done) clearFeedbackColors();
         updateBadges();
-    });
+        return;
+    }
+    if (touchSel === chip) {
+        chip.classList.remove('os-selected');
+        touchSel = null;
+        return;
+    }
+    if (touchSel) touchSel.classList.remove('os-selected');
+    touchSel = chip;
+    chip.classList.add('os-selected');
+}
 
-    chip.addEventListener('dragover', function(e) {
-        e.preventDefault();
+function attachChip(chip) {
+    var startX = 0, startY = 0;
+    var isDragging = false;
+    var captureId = -1;
 
-        if (!dragged || dragged === chip || done) return;
-
-        var r      = chip.getBoundingClientRect();
-        var before = e.clientY < r.top + r.height / 2;
-
-        listEl.insertBefore(dragged, before ? chip : chip.nextSibling);
-        updateBadges();
-    });
-
-    chip.addEventListener('click', function() {
+    chip.addEventListener('pointerdown', function(e) {
         if (done) return;
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        startX = e.clientX;
+        startY = e.clientY;
+        isDragging = false;
+        captureId = e.pointerId;
+        chip.setPointerCapture(e.pointerId);
+    }, { passive: true });
 
-        if (isTouchDev) {
-            if (touchSel && touchSel !== chip) {
-                var r1 = touchSel.getBoundingClientRect();
-                var r2 = chip.getBoundingClientRect();
-                if (r1.top < r2.top) {
-                    listEl.insertBefore(touchSel, chip.nextSibling);
-                } else {
-                    listEl.insertBefore(touchSel, chip);
-                }
-                touchSel.classList.remove('os-selected');
-                touchSel = null;
-                if (!done) clearFeedbackColors();
-                updateBadges();
-                return;
-            }
+    chip.addEventListener('pointermove', function(e) {
+        if (e.pointerId !== captureId || done) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
 
-            if (touchSel === chip) {
-                chip.classList.remove('os-selected');
-                touchSel = null;
-                return;
-            }
+        if (!isDragging && Math.sqrt(dx * dx + dy * dy) > 8) {
+            isDragging = true;
+            dragChip = chip;
+            chip.classList.add('os-dragging');
 
-            if (touchSel) touchSel.classList.remove('os-selected');
-            touchSel = chip;
-            chip.classList.add('os-selected');
+            if (touchSel) { touchSel.classList.remove('os-selected'); touchSel = null; }
+
+            var rect = chip.getBoundingClientRect();
+            dragClone = document.createElement('li');
+            dragClone.className = 'os-chip os-drag-clone';
+            dragClone.innerHTML = chip.innerHTML;
+            dragClone.style.width  = rect.width  + 'px';
+            dragClone.style.height = rect.height + 'px';
+            dragClone.style.left   = (e.clientX - rect.width  / 2) + 'px';
+            dragClone.style.top    = (e.clientY - rect.height / 2) + 'px';
+            document.body.appendChild(dragClone);
         }
+
+        if (isDragging && dragClone) {
+            dragClone.style.left = (e.clientX - dragClone.offsetWidth  / 2) + 'px';
+            dragClone.style.top  = (e.clientY - dragClone.offsetHeight / 2) + 'px';
+
+            var afterEl = getDragAfterElement(listEl, e.clientY);
+            if (afterEl == null) {
+                listEl.appendChild(chip);
+            } else if (afterEl !== chip) {
+                listEl.insertBefore(chip, afterEl);
+            }
+            updateBadges();
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    chip.addEventListener('pointerup', function(e) {
+        if (e.pointerId !== captureId) return;
+        captureId = -1;
+
+        if (isDragging) {
+            if (dragClone) { dragClone.remove(); dragClone = null; }
+            chip.classList.remove('os-dragging');
+            dragChip = null;
+            isDragging = false;
+            if (!done) clearFeedbackColors();
+            updateBadges();
+        } else {
+            isDragging = false;
+            handleTap(chip);
+        }
+    });
+
+    chip.addEventListener('pointercancel', function(e) {
+        if (e.pointerId !== captureId) return;
+        captureId = -1;
+        if (dragClone) { dragClone.remove(); dragClone = null; }
+        chip.classList.remove('os-dragging');
+        dragChip = null;
+        isDragging = false;
     });
 }
 
-listEl.addEventListener('dragover', function(e) {
-    e.preventDefault();
-
-    if (!dragged || done) return;
-
-    var afterElement = getDragAfterElement(listEl, e.clientY);
-    if (afterElement == null) {
-        listEl.appendChild(dragged);
-    } else {
-        listEl.insertBefore(dragged, afterElement);
-    }
-
-    updateBadges();
-});
-
-listEl.addEventListener('drop', function(e) {
-    e.preventDefault();
-    updateBadges();
+sentenceCards().forEach(function(chip) {
+    attachChip(chip);
 });
 
 function getDragAfterElement(container, y) {
@@ -1174,10 +1294,6 @@ function getDragAfterElement(container, y) {
         return closest;
     }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
 }
-
-sentenceCards().forEach(function(chip) {
-    attachChip(chip);
-});
 
 window.osRestart = function() {
     attempts     = 0;
@@ -1315,6 +1431,94 @@ if (ttsBtn) {
     });
 }
 
+})();
+</script>
+
+<?php
+/* ── Media-panel drag IIFE runs after the main IIFE ── */
+?>
+<script>
+(function () {
+    var grabEl   = document.getElementById('os-media-grab');
+    var mediaCol = document.getElementById('os-media-wrap');
+    var pinBtn   = document.getElementById('os-media-pin');
+
+    if (!grabEl || !mediaCol) return;
+
+    var floating    = false;
+    var captureId   = -1;
+    var startX      = 0, startY      = 0;
+    var panelStartX = 0, panelStartY = 0;
+
+    function makeFloat(cx, cy) {
+        if (floating) return;
+        floating = true;
+        var rect = mediaCol.getBoundingClientRect();
+        var w    = Math.min(rect.width, 300);
+        mediaCol.classList.add('os-media-floating');
+        mediaCol.style.left  = rect.left + 'px';
+        mediaCol.style.top   = rect.top  + 'px';
+        mediaCol.style.width = w + 'px';
+        panelStartX = rect.left;
+        panelStartY = rect.top;
+    }
+
+    grabEl.style.touchAction = 'none';
+
+    grabEl.addEventListener('pointerdown', function(e) {
+        if (e.button !== 0 && e.pointerType === 'mouse') return;
+        startX = e.clientX;
+        startY = e.clientY;
+        captureId = e.pointerId;
+        grabEl.setPointerCapture(e.pointerId);
+        if (floating) {
+            panelStartX = parseInt(mediaCol.style.left || '0', 10);
+            panelStartY = parseInt(mediaCol.style.top  || '0', 10);
+        }
+        e.preventDefault();
+    }, { passive: false });
+
+    grabEl.addEventListener('pointermove', function(e) {
+        if (e.pointerId !== captureId) return;
+        var dx = e.clientX - startX;
+        var dy = e.clientY - startY;
+
+        if (!floating && Math.sqrt(dx * dx + dy * dy) > 10) {
+            makeFloat(e.clientX, e.clientY);
+        }
+
+        if (floating) {
+            var nx = panelStartX + dx;
+            var ny = panelStartY + dy;
+            // Clamp so the panel stays within viewport
+            var pw = mediaCol.offsetWidth;
+            var ph = mediaCol.offsetHeight;
+            nx = Math.max(0, Math.min(window.innerWidth  - pw, nx));
+            ny = Math.max(0, Math.min(window.innerHeight - ph, ny));
+            mediaCol.style.left = nx + 'px';
+            mediaCol.style.top  = ny + 'px';
+            e.preventDefault();
+        }
+    }, { passive: false });
+
+    grabEl.addEventListener('pointerup', function(e) {
+        if (e.pointerId !== captureId) return;
+        captureId = -1;
+    });
+
+    grabEl.addEventListener('pointercancel', function(e) {
+        captureId = -1;
+    });
+
+    if (pinBtn) {
+        pinBtn.addEventListener('click', function() {
+            floating = false;
+            mediaCol.classList.remove('os-media-floating');
+            mediaCol.style.left  = '';
+            mediaCol.style.top   = '';
+            mediaCol.style.width = '';
+        });
+    }
 })();
 </script>
 
