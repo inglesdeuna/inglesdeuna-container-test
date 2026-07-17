@@ -305,7 +305,7 @@ body {
 .os-media-area video {
     width: 100%;
     height: auto;
-    max-height: 420px;
+    max-height: clamp(200px, 45vh, 560px);
     object-fit: contain;
     display: block;
     background: #000000;
@@ -314,7 +314,7 @@ body {
 .os-media-area iframe {
     width: 100%;
     aspect-ratio: 16 / 9;
-    max-height: 420px;
+    max-height: clamp(200px, 45vh, 560px);
     border: none;
     display: block;
     background: #000000;
@@ -679,11 +679,11 @@ body {
     }
 
     .os-media-area video {
-        max-height: 200px;
+        max-height: 35vh;
     }
 
     .os-media-area iframe {
-        max-height: 200px;
+        max-height: 35vh;
     }
 
     .os-chip {
@@ -713,6 +713,35 @@ body {
     .os-restart-btn {
         width: 100%;
     }
+}
+
+/* ── Projection / embedded / fullscreen modes ─────────────── */
+body.embedded-mode .os-topbar,
+body.fullscreen-embedded .os-topbar,
+body.presentation-mode .os-topbar,
+body.embedded-mode .os-hero,
+body.fullscreen-embedded .os-hero,
+body.presentation-mode .os-hero { display: none !important; }
+
+body.embedded-mode .os-board,
+body.fullscreen-embedded .os-board,
+body.presentation-mode .os-board {
+    width: 100% !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 12px 8px !important;
+    margin: 0 !important;
+}
+
+body.embedded-mode .os-media-area iframe,
+body.fullscreen-embedded .os-media-area iframe,
+body.presentation-mode .os-media-area iframe,
+body.embedded-mode .os-media-area video,
+body.fullscreen-embedded .os-media-area video,
+body.presentation-mode .os-media-area video {
+    max-height: min(50vh, 540px) !important;
 }
 </style>
 
