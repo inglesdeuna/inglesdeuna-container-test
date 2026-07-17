@@ -264,7 +264,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
         </div>
 
-        <div id="fc-activity">
+        <div id="fc-activity" data-az-zoom>
             <div class="fc-progress">
                 <span class="fc-progress-label" id="fc-progress-label"></span>
                 <div class="fc-track">

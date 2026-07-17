@@ -98,7 +98,7 @@ if (empty($normalizedItems)) {
 <meta charset="UTF-8">
 <title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<link rel="stylesheet" href="../../core/activity_zoom.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
 
@@ -573,7 +573,7 @@ a.back{background:var(--hg-purple);box-shadow:0 6px 18px rgba(127,119,221,.18);j
     </header>
 
     <section class="game-box">
-      <div class="game-layout" id="gameLayout">
+      <div class="game-layout" id="gameLayout" data-az-zoom>
         <div class="left-panel">
           <div class="hg-visual-card">
             <div class="hg-status-row">
@@ -1050,5 +1050,6 @@ function buildKeyboard(){
 
 loadWord();
 </script>
+<script src="../../core/activity_zoom.js"></script>
 </body>
 </html>

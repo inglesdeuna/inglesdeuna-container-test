@@ -707,7 +707,7 @@ body {
             <p>Drag the words into the correct blanks.</p>
         </div>
 
-        <div id="dd-activity">
+        <div id="dd-activity" data-az-zoom>
             <div class="dd-progress">
                 <span class="dd-progress-label" id="dd-progress-label"></span>
                 <div class="dd-track"><div class="dd-fill" id="dd-progress-fill"></div></div>

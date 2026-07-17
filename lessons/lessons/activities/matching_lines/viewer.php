@@ -309,7 +309,7 @@ ob_start();
         <?php if (empty($boards)) { ?>
             <div class="mlv-empty">No matching lines data available.</div>
         <?php } else { ?>
-            <div id="mlvPlayArea">
+            <div id="mlvPlayArea" data-az-zoom>
                 <div class="mlv-board-meta">
                     <div class="mlv-board-title" id="mlvBoardTitle"></div>
                     <div class="mlv-progress" id="mlvProgress"></div>

@@ -515,7 +515,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #F8F7FE; font-famil
             <h1 class="qa-premium-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <p class="qa-premium-subtitle">Read and reveal each answer.</p>
         </div>
-        <section class="qa-premium-board" id="qa-premium-board">
+        <section class="qa-premium-board" id="qa-premium-board" data-az-zoom>
             <div class="qa-premium-progress-row">
                 <div class="qa-premium-progress-track">
                     <div class="qa-premium-progress-fill" id="qa-premium-progress-fill"></div>

@@ -239,7 +239,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <div class="usk-badge" id="uskBadge">Word 1</div>
     </div>
 
-    <div class="usk-stage" id="uskStage">
+    <div class="usk-stage" id="uskStage" data-az-zoom>
 
         <div class="usk-card-inner" id="uskCardInner">
             <div class="usk-img-box" id="uskImgBox"></div>

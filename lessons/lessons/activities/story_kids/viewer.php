@@ -427,7 +427,7 @@ body.fullscreen-embedded .viewer-content {
 }
 </style>
 
-<div class="stk-viewer">
+<div class="stk-viewer" data-az-zoom>
 
     <!-- Cover -->
     <div class="stk-cover" id="stkCover">

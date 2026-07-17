@@ -731,7 +731,7 @@ body {
 
         <div class="os-board">
 
-            <div class="os-board-inner" id="os-board-inner">
+            <div class="os-board-inner" id="os-board-inner" data-az-zoom>
 
                 <div class="os-media-col" id="os-media-wrap">
                     <?php if (($activity['media_type'] ?? '') === 'video' && !empty($activity['media_url'])): ?>

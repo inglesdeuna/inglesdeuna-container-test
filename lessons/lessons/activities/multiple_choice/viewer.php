@@ -728,7 +728,7 @@ body {
         </div>
 
         <div class="mc-stage-shell">
-            <div class="mc-viewer" id="mc-container">
+            <div class="mc-viewer" id="mc-container" data-az-zoom>
                 <div class="mc-progress-row">
                     <div class="mc-progress-label" id="mc-progress-label"></div>
                     <div class="mc-progress-track"><div class="mc-progress-fill" id="mc-progress-fill"></div></div>

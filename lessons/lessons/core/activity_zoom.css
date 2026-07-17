@@ -1,0 +1,58 @@
+/* ── Universal Activity Zoom ─────────────────────────────────────────────
+   Shared styles for the pinch / button zoom applied to all activity viewers.
+   The zoom bar sits above the zoom target; the zoom target wraps the card
+   content AND the navigation buttons (Next / Hint / Finish / etc.).
+   ──────────────────────────────────────────────────────────────────────── */
+
+.az-zoom-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+    padding: 0 4px;
+}
+
+.az-zoom-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #7F77DD;
+    background: #fff;
+    color: #7F77DD;
+    font-size: 18px;
+    font-weight: 900;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background .12s, color .12s;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.az-zoom-btn:hover { background: #7F77DD; color: #fff; }
+
+.az-zoom-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #9B94BE;
+    min-width: 36px;
+    text-align: center;
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+}
+
+.az-zoom-target {
+    transform-origin: top center;
+    transition: transform .15s ease;
+    /* so scaled-up content can overflow without clipping */
+    overflow: visible;
+}
+
+/* Presentation / fullscreen mode — hide zoom bar to keep UI clean */
+body.presentation-mode .az-zoom-bar,
+body.fullscreen-embedded .az-zoom-bar {
+    display: none;
+}
