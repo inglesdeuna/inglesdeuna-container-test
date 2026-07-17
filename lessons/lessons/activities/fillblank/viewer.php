@@ -682,7 +682,7 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 
         <div class="fb-stage-shell">
 
-        <div id="fb-activity">
+        <div id="fb-activity" data-az-zoom>
             <div class="fb-progress">
                 <span class="fb-progress-label" id="fb-progress-label">1 / <?php echo count($jsQuestions); ?></span>
                 <div class="fb-track">

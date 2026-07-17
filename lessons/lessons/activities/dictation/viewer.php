@@ -887,7 +887,7 @@ body {
             <p>Listen carefully and write what you hear.</p>
         </div>
 
-        <div class="dict-board" id="dict-viewer">
+        <div class="dict-board" id="dict-viewer" data-az-zoom>
 
             <div class="dict-progress" id="dict-progress">
                 <div class="dict-progress-track">

@@ -962,7 +962,7 @@ body{
 
         <section class="cw-stage">
 
-            <div class="cw-game" id="cw-game">
+            <div class="cw-game" id="cw-game" data-az-zoom>
 
                 <div class="cw-layout">
 

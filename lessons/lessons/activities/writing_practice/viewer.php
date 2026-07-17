@@ -451,7 +451,7 @@ body.presentation-mode .wp-actions{
         <p class="wp-subtitle">Read the text and write your translation in English.</p>
     </div>
 
-    <div class="wp-board" id="wp-board">
+    <div class="wp-board" id="wp-board" data-az-zoom>
 
         <div class="wp-progress-row">
             <div class="wp-progress-track">

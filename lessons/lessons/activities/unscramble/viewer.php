@@ -249,7 +249,7 @@ body.fullscreen-embedded .us2-card{max-height:calc(100vh - 130px);overflow:auto;
             <p class="us2-subtitle">Unscramble the words to form the correct sentence.</p>
         </div>
 
-        <div class="us2-card" id="us2Card">
+        <div class="us2-card" id="us2Card" data-az-zoom>
             <div id="us2PlayArea">
                 <div class="us2-listen-row">
                     <button id="us2Listen" class="us2-btn us2-purple" type="button">Listen</button>

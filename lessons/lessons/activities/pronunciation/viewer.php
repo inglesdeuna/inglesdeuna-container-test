@@ -251,7 +251,7 @@ body.presentation-mode .pron-shell{position:absolute!important;inset:0!important
 
 <div class="pron-shell">
     <div class="pron-app">
-        <section class="pron-board" id="pron-board">
+        <section class="pron-board" id="pron-board" data-az-zoom>
             <div class="pron-header">
                 <div class="pron-kicker">Activity <span id="pron-kicker-count">1 / <?php echo count($items); ?></span></div>
                 <h1 class="pron-title"><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>

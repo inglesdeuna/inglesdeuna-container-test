@@ -463,16 +463,17 @@ body.fullscreen-embedded .ddk-zoom-btn {
 
         <div class="ddk-bank" id="ddkBank"></div>
 
+        <div class="ddk-controls" id="ddkControls">
+            <button class="ddk-btn ddk-btn-show" type="button" onclick="showAnswers()">Show Answer</button>
+        </div>
+
+        <div id="ddkFeedback"></div>
+
+        <div id="ddkCompleted" class="ddk-completed"></div>
+
     </div>
 
-    <div class="ddk-controls" id="ddkControls">
-        <button class="ddk-btn ddk-btn-show" type="button" onclick="showAnswers()">Show Answer</button>
-    </div>
-
-    <div id="ddkFeedback"></div>
-
-    <div id="ddkCompleted" class="ddk-completed"></div>
-</div>
+</div><!-- /.ddk-stage -->
 
 <audio id="winSnd"  src="../../hangman/assets/win.mp3"       preload="auto"></audio>
 <audio id="loseSnd" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>

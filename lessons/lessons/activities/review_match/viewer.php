@@ -286,7 +286,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <?php endif; ?>
     </div>
 
-    <div class="rm-stage" id="rm-stage">
+    <div class="rm-stage" id="rm-stage" data-az-zoom>
         <div class="rm-layout" id="rm-layout">
 
             <!-- LEFT: category cards -->

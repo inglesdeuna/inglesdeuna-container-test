@@ -151,7 +151,7 @@ ob_start();
 <div id="m-ghost"></div>
 <div class="m-page" id="m-page"><div class="m-app" id="m-app">
 <header class="m-hero"><div class="m-kicker">Match Activity</div><h1 class="m-title"><?= htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8') ?></h1><p class="m-subtitle">Drag each answer to its matching prompt.</p></header>
-<main class="m-board" id="m-board">
+<main class="m-board" id="m-board" data-az-zoom>
 <div class="m-progress-row"><div class="m-progress-track"><div class="m-progress-fill" id="m-fill"></div></div><div class="m-badge" id="m-badge">0 / <?= count($pairs) ?></div></div>
 <div class="m-hint-wrap"><div class="m-hint" id="m-hint">Drag or tap an answer, then drop it on the matching prompt</div></div>
 <div class="m-match-layout"><div class="m-pairs-wrap"><div class="m-column-label left">Drop Targets</div><div class="m-pairs" id="m-pairs"></div></div><div class="m-pool-wrap"><div class="m-column-label right">Answer Bank (Drag or tap)</div><div class="m-pool" id="m-pool"></div></div></div>

@@ -674,7 +674,7 @@ body{
         <div class="mc-empty">No pairs configured yet for this activity.</div>
       </div>
 <?php else: ?>
-      <section class="mc-shell mc-activity" id="mc-activity">
+      <section class="mc-shell mc-activity" id="mc-activity" data-az-zoom>
         <div class="mc-stats">
           <div class="mc-pill">Pairs: <span id="mc-total"><?= (int) $totalPairs ?></span></div>
           <div class="mc-pill">Matched: <span id="mc-matched">0</span></div>

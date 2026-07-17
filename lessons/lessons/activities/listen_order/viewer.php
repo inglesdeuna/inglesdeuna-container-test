@@ -169,7 +169,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
         <p class="lo-subtitle"><?= $viewerInstr!=='' ? htmlspecialchars($viewerInstr,ENT_QUOTES,'UTF-8') : 'Listen and tap the images in the correct order.' ?></p>
     </div>
 
-    <div class="lo-board" id="lo-board">
+    <div class="lo-board" id="lo-board" data-az-zoom>
         <div class="lo-board-inner">
             <div class="lo-media-col">
                 <!-- media area: only one is shown at a time, switched by JS based on block data -->
