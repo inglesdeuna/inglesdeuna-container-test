@@ -142,13 +142,16 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     border-radius: 16px;
     touch-action: none; /* allow pointer events for pinch/drag */
 }
-/* Inner canvas: transform origin top-center for zoom */
+/* Zoom target: wraps canvas + word bank so both scale together */
+.ddk-zoom-target {
+    transform-origin: top center;
+    transition: transform .15s ease;
+}
+/* Inner canvas */
 .ddk-canvas {
     position: relative;
     display: inline-block;
     max-width: 100%;
-    transform-origin: top center;
-    transition: transform .15s ease;
 }
 .ddk-bg {
     display: block;
@@ -430,33 +433,37 @@ body.fullscreen-embedded .ddk-zoom-btn {
 
 <div class="ddk-stage" id="ddkStage">
 
-    <div class="ddk-canvas-wrap" id="ddkCanvasWrap">
-        <div class="ddk-canvas" id="ddkCanvas">
-            <img id="ddkBg" class="ddk-bg"
-                 src="<?= htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8') ?>"
-                 alt="Activity image">
-            <?php foreach ($pairs as $p): ?>
-            <div class="ddk-zone"
-                 id="zone-<?= (int)$p['id'] ?>"
-                 data-id="<?= (int)$p['id'] ?>"
-                 style="left:<?= round((float)$p['x'], 4) ?>%;top:<?= round((float)$p['y'], 4) ?>%;width:<?= round((float)$p['w'], 4) ?>%;height:<?= round((float)$p['h'], 4) ?>%"
-            ></div>
-            <?php endforeach; ?>
-        </div>
-    </div>
-
     <div class="ddk-hint-bar">
         <span id="ddkTouchHint" class="ddk-touch-hint hidden">
             👆 Drag words onto the image — or tap a word, then tap a spot.
         </span>
-        <div class="ddk-zoom-bar" id="ddkZoomBar" title="Zoom image">
+        <div class="ddk-zoom-bar" id="ddkZoomBar" title="Zoom">
             <button class="ddk-zoom-btn" type="button" id="ddkZoomOut" aria-label="Zoom out">−</button>
             <span class="ddk-zoom-label" id="ddkZoomLabel">100%</span>
             <button class="ddk-zoom-btn" type="button" id="ddkZoomIn" aria-label="Zoom in">+</button>
         </div>
     </div>
 
-    <div class="ddk-bank" id="ddkBank"></div>
+    <div id="ddkZoomTarget" class="ddk-zoom-target">
+
+        <div class="ddk-canvas-wrap" id="ddkCanvasWrap">
+            <div class="ddk-canvas" id="ddkCanvas">
+                <img id="ddkBg" class="ddk-bg"
+                     src="<?= htmlspecialchars($bgImage, ENT_QUOTES, 'UTF-8') ?>"
+                     alt="Activity image">
+                <?php foreach ($pairs as $p): ?>
+                <div class="ddk-zone"
+                     id="zone-<?= (int)$p['id'] ?>"
+                     data-id="<?= (int)$p['id'] ?>"
+                     style="left:<?= round((float)$p['x'], 4) ?>%;top:<?= round((float)$p['y'], 4) ?>%;width:<?= round((float)$p['w'], 4) ?>%;height:<?= round((float)$p['h'], 4) ?>%"
+                ></div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+
+        <div class="ddk-bank" id="ddkBank"></div>
+
+    </div>
 
     <div class="ddk-controls" id="ddkControls">
         <button class="ddk-btn ddk-btn-show" type="button" onclick="showAnswers()">Show Answer</button>
@@ -488,6 +495,7 @@ const touchHint   = document.getElementById('ddkTouchHint');
 const controls    = document.getElementById('ddkControls');
 const canvasEl    = document.getElementById('ddkCanvas');
 const canvasWrap  = document.getElementById('ddkCanvasWrap');
+const zoomTarget  = document.getElementById('ddkZoomTarget');
 
 const isTouchLike = (window.matchMedia && window.matchMedia('(pointer:coarse)').matches)
     || ('ontouchstart' in window)
@@ -511,13 +519,12 @@ let zoomScale = 1;
 const ZOOM_STEP = 0.2, ZOOM_MIN = 0.6, ZOOM_MAX = 3.0;
 
 function applyZoom() {
-    canvasEl.style.transform = zoomScale === 1 ? '' : `scale(${zoomScale})`;
-    // Expand the wrap height to prevent clipping
+    zoomTarget.style.transform = zoomScale === 1 ? '' : `scale(${zoomScale})`;
+    // Push down elements below by the extra visual height the scale creates
     if (zoomScale > 1) {
-        const img = document.getElementById('ddkBg');
-        canvasWrap.style.minHeight = (img.offsetHeight * zoomScale) + 'px';
+        zoomTarget.style.marginBottom = (zoomTarget.offsetHeight * (zoomScale - 1)) + 'px';
     } else {
-        canvasWrap.style.minHeight = '';
+        zoomTarget.style.marginBottom = '';
     }
     document.getElementById('ddkZoomLabel').textContent = Math.round(zoomScale * 100) + '%';
 }
