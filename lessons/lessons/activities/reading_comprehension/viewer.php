@@ -129,6 +129,11 @@ ob_start();
   .rc-option.correct { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
   .rc-option.wrong { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
   @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } }
+  .rc-zoom-bar { display: flex; align-items: center; gap: 4px; padding: 0 0 10px; }
+  .rc-zoom-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #7F77DD; background: #fff; color: #7F77DD; font-size: 17px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: background .12s, color .12s; padding: 0; }
+  .rc-zoom-btn:hover { background: #7F77DD; color: #fff; }
+  .rc-zoom-label { font-size: 11px; font-weight: 700; color: #9B94BE; min-width: 32px; text-align: center; font-family: 'Nunito', sans-serif; }
+  .rc-passage-inner { transform-origin: top left; transition: transform .15s ease; }
 </style>
 
 <div id="rc-root"></div>
@@ -151,6 +156,8 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   let answerIndex = -1;
   let checked = false;
   let qIndex = 0;
+  let zoomScale = 1;
+  const ZOOM_STEP = 0.2, ZOOM_MIN = 0.6, ZOOM_MAX = 3.0;
 
   function uid(prefix) { return prefix + '_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now(); }
   function h(v) { return String(v ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch])); }
@@ -206,6 +213,26 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     return '<div class="rc-top"><div class="rc-title">Reading Comprehension</div>' + (edit ? '<div class="rc-edit-badge">✎ Edit mode</div>' : '') + '</div>';
   }
 
+  function applyZoom() {
+    const inner = root ? root.querySelector('.rc-passage-inner') : null;
+    if (!inner) return;
+    inner.style.transform = zoomScale === 1 ? '' : 'scale(' + zoomScale + ')';
+    inner.style.marginBottom = zoomScale > 1 ? (inner.offsetHeight * (zoomScale - 1)) + 'px' : '';
+    const label = root ? root.querySelector('.rc-zoom-label') : null;
+    if (label) label.textContent = Math.round(zoomScale * 100) + '%';
+  }
+  function setupPinch() {
+    const passage = root ? root.querySelector('.rc-passage') : null;
+    if (!passage) return;
+    let pinchActive = false, pinchStartDist = 0, pinchStartScale = 1;
+    function pinchDist(e) { const dx = e.touches[0].clientX - e.touches[1].clientX, dy = e.touches[0].clientY - e.touches[1].clientY; return Math.sqrt(dx * dx + dy * dy); }
+    passage.addEventListener('touchstart', function(e) { if (e.touches.length === 2) { pinchActive = true; pinchStartDist = pinchDist(e); pinchStartScale = zoomScale; e.preventDefault(); } }, { passive: false });
+    passage.addEventListener('touchmove', function(e) { if (!pinchActive || e.touches.length !== 2) return; zoomScale = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, parseFloat((pinchStartScale * pinchDist(e) / pinchStartDist).toFixed(2)))); applyZoom(); e.preventDefault(); }, { passive: false });
+    passage.addEventListener('touchend', function(e) { if (e.touches.length < 2) pinchActive = false; }, { passive: true });
+    let lastTap = 0;
+    passage.addEventListener('touchend', function(e) { if (e.touches.length > 0) return; const now = Date.now(); if (now - lastTap < 300) { zoomScale = 1; applyZoom(); } lastTap = now; }, { passive: true });
+  }
+
   function editorHtml() {
     const t = text();
     return '<div class="rc-app">' + topBar(true) + '<div class="rc-body"><div class="rc-wrap">' +
@@ -244,7 +271,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     const isComp = t.mode === 'comp';
     const questions = isComp ? t.questions.filter(q => q.options.some(o => String(o).trim())) : t.words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
     const current = questions[qIndex] || null;
-    return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div><div class="rc-quiz">' +
+    return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><div class="rc-zoom-bar"><button class="rc-zoom-btn" data-action="zoom-out" aria-label="Zoom out">\u2212</button><span class="rc-zoom-label">100%</span><button class="rc-zoom-btn" data-action="zoom-in" aria-label="Zoom in">+</button></div><div class="rc-passage-inner"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div></div><div class="rc-quiz">' +
       (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><div style="color:#9B8FCC;font-weight:900;text-transform:uppercase;font-size:12px;margin-bottom:8px">Question ' + (qIndex+1) + ' of ' + questions.length + '</div><h2 style="margin-top:0;font-family:Fredoka,sans-serif">' + (isComp ? h(current.stem || ('Question ' + (qIndex+1))) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' +
         (isComp ? current.options : current.options.map(o => o.text)).map((op, oi) => {
           const ok = isComp ? current.correct === oi : current.options[oi].ok;
@@ -259,6 +286,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   function render() {
     if (!root) return;
     root.innerHTML = preview ? '<div class="rc-app"><div style="padding:10px;background:#fff"><button class="rc-btn" data-action="back-editor">← Back to editor</button></div><div style="flex:1;min-height:0">' + playerHtml() + '</div></div>' : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml());
+    if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); }
   }
 
   root.addEventListener('input', function (e) {
@@ -316,6 +344,8 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     if (action === 'answer') { if (!checked) { answerIndex = Number(btn.dataset.index); checked = true; render(); } }
     if (action === 'prev') { qIndex = Math.max(0, qIndex - 1); answerIndex = -1; checked = false; render(); }
     if (action === 'next') { qIndex = qIndex + 1; answerIndex = -1; checked = false; render(); }
+    if (action === 'zoom-in') { zoomScale = Math.min(ZOOM_MAX, parseFloat((zoomScale + ZOOM_STEP).toFixed(2))); applyZoom(); }
+    if (action === 'zoom-out') { zoomScale = Math.max(ZOOM_MIN, parseFloat((zoomScale - ZOOM_STEP).toFixed(2))); applyZoom(); }
     if (action === 'save') {
       saving = true; status = 'Saving...'; render();
       try {
