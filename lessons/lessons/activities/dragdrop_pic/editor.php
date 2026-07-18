@@ -33,6 +33,17 @@ function ddpe_h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UT
 $error = '';
 $saved = false;
 
+/* ── AJAX: upload a single item picture ───────────────────────── */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'upload_pic_item') {
+    header('Content-Type: application/json');
+    if (empty($_FILES['image']['tmp_name']) || !is_uploaded_file($_FILES['image']['tmp_name'])) {
+        echo json_encode(['error' => 'No file received']); exit;
+    }
+    $url = upload_to_cloudinary($_FILES['image']['tmp_name']);
+    echo ($url !== null) ? json_encode(['url' => $url]) : json_encode(['error' => 'Upload failed']);
+    exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title        = trim($_POST['activity_title']        ?? '');
     $instructions = trim($_POST['activity_instructions'] ?? '');
@@ -308,6 +319,15 @@ ob_start();
 }
 .ddpe-alert-error   { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
 .ddpe-alert-success { background:#dcfce7; color:#14532d; border:1px solid #86efac; }
+
+/* Uploading spinner */
+@keyframes ddpe-spin { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
+.ddpe-item-thumb.ddpe-uploading {
+    display:flex; align-items:center; justify-content:center;
+    font-size:18px; color:#7F77DD;
+    animation: ddpe-spin .8s linear infinite;
+    background:#ede9fa;
+}
 </style>
 
 <?php if ($error !== ''): ?>
@@ -499,6 +519,59 @@ function updateZoneContent(id) {
     }
 }
 
+/* ── Immediate AJAX image upload ────────── */
+function uploadPicItem(file, itemId, liEl) {
+    var item = items.find(function(p) { return p.id === itemId; });
+    if (!item) return;
+
+    /* show spinner in thumbnail */
+    var oldThumb = liEl ? liEl.querySelector('.ddpe-item-thumb') : null;
+    var spinner = document.createElement('div');
+    spinner.className = 'ddpe-item-thumb ddpe-uploading';
+    spinner.textContent = '⏳';
+    if (oldThumb) oldThumb.replaceWith(spinner);
+
+    /* show loading placeholder in canvas zone */
+    var zoneEl = document.getElementById('edzone-' + itemId);
+    if (zoneEl) {
+        zoneEl.querySelectorAll('.ddpe-ed-zone-img,.ddpe-ed-zone-placeholder').forEach(function(c){ c.remove(); });
+        var ph = document.createElement('div');
+        ph.className = 'ddpe-ed-zone-placeholder';
+        ph.textContent = '⏳';
+        zoneEl.insertBefore(ph, zoneEl.querySelector('.ddpe-ed-resize'));
+    }
+
+    var fd = new FormData();
+    fd.append('action', 'upload_pic_item');
+    fd.append('image', file);
+
+    fetch(window.location.href, { method: 'POST', body: fd })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.url) {
+                item.pic_url = d.url;
+                localPreviews[itemId] = d.url;
+                var newThumb = document.createElement('img');
+                newThumb.src = d.url;
+                newThumb.className = 'ddpe-item-thumb';
+                newThumb.alt = '';
+                spinner.replaceWith(newThumb);
+                updateZoneContent(itemId);
+            } else {
+                alert('Image upload failed: ' + (d.error || 'unknown error'));
+                spinner.className = 'ddpe-item-thumb placeholder';
+                spinner.textContent = '📷';
+                updateZoneContent(itemId);
+            }
+        })
+        .catch(function() {
+            alert('Image upload failed.');
+            spinner.className = 'ddpe-item-thumb placeholder';
+            spinner.textContent = '📷';
+            updateZoneContent(itemId);
+        });
+}
+
 /* ── Item list in side panel ────────────── */
 function renderItemList() {
     itemList.innerHTML = '';
@@ -546,30 +619,12 @@ function renderItemList() {
         fileInp.type      = 'file';
         fileInp.className = 'ddpe-item-file-input';
         fileInp.accept    = 'image/*';
-        fileInp.name      = 'pic_new[' + it.id + ']';
         fileInp.addEventListener('change', function() {
             var file = this.files[0];
             if (!file) return;
-            var reader = new FileReader();
             var capturedId = it.id;
-            reader.onload = function(e) {
-                localPreviews[capturedId] = e.target.result;
-                /* update thumbnail in list */
-                var liEl = itemList.querySelector('[data-id="' + capturedId + '"]');
-                if (liEl) {
-                    var oldThumb = liEl.querySelector('.ddpe-item-thumb');
-                    if (oldThumb) {
-                        var newThumb = document.createElement('img');
-                        newThumb.src       = e.target.result;
-                        newThumb.className = 'ddpe-item-thumb';
-                        newThumb.alt       = '';
-                        oldThumb.replaceWith(newThumb);
-                    }
-                }
-                /* update canvas zone preview */
-                updateZoneContent(capturedId);
-            };
-            reader.readAsDataURL(file);
+            var liEl = itemList.querySelector('[data-id="' + capturedId + '"]');
+            uploadPicItem(file, capturedId, liEl);
         });
 
         body.appendChild(labelInp);

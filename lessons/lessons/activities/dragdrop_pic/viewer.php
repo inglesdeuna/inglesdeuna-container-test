@@ -234,6 +234,11 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     min-height: 80px;
     padding: 4px;
 }
+/* Floating wiggle animation on idle chips */
+@keyframes ddp-chip-wiggle {
+    0%, 100% { transform: rotate(-4deg) translateY(0); }
+    50%       { transform: rotate( 4deg) translateY(-6px); }
+}
 .ddp-chip {
     cursor: grab;
     border-radius: 10px;
@@ -243,20 +248,28 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     overflow: hidden;
     user-select: none;
     touch-action: none;
-    transition: filter .12s, box-shadow .12s, transform .12s;
+    transition: filter .12s, box-shadow .12s;
     display: inline-flex;
     flex-direction: column;
     align-items: center;
     will-change: transform;
     flex-shrink: 0;
+    animation: ddp-chip-wiggle 2.2s ease-in-out infinite;
 }
-.ddp-chip:hover { filter: brightness(1.06); box-shadow: 0 4px 14px rgba(127,119,221,.30); transform: translateY(-2px); }
-.ddp-chip.dragging { opacity: .35; cursor: grabbing; transform: none !important; }
+.ddp-chip:nth-child(2) { animation-delay: -0.55s; }
+.ddp-chip:nth-child(3) { animation-delay: -1.10s; }
+.ddp-chip:nth-child(4) { animation-delay: -1.65s; }
+.ddp-chip:nth-child(5) { animation-delay: -0.30s; }
+.ddp-chip:nth-child(6) { animation-delay: -0.85s; }
+.ddp-chip:nth-child(7) { animation-delay: -1.40s; }
+.ddp-chip:hover { filter: brightness(1.06); box-shadow: 0 4px 14px rgba(127,119,221,.30); animation-play-state: paused; }
+.ddp-chip.dragging { opacity: .35; cursor: grabbing; animation: none; }
 .ddp-chip.selected-touch {
     outline: 3px solid #F97316;
     outline-offset: 3px;
     border-color: #F97316;
     box-shadow: 0 0 0 3px rgba(249,115,22,.25);
+    animation-play-state: paused;
 }
 .ddp-chip-img {
     display: block;
@@ -268,12 +281,16 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
 }
 
 /* Floating drag clone */
+@keyframes ddp-clone-rock {
+    0%, 100% { transform: scale(1.12) rotate(-5deg); }
+    50%       { transform: scale(1.12) rotate( 5deg); }
+}
 .ddp-drag-clone {
     position: fixed;
     z-index: 9999;
     pointer-events: none;
     opacity: .92;
-    transform: scale(1.12) rotate(-2deg);
+    animation: ddp-clone-rock .45s ease-in-out infinite;
     box-shadow: 0 10px 28px rgba(127,119,221,.45);
     border-radius: 10px;
     overflow: hidden;
