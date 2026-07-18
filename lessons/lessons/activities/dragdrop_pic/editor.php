@@ -88,6 +88,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'y'       => max(0, min(90, round((float)($it['y'] ?? 10), 4))),
             'w'       => max(4, min(50, round((float)($it['w'] ?? 12), 4))),
             'h'       => max(4, min(50, round((float)($it['h'] ?? 15), 4))),
+            'rot'     => (int)($it['rot'] ?? 0),
+            'flipH'   => !empty($it['flipH']),
         ];
     }
 
@@ -328,6 +330,16 @@ ob_start();
     animation: ddpe-spin .8s linear infinite;
     background:#ede9fa;
 }
+
+/* Transform action buttons (rotate / flip) */
+.ddpe-item-actions { display:flex; gap:4px; margin-top:4px; flex-wrap:wrap; }
+.ddpe-action-btn {
+    font-size:11px; padding:2px 7px; border-radius:6px;
+    border:1px solid #7F77DD; background:#f5f3ff; color:#7F77DD;
+    cursor:pointer; font-weight:700; line-height:1.6; white-space:nowrap;
+}
+.ddpe-action-btn:hover { background:#7F77DD; color:#fff; }
+.ddpe-item-thumb { transition:transform .2s; }
 </style>
 
 <?php if ($error !== ''): ?>
@@ -338,7 +350,8 @@ ob_start();
 <?php endif; ?>
 
 <form method="POST" enctype="multipart/form-data" id="ddpeForm">
-    <input type="hidden" name="items_json"        id="itemsJsonInput" value="">
+    <input type="hidden" name="items_json"        id="itemsJsonInput"
+           value="<?= ddpe_h(json_encode(array_values($activity['items']), JSON_UNESCAPED_UNICODE)) ?>">
     <input type="hidden" name="bg_image_existing" id="bgImageExisting"
            value="<?= ddpe_h($activity['background_image']) ?>">
 
@@ -411,6 +424,17 @@ let nextId  = items.length ? Math.max(...items.map(function(p){ return p.id; }))
 /* pending local (data-URL) picture previews keyed by item id */
 const localPreviews = {};
 
+/* pending AJAX uploads counter — prevents save while uploads in flight */
+let pendingUploads = 0;
+
+/* ── Transform helper ──────────────────── */
+function getChipTransform(it) {
+    var r = it.rot  || 0;
+    var f = it.flipH ? -1 : 1;
+    if (!r && f === 1) return '';
+    return 'rotate(' + r + 'deg) scaleX(' + f + ')';
+}
+
 const wrap      = document.getElementById('ddpeCanvasWrap');
 const overlay   = document.getElementById('ddpeOverlay');
 const bgImg     = document.getElementById('ddpeEdBg');
@@ -481,6 +505,8 @@ function createZoneEl(it) {
         var img = document.createElement('img');
         img.src = preview;
         img.className = 'ddpe-ed-zone-img';
+        var t = getChipTransform(it);
+        if (t) img.style.transform = t;
         el.appendChild(img);
     } else {
         var ph = document.createElement('div');
@@ -510,6 +536,8 @@ function updateZoneContent(id) {
         var img = document.createElement('img');
         img.src = preview;
         img.className = 'ddpe-ed-zone-img';
+        var t = getChipTransform(it || {});
+        if (t) img.style.transform = t;
         el.insertBefore(img, el.querySelector('.ddpe-ed-resize'));
     } else {
         var ph = document.createElement('div');
@@ -519,10 +547,31 @@ function updateZoneContent(id) {
     }
 }
 
+/* ── Update zone + thumbnail transform ──── */
+function updateZoneTransform(id) {
+    var it = items.find(function(i){ return i.id === id; });
+    if (!it) return;
+    var t = getChipTransform(it);
+    /* canvas zone img */
+    var el = document.getElementById('edzone-' + id);
+    if (el) {
+        var img = el.querySelector('.ddpe-ed-zone-img');
+        if (img) img.style.transform = t;
+    }
+    /* sidebar thumbnail */
+    var liEl = itemList.querySelector('[data-id="' + id + '"]');
+    if (liEl) {
+        var thumb = liEl.querySelector('img.ddpe-item-thumb');
+        if (thumb) thumb.style.transform = t;
+    }
+}
+
 /* ── Immediate AJAX image upload ────────── */
 function uploadPicItem(file, itemId, liEl) {
     var item = items.find(function(p) { return p.id === itemId; });
     if (!item) return;
+
+    pendingUploads++;
 
     /* show spinner in thumbnail */
     var oldThumb = liEl ? liEl.querySelector('.ddpe-item-thumb') : null;
@@ -555,6 +604,8 @@ function uploadPicItem(file, itemId, liEl) {
                 newThumb.src = d.url;
                 newThumb.className = 'ddpe-item-thumb';
                 newThumb.alt = '';
+                var t = getChipTransform(item);
+                if (t) newThumb.style.transform = t;
                 spinner.replaceWith(newThumb);
                 updateZoneContent(itemId);
             } else {
@@ -569,6 +620,9 @@ function uploadPicItem(file, itemId, liEl) {
             spinner.className = 'ddpe-item-thumb placeholder';
             spinner.textContent = '📷';
             updateZoneContent(itemId);
+        })
+        .finally(function() {
+            pendingUploads = Math.max(0, pendingUploads - 1);
         });
 }
 
@@ -595,13 +649,15 @@ function renderItemList() {
             thumb.src       = preview;
             thumb.className = 'ddpe-item-thumb';
             thumb.alt       = '';
+            var t0 = getChipTransform(it);
+            if (t0) thumb.style.transform = t0;
         } else {
             thumb = document.createElement('div');
             thumb.className   = 'ddpe-item-thumb placeholder';
             thumb.textContent = '📷';
         }
 
-        /* body: label + file input */
+        /* body: label + file input + transform buttons */
         var body = document.createElement('div');
         body.className = 'ddpe-item-body';
 
@@ -627,8 +683,40 @@ function renderItemList() {
             uploadPicItem(file, capturedId, liEl);
         });
 
+        /* rotate / flip action row */
+        var actions = document.createElement('div');
+        actions.className = 'ddpe-item-actions';
+
+        var rotBtn = document.createElement('button');
+        rotBtn.type      = 'button';
+        rotBtn.className = 'ddpe-action-btn';
+        rotBtn.textContent = '↻ Rotate';
+        rotBtn.title     = 'Rotate 90° clockwise';
+        rotBtn.addEventListener('click', function() {
+            var item = items.find(function(p){ return p.id === it.id; });
+            if (!item) return;
+            item.rot = ((item.rot || 0) + 90) % 360;
+            updateZoneTransform(item.id);
+        });
+
+        var flipBtn = document.createElement('button');
+        flipBtn.type      = 'button';
+        flipBtn.className = 'ddpe-action-btn';
+        flipBtn.textContent = '↔ Flip';
+        flipBtn.title     = 'Flip horizontally';
+        flipBtn.addEventListener('click', function() {
+            var item = items.find(function(p){ return p.id === it.id; });
+            if (!item) return;
+            item.flipH = !item.flipH;
+            updateZoneTransform(item.id);
+        });
+
+        actions.appendChild(rotBtn);
+        actions.appendChild(flipBtn);
+
         body.appendChild(labelInp);
         body.appendChild(fileInp);
+        body.appendChild(actions);
 
         /* delete button */
         var del = document.createElement('button');
@@ -671,6 +759,8 @@ overlay.addEventListener('click', function(e) {
         y:       Math.max(0, parseFloat(clampedY.toFixed(4))),
         w:       w,
         h:       h,
+        rot:     0,
+        flipH:   false,
     };
     items.push(it);
     createZoneEl(it);
@@ -762,8 +852,13 @@ function removeItem(id) {
 }
 
 /* ── Serialize on submit ────────────────── */
-document.getElementById('ddpeForm').addEventListener('submit', function() {
-    /* include pic_url from existing data (not overwritten by new upload) */
+document.getElementById('ddpeForm').addEventListener('submit', function(e) {
+    if (pendingUploads > 0) {
+        e.preventDefault();
+        alert('⏳ Please wait — ' + pendingUploads + ' image upload(s) still in progress. Try saving again in a moment.');
+        return;
+    }
+    /* serialize all items (including rot/flipH) */
     itemsInput.value = JSON.stringify(items);
 });
 

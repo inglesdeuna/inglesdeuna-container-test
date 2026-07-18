@@ -35,6 +35,8 @@ function ddp_normalize_payload($raw): array
             'y'       => (float)($item['y'] ?? 10),
             'w'       => (float)($item['w'] ?? 12),
             'h'       => (float)($item['h'] ?? 15),
+            'rot'     => (int)($item['rot'] ?? 0),
+            'flipH'   => !empty($item['flipH']),
         ];
     }
 
@@ -438,6 +440,14 @@ const DDP_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 const DDP_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 const DDP_TITLE       = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
 
+/* ── Transform helper ──────────────────── */
+function getChipTransform(it) {
+    var r = it.rot  || 0;
+    var f = it.flipH ? -1 : 1;
+    if (!r && f === 1) return '';
+    return 'rotate(' + r + 'deg) scaleX(' + f + ')';
+}
+
 const winSnd      = document.getElementById('winSnd');
 const loseSnd     = document.getElementById('loseSnd');
 const doneSnd     = document.getElementById('doneSnd');
@@ -689,6 +699,10 @@ function handleDrop(zone, chipId, chipEl, fromRect) {
             img.src = item ? item.pic_url : '';
             img.className = 'ddp-zone-img';
             img.alt = item ? (item.label || '') : '';
+            if (item) {
+                var t = getChipTransform(item);
+                if (t) img.style.transform = t;
+            }
             zone.appendChild(img);
             zone.classList.add('filled');
             chipEl.remove();
@@ -723,6 +737,8 @@ function buildBank() {
         img.src       = it.pic_url;
         img.alt       = it.label || '';
         img.className = 'ddp-chip-img';
+        var t = getChipTransform(it);
+        if (t) img.style.transform = t;
         chip.appendChild(img);
 
         addChipDrag(chip);
@@ -807,6 +823,8 @@ function showAnswers() {
         img.src = item.pic_url;
         img.className = 'ddp-zone-img';
         img.alt = item.label || '';
+        var t = getChipTransform(item);
+        if (t) img.style.transform = t;
         zone.appendChild(img);
         zone.classList.add('filled');
     });
