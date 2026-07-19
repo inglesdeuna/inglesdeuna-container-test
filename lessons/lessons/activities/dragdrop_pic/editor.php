@@ -386,6 +386,7 @@ ob_start();
                 <label>Picture Zones</label>
                 <p class="ddpe-hint" style="margin:0 0 8px">
                     Click on the image (right) to add a zone. Upload a picture for each numbered zone below.
+                    <br><strong style="color:#7F77DD">Layer order:</strong> zones are stacked bottom-to-top in the order listed — the first zone is the back layer, the last zone is the front layer.
                 </p>
                 <ul class="ddpe-item-list" id="itemList"></ul>
                 <p id="noItemsHint">No zones yet — click on the image to add one.</p>

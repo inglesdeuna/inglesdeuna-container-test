@@ -431,6 +431,16 @@ function getChipTransform(it) {
     return 'rotate(' + r + 'deg) scaleX(' + f + ')';
 }
 
+/* ── Layer z-index helper ───────────────── */
+/* Returns the z-index for a placed image based on the item's position in
+   DDP_ITEMS. Items listed first in the editor are back layers; items listed
+   last are front layers. Base offset 10 keeps all placed images safely above
+   the invisible zone hit-targets. */
+function getItemLayerZ(item) {
+    var idx = DDP_ITEMS.findIndex(function(i) { return i.id === item.id; });
+    return 10 + (idx >= 0 ? idx : 0);
+}
+
 const winSnd      = document.getElementById('winSnd');
 const loseSnd     = document.getElementById('loseSnd');
 const doneSnd     = document.getElementById('doneSnd');
@@ -524,12 +534,13 @@ function addChipDrag(chip) {
     chip.addEventListener('pointerdown', function(e) {
         if (done) return;
         if (e.button !== 0 && e.pointerType === 'mouse') return;
+        e.preventDefault();
         startX = e.clientX;
         startY = e.clientY;
         isDragging = false;
         captureId = e.pointerId;
         chip.setPointerCapture(e.pointerId);
-    }, { passive: true });
+    });
 
     chip.addEventListener('pointermove', function(e) {
         if (e.pointerId !== captureId || done) return;
@@ -683,10 +694,11 @@ function handleDrop(zone, chipId, chipEl, fromRect) {
             img.className = 'ddp-placed-img';
             img.alt = item ? (item.label || '') : '';
             img.dataset.zoneId = zoneId;
-            img.style.left   = zone.style.left;
-            img.style.top    = zone.style.top;
-            img.style.width  = zone.style.width;
-            img.style.height = zone.style.height;
+            img.style.left    = zone.style.left;
+            img.style.top     = zone.style.top;
+            img.style.width   = zone.style.width;
+            img.style.height  = zone.style.height;
+            img.style.zIndex  = item ? getItemLayerZ(item) : 10;
             if (item) {
                 var t = getChipTransform(item);
                 if (t) img.style.transform = t;
@@ -811,10 +823,11 @@ function showAnswers() {
         img.className = 'ddp-placed-img';
         img.alt = item.label || '';
         img.dataset.zoneId = id;
-        img.style.left   = zone.style.left;
-        img.style.top    = zone.style.top;
-        img.style.width  = zone.style.width;
-        img.style.height = zone.style.height;
+        img.style.left    = zone.style.left;
+        img.style.top     = zone.style.top;
+        img.style.width   = zone.style.width;
+        img.style.height  = zone.style.height;
+        img.style.zIndex  = getItemLayerZ(item);
         var t = getChipTransform(item);
         if (t) img.style.transform = t;
         canvasEl.appendChild(img);
