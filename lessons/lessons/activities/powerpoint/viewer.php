@@ -729,7 +729,7 @@ body {
 }
 </style>
 
-<div class="ppt-page">
+<div class="ppt-page" data-az-zoom>
     <div class="ppt-app">
 
         <div class="ppt-topbar">

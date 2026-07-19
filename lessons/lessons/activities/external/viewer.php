@@ -270,7 +270,7 @@ ob_start();
 .ex-completed-btn:hover{filter:brightness(1.07);transform:translateY(-1px)}
 </style>
 
-<div class="ex-viewer">
+<div class="ex-viewer" data-az-zoom>
     <div class="ex-card">
         <?php if ($url === '') { ?>
             <div class="ex-empty">No URL configured for this activity.</div>

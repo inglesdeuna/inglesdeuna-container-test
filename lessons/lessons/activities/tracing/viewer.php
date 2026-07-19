@@ -236,7 +236,7 @@ body{
 .tracing-btn-next{background:var(--tr-purple);color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.24)}
 </style>
 
-<div class="tr-page">
+<div class="tr-page" data-az-zoom>
 <div class="tr-app">
     <div class="tr-hero">
         <div class="tr-kicker">Activity</div>
