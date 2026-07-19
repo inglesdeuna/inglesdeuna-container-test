@@ -167,49 +167,29 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     box-shadow: 0 10px 28px rgba(15,23,42,.13);
 }
 
-/* Drop zones — dashed silhouette border */
+/* Drop zones — invisible hit targets, no visual overlay on background */
 .ddp-zone {
     position: absolute;
-    border: 2.5px dashed #7F77DD;
-    border-radius: 8px;
-    background: rgba(255,255,255,.30);
     box-sizing: border-box;
-    overflow: hidden;
+    border-radius: 8px;
     cursor: pointer;
-    transition: background .18s, border-color .18s, transform .15s, box-shadow .18s;
+    transition: background .18s, transform .15s, box-shadow .18s;
     touch-action: none;
 }
-.ddp-zone::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-        -45deg,
-        rgba(127,119,221,.06) 0px,
-        rgba(127,119,221,.06) 4px,
-        transparent 4px,
-        transparent 10px
-    );
-}
 .ddp-zone.drag-over {
-    border-color: #F97316;
-    border-style: solid;
-    background: rgba(249,115,22,.15);
-    transform: scale(1.05);
+    background: rgba(249,115,22,.18);
+    outline: 3px solid #F97316;
+    outline-offset: -2px;
+    transform: scale(1.03);
     box-shadow: 0 0 0 4px rgba(249,115,22,.25);
 }
 .ddp-zone.filled {
-    border: none !important;
-    background: transparent !important;
-    transform: none !important;
-    box-shadow: none !important;
     cursor: default;
+    pointer-events: none;
 }
-.ddp-zone.filled::before { display: none; }
 .ddp-zone.wrong {
-    border-color: #dc2626 !important;
-    border-style: solid !important;
-    background: rgba(254,226,226,.5) !important;
+    outline: 3px solid #dc2626 !important;
+    background: rgba(254,226,226,.3) !important;
     animation: ddp-shake .4s ease;
 }
 @keyframes ddp-shake {
@@ -218,12 +198,15 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     60%      { transform: translateX(6px); }
     80%      { transform: translateX(-3px); }
 }
-.ddp-zone-img {
-    width: 100%;
-    height: 100%;
+
+/* Images placed on canvas — layered above background, non-blocking */
+.ddp-placed-img {
+    position: absolute;
     object-fit: cover;
     display: block;
     border-radius: 6px;
+    pointer-events: none;
+    box-sizing: border-box;
 }
 
 /* Picture bank */
@@ -693,18 +676,22 @@ function handleDrop(zone, chipId, chipEl, fromRect) {
         setFeedback('✔ Correct!', 'good');
 
         snapAnimate(animFrom, zoneRect, item ? item.pic_url : '', function() {
-            /* embed image into zone */
-            zone.innerHTML = '';
+            /* place image directly on canvas, above the background */
+            zone.classList.add('filled');
             var img = document.createElement('img');
             img.src = item ? item.pic_url : '';
-            img.className = 'ddp-zone-img';
+            img.className = 'ddp-placed-img';
             img.alt = item ? (item.label || '') : '';
+            img.dataset.zoneId = zoneId;
+            img.style.left   = zone.style.left;
+            img.style.top    = zone.style.top;
+            img.style.width  = zone.style.width;
+            img.style.height = zone.style.height;
             if (item) {
                 var t = getChipTransform(item);
                 if (t) img.style.transform = t;
             }
-            zone.appendChild(img);
-            zone.classList.add('filled');
+            canvasEl.appendChild(img);
             chipEl.remove();
             correctCount++;
             checkAllDone();
@@ -818,15 +805,19 @@ function showAnswers() {
         var id   = zone.dataset.id;
         var item = DDP_ITEMS.find(function(it) { return String(it.id) === String(id); });
         if (!item) return;
-        zone.innerHTML = '';
+        zone.classList.add('filled');
         var img = document.createElement('img');
         img.src = item.pic_url;
-        img.className = 'ddp-zone-img';
+        img.className = 'ddp-placed-img';
         img.alt = item.label || '';
+        img.dataset.zoneId = id;
+        img.style.left   = zone.style.left;
+        img.style.top    = zone.style.top;
+        img.style.width  = zone.style.width;
+        img.style.height = zone.style.height;
         var t = getChipTransform(item);
         if (t) img.style.transform = t;
-        zone.appendChild(img);
-        zone.classList.add('filled');
+        canvasEl.appendChild(img);
     });
     bank.innerHTML = '';
     setFeedback('Answers shown', 'good');
@@ -842,9 +833,9 @@ function restartActivity() {
     if (completedEl) { completedEl.classList.remove('active'); completedEl.innerHTML = ''; }
     if (controls) controls.style.display = '';
     setFeedback('', '');
+    document.querySelectorAll('.ddp-placed-img').forEach(function(img) { img.remove(); });
     document.querySelectorAll('.ddp-zone').forEach(function(z) {
         z.classList.remove('filled', 'wrong');
-        z.innerHTML = '';
     });
     buildBank();
 }
