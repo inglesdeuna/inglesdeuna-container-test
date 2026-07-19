@@ -32,14 +32,9 @@
         var labelEl = bar.querySelector('[data-az-btn="label"]');
         var scale   = 1;
 
-        /* ── Apply transform ── */
+        /* ── Apply zoom ── */
         function applyZoom() {
-            el.style.transform = scale === 1 ? '' : 'scale(' + scale + ')';
-            if (scale > 1) {
-                el.style.marginBottom = (el.offsetHeight * (scale - 1)) + 'px';
-            } else {
-                el.style.marginBottom = '';
-            }
+            el.style.zoom = scale === 1 ? '' : String(scale);
             labelEl.textContent = Math.round(scale * 100) + '%';
         }
 

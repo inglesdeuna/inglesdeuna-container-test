@@ -45,10 +45,8 @@
 }
 
 .az-zoom-target {
-    transform-origin: top center;
-    transition: transform .15s ease;
-    /* so scaled-up content can overflow without clipping */
-    overflow: visible;
+    /* CSS zoom expands layout so parent containers scroll rather than clip.
+       No transform-origin or overflow override needed. */
 }
 
 /* Presentation / fullscreen mode — hide zoom bar to keep UI clean */
