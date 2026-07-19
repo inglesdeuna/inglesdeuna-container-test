@@ -65,6 +65,7 @@ ob_start();
     <div
         class="flipbook-viewer"
         id="flipbook-viewer"
+        data-az-zoom
         data-pdf-url="<?php echo htmlspecialchars($pdfDisplayUrl, ENT_QUOTES, 'UTF-8'); ?>"
         data-pdf-download-url="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
     >

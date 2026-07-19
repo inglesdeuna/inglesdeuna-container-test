@@ -57,7 +57,7 @@ ob_start();
 .af-unscored__btn-secondary{flex:1;background:#fff;color:#7F77DD;border:1.5px solid #EDE9FA;border-radius:10px;padding:11px 0;font-family:'Nunito','Segoe UI',sans-serif;font-size:14px;font-weight:700;cursor:pointer;}
 </style>
 
-<div class="d2dv-page">
+<div class="d2dv-page" data-az-zoom>
 <div class="d2dv-app">
     <div class="d2dv-hero">
         <div class="d2dv-kicker">Activity</div>

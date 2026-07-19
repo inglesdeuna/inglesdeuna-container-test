@@ -331,11 +331,13 @@ $errorMsg = $errorMsg ?? '';
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= h($examTitle) ?> — ONES</title>
 <link rel="stylesheet" href="placement.css">
+<link rel="stylesheet" href="../../core/activity_zoom.css">
 <style>
 body { margin: 0; }
 </style>
 </head>
 <body>
+<div data-az-zoom>
 
 <?php /* ══════════════════════════════════════════════════════════════
         STEP: WELCOME
@@ -790,5 +792,7 @@ $skillLabelMap = ['grammar'=>'Grammar','vocabulary'=>'Vocabulary','reading'=>'Re
     </div>
 <?php endif; ?>
 
+</div><!-- /.az-zoom-target wrapper -->
+<script src="../../core/activity_zoom.js"></script>
 </body>
 </html>

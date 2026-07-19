@@ -507,7 +507,7 @@ body {
 }
 </style>
 
-<div class="col-page">
+<div class="col-page" data-az-zoom>
     <div class="col-app">
         <div class="col-hero">
             <div class="col-kicker">Activity</div>
