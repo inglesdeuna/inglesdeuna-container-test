@@ -133,7 +133,7 @@ ob_start();
   .rc-zoom-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #7F77DD; background: #fff; color: #7F77DD; font-size: 17px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: background .12s, color .12s; padding: 0; }
   .rc-zoom-btn:hover { background: #7F77DD; color: #fff; }
   .rc-zoom-label { font-size: 11px; font-weight: 700; color: #9B94BE; min-width: 32px; text-align: center; font-family: 'Nunito', sans-serif; }
-  .rc-passage-inner { transform-origin: top left; transition: transform .15s ease; }
+  .rc-passage-inner { display: block; }
 </style>
 
 <div id="rc-root"></div>
@@ -216,8 +216,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   function applyZoom() {
     const inner = root ? root.querySelector('.rc-passage-inner') : null;
     if (!inner) return;
-    inner.style.transform = zoomScale === 1 ? '' : 'scale(' + zoomScale + ')';
-    inner.style.marginBottom = zoomScale > 1 ? (inner.offsetHeight * (zoomScale - 1)) + 'px' : '';
+    inner.style.zoom = zoomScale === 1 ? '' : String(zoomScale);
     const label = root ? root.querySelector('.rc-zoom-label') : null;
     if (label) label.textContent = Math.round(zoomScale * 100) + '%';
   }
