@@ -787,6 +787,15 @@ window.MULTIPLE_CHOICE_PASSAGE_VOICE_ID = <?php echo json_encode($passageVoiceId
 window.MULTIPLE_CHOICE_SHOW_PASSAGE_TEXT = <?php echo json_encode($showPassageText); ?>;
 </script>
 <script src="multiple_choice.js?v=<?php echo urlencode($jsVersion); ?>"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.initPanelFullscreen) return;
+    var passSection = document.querySelector('.mc-passage-section');
+    var quizSection = document.querySelector('.mc-stage-shell');
+    if (passSection) window.initPanelFullscreen(passSection, { label: 'Texto en pantalla completa' });
+    if (quizSection) window.initPanelFullscreen(quizSection, { label: 'Preguntas en pantalla completa' });
+});
+</script>
 
 <?php
 $content = ob_get_clean();
