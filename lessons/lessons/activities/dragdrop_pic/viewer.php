@@ -202,7 +202,7 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
 /* Images placed on canvas — layered above background, non-blocking */
 .ddp-placed-img {
     position: absolute;
-    object-fit: cover;
+    object-fit: contain;
     display: block;
     border-radius: 6px;
     pointer-events: none;
@@ -260,7 +260,7 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     display: block;
     width: 80px;
     height: 80px;
-    object-fit: cover;
+    object-fit: contain;
     pointer-events: none;
     user-select: none;
 }
