@@ -226,25 +226,35 @@
     }
   }
 
+  function getStageScale() {
+    const rect = stage.getBoundingClientRect();
+    return {
+      x: rect.width > 0 ? rect.width / stage.offsetWidth : 1,
+      y: rect.height > 0 ? rect.height / stage.offsetHeight : 1,
+    };
+  }
+
   function getCardCenter(card, isLeft) {
     const stageRect = stage.getBoundingClientRect();
     const anchor = card.querySelector('.mlv-anchor') || card;
     const rect = anchor.getBoundingClientRect();
+    const scale = getStageScale();
 
     const x = isLeft
-      ? rect.right - stageRect.left
-      : rect.left - stageRect.left;
+      ? (rect.right - stageRect.left) / scale.x
+      : (rect.left - stageRect.left) / scale.x;
 
-    const y = rect.top + rect.height / 2 - stageRect.top;
+    const y = (rect.top + rect.height / 2 - stageRect.top) / scale.y;
 
     return { x, y };
   }
 
   function clientPointToStage(clientX, clientY) {
     const rect = stage.getBoundingClientRect();
+    const scale = getStageScale();
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) / scale.x,
+      y: (clientY - rect.top) / scale.y,
     };
   }
 
@@ -504,6 +514,12 @@
 
     renderLines(board, boardState);
     ev.preventDefault();
+
+    try {
+      stage.setPointerCapture(ev.pointerId);
+    } catch (e) {
+      // Ignore if pointer capture is not supported.
+    }
   }
 
   function bindDrag(board, boardState) {
