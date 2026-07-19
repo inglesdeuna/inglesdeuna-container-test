@@ -71,6 +71,7 @@ function render_activity_viewer($title, $icon, $content)
     <link rel="stylesheet" href="../../assets/css/video-two-col.css">
     <link rel="stylesheet" href="../../assets/css/activity-design-system.css">
     <link rel="stylesheet" href="../../core/activity_zoom.css">
+    <link rel="stylesheet" href="../../core/panel_fullscreen.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;700;800&display=swap');
 
@@ -709,6 +710,7 @@ window.addEventListener('message', function (e) {
 </script>
 
 <script src="../../core/activity_zoom.js"></script>
+<script src="../../core/panel_fullscreen.js"></script>
 
 </body>
 </html>

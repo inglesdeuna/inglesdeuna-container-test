@@ -1,0 +1,172 @@
+/* ── Per-Panel Fullscreen ─────────────────────────────────────────────────
+   Companion styles for panel_fullscreen.js.
+   ──────────────────────────────────────────────────────────────────────── */
+
+/* Prevent body scroll while a panel is open fullscreen */
+body.pf-body-lock {
+    overflow: hidden;
+}
+
+/* ── Sticky bar at top of panel containing the expand button ────────────── */
+.pf-panel-bar {
+    position: sticky;
+    top: 0;
+    z-index: 6;
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 8px 0;
+    background: transparent;
+    pointer-events: none; /* let clicks pass through to content beneath */
+    line-height: 0;
+    flex-shrink: 0;
+}
+
+/* ── Expand button (⛶ / arrows-out) ── */
+.pf-expand-btn {
+    pointer-events: all;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: 2px solid #7F77DD;
+    background: rgba(255, 255, 255, 0.95);
+    color: #7F77DD;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(127, 119, 221, 0.18);
+    transition: background 0.12s, color 0.12s;
+    flex-shrink: 0;
+}
+.pf-expand-btn:hover  { background: #7F77DD; color: #fff; }
+.pf-expand-btn:active { background: #5B51C8; color: #fff; }
+
+/* ── Panel in fullscreen mode ─────────────────────────────────────────── */
+.pf-active {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 9990 !important;
+    background: #fff !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    /* Account for notches / safe areas */
+    padding-top:    env(safe-area-inset-top,    0px) !important;
+    padding-right:  env(safe-area-inset-right,  0px) !important;
+    padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+    padding-left:   env(safe-area-inset-left,   0px) !important;
+}
+
+/* Hide the sticky bar (expand btn) when panel is fullscreen */
+.pf-active .pf-panel-bar { display: none !important; }
+
+/* Suppress any nested zoom bars so only our pf-controls shows */
+.pf-active .az-zoom-bar { display: none !important; }
+.pf-active .rc-zoom-bar { display: none !important; }
+
+/* ── Fullscreen top controls bar (zoom − / label / + | exit) ────────── */
+.pf-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: #fff;
+    border-bottom: 1.5px solid #EDE9FA;
+    flex-shrink: 0;
+    min-height: 56px;
+    box-sizing: border-box;
+    flex-wrap: nowrap;
+}
+
+/* Zoom buttons */
+.pf-zoom-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: 50%;
+    border: 2px solid #7F77DD;
+    background: #fff;
+    color: #7F77DD;
+    font-size: 20px;
+    font-weight: 900;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s;
+    padding: 0;
+    flex-shrink: 0;
+}
+.pf-zoom-btn:hover  { background: #7F77DD; color: #fff; }
+.pf-zoom-btn:active { background: #5B51C8; color: #fff; }
+
+/* Zoom percentage label */
+.pf-zoom-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: #9B94BE;
+    min-width: 44px;
+    text-align: center;
+    font-family: 'Nunito', sans-serif;
+    user-select: none;
+}
+
+/* Exit fullscreen button */
+.pf-exit-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    border: 2px solid #F97316;
+    background: #FFF5EE;
+    color: #F97316;
+    font-size: 13px;
+    font-weight: 900;
+    font-family: 'Nunito', sans-serif;
+    cursor: pointer;
+    padding: 0 16px;
+    height: 44px;
+    min-width: 44px;
+    transition: background 0.12s, color 0.12s;
+    margin-left: auto;  /* push to right edge */
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.pf-exit-btn:hover  { background: #F97316; color: #fff; }
+.pf-exit-btn:active { background: #c05a10; color: #fff; }
+
+.pf-exit-label { font-size: 13px; font-weight: 900; }
+
+/* ── Scrollable content area inside fullscreen ── */
+.pf-zoom-layer {
+    flex: 1;
+    overflow: auto;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Zoom target (CSS zoom is applied here) ── */
+.pf-zoom-content {
+    min-height: 100%;
+    box-sizing: border-box;
+}
+
+/* ── Responsive tweaks ─────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+    .pf-panel-bar { padding: 6px 6px 0; }
+    .pf-controls  { padding: 8px 12px; min-height: 52px; gap: 6px; }
+}
+
+@media (max-width: 400px) {
+    /* On very narrow screens hide the "Salir" text, show only the icon */
+    .pf-exit-label { display: none; }
+    .pf-exit-btn   { padding: 0 12px; }
+}

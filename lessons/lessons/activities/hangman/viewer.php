@@ -99,6 +99,7 @@ if (empty($normalizedItems)) {
 <title><?= htmlspecialchars($title, ENT_QUOTES, 'UTF-8') ?></title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="../../core/activity_zoom.css">
+<link rel="stylesheet" href="../../core/panel_fullscreen.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&display=swap');
 
@@ -1051,5 +1052,15 @@ function buildKeyboard(){
 loadWord();
 </script>
 <script src="../../core/activity_zoom.js"></script>
+<script src="../../core/panel_fullscreen.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (!window.initPanelFullscreen) return;
+    var leftPanel  = document.querySelector('.left-panel');
+    var rightPanel = document.querySelector('.right-panel');
+    if (leftPanel)  window.initPanelFullscreen(leftPanel,  { label: 'Juego en pantalla completa' });
+    if (rightPanel) window.initPanelFullscreen(rightPanel, { label: 'Imagen en pantalla completa' });
+});
+</script>
 </body>
 </html>

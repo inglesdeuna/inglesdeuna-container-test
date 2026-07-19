@@ -284,8 +284,19 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
 
   function render() {
     if (!root) return;
+    // Close any open panel fullscreen before rebuilding the DOM
+    var activePf = root.querySelector ? root.querySelector('.pf-active') : null;
+    if (activePf && typeof activePf._pfClose === 'function') activePf._pfClose();
     root.innerHTML = preview ? '<div class="rc-app"><div style="padding:10px;background:#fff"><button class="rc-btn" data-action="back-editor">← Back to editor</button></div><div style="flex:1;min-height:0">' + playerHtml() + '</div></div>' : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml());
-    if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); }
+    if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); setupPanelFullscreenRC(); }
+  }
+
+  function setupPanelFullscreenRC() {
+    if (!window.initPanelFullscreen) return;
+    var passage = root ? root.querySelector('.rc-passage') : null;
+    var quiz    = root ? root.querySelector('.rc-quiz')    : null;
+    if (passage) window.initPanelFullscreen(passage, { label: 'Texto en pantalla completa' });
+    if (quiz)    window.initPanelFullscreen(quiz,    { label: 'Preguntas en pantalla completa' });
   }
 
   root.addEventListener('input', function (e) {
@@ -362,6 +373,11 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       }
     }
   });
+
+  // panel_fullscreen.js loads after this IIFE (template footer); set up after DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { setupPanelFullscreenRC(); });
+  }
 
   try { render(); } catch (err) {
     console.error('[reading_comprehension] render error', err);
