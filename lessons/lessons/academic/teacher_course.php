@@ -1414,17 +1414,46 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
 
 @media (max-width: 1100px){
   .layout{grid-template-columns:1fr}
+  /* Compact sidebar into a horizontal button strip */
   .sidebar{
     height:auto;
     overflow:visible;
+    flex-direction:row;
+    flex-wrap:wrap;
+    padding:8px 12px;
+    gap:6px;
+    align-items:center;
   }
+  .logo-wrap{display:none}
+  .sidebar .hero-card{display:none}
   .sidebar-title{display:none}
+  .side-btn{width:auto;flex:0 1 auto;margin-bottom:0;padding:8px 10px;font-size:12px}
+  .side-doc-actions{margin:0}
+  .side-doc-actions .side-btn{flex:0 1 auto}
+  .side-worksheet-section{flex-direction:row;flex-wrap:wrap;align-items:center;border-top:none;padding-top:0;margin-top:0;gap:6px}
+  .side-worksheet-title{display:none}
+  .side-worksheet-item{flex-direction:row;align-items:center;gap:6px;padding:6px 10px}
+  .side-worksheet-name{max-width:120px}
+  /* Page / content */
   body{overflow:auto}
   .app-shell{height:auto;min-height:100vh}
   .content{height:auto}
-  .viewer-shell{height:auto}
-  .frame-wrap{min-height:62vh}
-  .frame-wrap iframe{height:62vh}
+  /* Add bottom padding so content isn't hidden under the fixed nav bar */
+  .viewer-shell{height:auto;padding-bottom:72px}
+  .frame-wrap{min-height:55vh}
+  .frame-wrap iframe{height:55vh;min-height:300px}
+  /* Keep Previous/Next always visible — fixed to viewport bottom */
+  .controls{
+    position:fixed;bottom:0;left:0;right:0;
+    z-index:50;
+    padding:8px 16px 12px;
+    background:var(--card);
+    box-shadow:0 -2px 12px rgba(0,0,0,.12);
+    border-top:1px solid var(--line);
+    flex-wrap:nowrap;
+  }
+  .ctrl-btn,.empty-btn{flex:1 1 auto;min-width:0}
+  .step-counter{width:auto;order:0}
 }
 
 @media (max-width: 768px){
@@ -1440,11 +1469,8 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
   .hero-card,.viewer-shell,.empty-shell{border-radius:18px}
   .hero-card{padding:20px}
   .section-title{font-size:20px}
-  .frame-wrap{min-height:50vh}
-  .frame-wrap iframe{height:50vh}
-  .controls{flex-wrap:wrap}
-  .ctrl-btn,.empty-btn{flex:1 1 100%;min-width:0}
-  .step-counter{width:100%;order:-1}
+  .frame-wrap{min-height:48vh}
+  .frame-wrap iframe{height:48vh}
 }
 </style>
 </head>
