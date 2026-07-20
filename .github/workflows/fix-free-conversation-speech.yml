@@ -1,0 +1,54 @@
+name: Fix Free Conversation speech recognition
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-free-conversation-speech.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch overlapping Android speech results
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('lessons/lessons/activities/free_conversation/viewer.php')
+          text = path.read_text(encoding='utf-8')
+
+          old = "function attachRecognition(r){r.lang='en-US';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;r.onresult=e=>{let currentFinal='',currentInterim='';for(let i=0;i<e.results.length;i++){let transcript=e.results[i][0].transcript.trim();if(e.results[i].isFinal)currentFinal+=(currentFinal?' ':'')+transcript;else currentInterim+=(currentInterim?' ':'')+transcript}confirmedSpeech=currentFinal;interimSpeech=currentInterim;updateInputDisplay()};r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted'){scheduleRecognitionRestart();return}if(e.error==='not-allowed'){manualMicStop=true;micActive=false;setMicButton();alert('Microphone access was blocked. Please allow microphone access to use voice input.');return}micActive=false;setMicButton()};r.onend=()=>{if(micActive&&!manualMicStop){scheduleRecognitionRestart()}else{micActive=false;setMicButton()}}}"
+
+          new = "function mergeSpeechParts(parts){let merged='';for(let part of parts){part=String(part||'').replace(/\\s+/g,' ').trim();if(!part)continue;if(!merged){merged=part;continue}let a=merged.toLowerCase().split(' '),b=part.toLowerCase().split(' '),overlap=0,max=Math.min(a.length,b.length);for(let n=max;n>0;n--){if(a.slice(-n).join(' ')===b.slice(0,n).join(' ')){overlap=n;break}}if(overlap===b.length)continue;if(overlap>0)merged+=' '+part.split(' ').slice(overlap).join(' ');else if(part.toLowerCase().startsWith(merged.toLowerCase()+' '))merged=part;else if(merged.toLowerCase().startsWith(part.toLowerCase()+' '))continue;else merged+=' '+part}return merged.replace(/\\s+/g,' ').trim()}\nfunction attachRecognition(r){r.lang='en-US';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;r.onresult=e=>{let finals=[],interims=[];for(let i=0;i<e.results.length;i++){let transcript=String(e.results[i][0].transcript||'').trim();if(!transcript)continue;if(e.results[i].isFinal)finals.push(transcript);else interims.push(transcript)}confirmedSpeech=mergeSpeechParts(finals);interimSpeech=mergeSpeechParts(interims);if(confirmedSpeech&&interimSpeech){let c=confirmedSpeech.toLowerCase(),v=interimSpeech.toLowerCase();if(v===c||c.endsWith(' '+v)||c===v)interimSpeech='';else if(v.startsWith(c+' '))interimSpeech=interimSpeech.slice(confirmedSpeech.length).trim()}updateInputDisplay()};r.onerror=e=>{if(e.error==='no-speech'||e.error==='aborted'){scheduleRecognitionRestart();return}if(e.error==='not-allowed'){manualMicStop=true;micActive=false;setMicButton();alert('Microphone access was blocked. Please allow microphone access to use voice input.');return}micActive=false;setMicButton()};r.onend=()=>{if(micActive&&!manualMicStop){scheduleRecognitionRestart()}else{micActive=false;setMicButton()}}}"
+
+          if old not in text:
+              if 'function mergeSpeechParts(parts)' in text:
+                  print('Patch already applied.')
+                  raise SystemExit(0)
+              raise SystemExit('Expected attachRecognition implementation was not found; refusing unsafe edit.')
+
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validate PHP syntax
+        run: php -l lessons/lessons/activities/free_conversation/viewer.php
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No changes to commit.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lessons/lessons/activities/free_conversation/viewer.php
+          git commit -m 'Fix overlapping speech recognition results on Android tablets'
+          git push
