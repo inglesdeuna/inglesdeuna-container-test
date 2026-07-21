@@ -1,10 +1,7 @@
-name: Fix reading comprehension touch margins
+name: Fix reading comprehension margins
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/fix-reading-touch-margin.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -14,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Update responsive passage spacing and zoom overflow
+      - name: Update reading spacing and zoom overflow
         run: |
           python3 - <<'PY'
           from pathlib import Path
@@ -22,28 +19,23 @@ jobs:
           path = Path('lessons/lessons/activities/reading_comprehension/viewer.php')
           text = path.read_text(encoding='utf-8')
 
-          old = """  .rc-passage { overflow-y: auto; padding: 20px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; }"""
-          new = """  .rc-passage { overflow: auto; padding: 20px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; box-sizing: border-box; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  .rc-passage-inner { display: block; min-width: 0; max-width: 100%; margin: 0 auto; transform-origin: top left; }
-  @media (hover: none), (pointer: coarse) {
-    .rc-passage { padding: 24px 20px 28px; }
-    .rc-passage-inner { min-width: 100%; }
-  }
-  @media (max-width: 850px) {
-    .rc-passage { padding: 22px 18px 28px; border-right: 0; border-bottom: 1px solid #F0EEF8; }
-  }
-  @media (max-width: 520px) {
-    .rc-passage { padding: 18px 16px 24px; }
-  }"""
-
-          if old not in text:
+          old_passage = "  .rc-passage { overflow-y: auto; padding: 20px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; }"
+          new_passage = "  .rc-passage { overflow: auto; padding: 28px 32px 32px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; box-sizing: border-box; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }"
+          if old_passage not in text:
               raise SystemExit('Expected .rc-passage rule was not found')
-          text = text.replace(old, new, 1)
+          text = text.replace(old_passage, new_passage, 1)
 
-          duplicate = """  .rc-passage-inner { display: block; }"""
-          if duplicate not in text:
-              raise SystemExit('Expected old .rc-passage-inner rule was not found')
-          text = text.replace(duplicate, '', 1)
+          old_media = "  @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } }"
+          new_media = "  @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } .rc-passage { padding: 24px 22px 30px; border-right: 0; border-bottom: 1px solid #F0EEF8; } }\n  @media (max-width: 520px) { .rc-passage { padding: 20px 18px 26px; } }"
+          if old_media not in text:
+              raise SystemExit('Expected mobile media rule was not found')
+          text = text.replace(old_media, new_media, 1)
+
+          old_inner = "  .rc-passage-inner { display: block; }"
+          new_inner = "  .rc-passage-inner { display: block; min-width: 100%; width: max-content; max-width: none; padding-right: 24px; box-sizing: border-box; transform-origin: top left; }"
+          if old_inner not in text:
+              raise SystemExit('Expected .rc-passage-inner rule was not found')
+          text = text.replace(old_inner, new_inner, 1)
 
           path.write_text(text, encoding='utf-8')
           PY
@@ -52,5 +44,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add lessons/lessons/activities/reading_comprehension/viewer.php
-          git commit -m 'Fix reading comprehension touch margins and zoom overflow'
+          git commit -m 'Fix reading comprehension margins at all zoom levels'
           git push
