@@ -18,10 +18,20 @@ if (session_status() === PHP_SESSION_NONE) {
 
 require_once __DIR__ . '/../../config/db.php';
 
-// Solo docentes y admins pueden editar
-if (!isset($_SESSION['academic_id']) && !isset($_SESSION['admin_id'])) {
-    http_response_code(403);
-    exit('Access denied');
+// Block student access to the editor.
+if (!empty($_SESSION['student_logged'])) {
+    header('Location: /lessons/lessons/academic/student_dashboard.php?error=access_denied');
+    exit;
+}
+
+// Use the same session flags as the rest of the activity editors.
+// The previous check used academic_id/admin_id, but the platform login stores
+// academic_logged/admin_logged, causing valid teacher/admin sessions to receive
+// a plain 403 "Access denied" response.
+$isLoggedIn = !empty($_SESSION['academic_logged']) || !empty($_SESSION['admin_logged']);
+if (!$isLoggedIn) {
+    header('Location: /lessons/lessons/academic/login.php');
+    exit;
 }
 
 // Reenviar todos los GET params al viewer como editor del hub/creator.
