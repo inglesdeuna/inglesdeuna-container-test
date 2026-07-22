@@ -122,18 +122,19 @@ ob_start();
   .rc-primary { background: #F97316; color: #fff; border-color: #F97316; }
   .rc-status { text-align: center; color: #7F77DD; font-weight: 900; }
   .rc-player { flex: 1; min-height: 0; display: grid; grid-template-columns: 48% 52%; background: #F8F7FF; }
-  .rc-passage { overflow-y: auto; padding: 20px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; }
+  .rc-passage { overflow: auto; padding: 30px 34px 36px; background: #fff; border-right: 1px solid #F0EEF8; line-height: 1.75; box-sizing: border-box; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .rc-quiz { overflow-y: auto; padding: 22px; }
   .rc-question { background: #fff; border: 1.5px solid #EDE9FA; border-radius: 20px; padding: 22px; box-shadow: 0 4px 20px rgba(127,119,221,.10); }
   .rc-option { width: 100%; text-align: left; border: 1.5px solid #DCD7FF; border-radius: 12px; background: #FBFAFF; color: #3D3560; padding: 12px 14px; margin-bottom: 10px; font-weight: 800; cursor: pointer; }
   .rc-option.correct { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
   .rc-option.wrong { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
-  @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } }
-  .rc-zoom-bar { display: flex; align-items: center; gap: 4px; padding: 0 0 10px; }
+  @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } .rc-passage { padding: 26px 22px 32px; border-right: 0; border-bottom: 1px solid #F0EEF8; } }
+  @media (max-width: 520px) { .rc-passage { padding: 22px 18px 28px; } }
+  .rc-zoom-bar { display: flex; align-items: center; gap: 4px; padding: 0 0 14px; }
   .rc-zoom-btn { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #7F77DD; background: #fff; color: #7F77DD; font-size: 17px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; transition: background .12s, color .12s; padding: 0; }
   .rc-zoom-btn:hover { background: #7F77DD; color: #fff; }
   .rc-zoom-label { font-size: 11px; font-weight: 700; color: #9B94BE; min-width: 32px; text-align: center; font-family: 'Nunito', sans-serif; }
-  .rc-passage-inner { display: block; }
+  .rc-passage-inner { display: block; min-width: 100%; width: max-content; max-width: none; padding-right: 34px; box-sizing: border-box; transform-origin: top left; }
 </style>
 
 <div id="rc-root"></div>
@@ -241,11 +242,9 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
           '<button class="rc-mode ' + (t.mode === 'vocab' ? 'active-orange' : '') + '" data-action="mode" data-mode="vocab"><h3>🔤 Vocabulary meaning</h3><p>Students read the passage and choose the correct meaning for each highlighted word.</p>' + (t.mode === 'vocab' ? '<div class="rc-selected">✓ Selected</div>' : '') + '</button>' +
           '<button class="rc-mode purple ' + (t.mode === 'comp' ? 'active-purple' : '') + '" data-action="mode" data-mode="comp"><h3>📖 Reading comprehension</h3><p>Students answer questions about the passage to demonstrate understanding.</p>' + (t.mode === 'comp' ? '<div class="rc-selected" style="color:#7F77DD">✓ Selected</div>' : '') + '</button>' +
         '</div></div></section>' +
-
       '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">📄</div><div class="rc-card-title">Passage</div></div><div class="rc-card-body">' +
         '<div class="rc-grid-3"><div><label class="rc-label">Title</label><input class="rc-input" data-field="title" value="' + h(t.title) + '"></div><div><label class="rc-label">Genre</label><input class="rc-input" data-field="genre" value="' + h(t.genre) + '"></div><div><label class="rc-label">Word count</label><input class="rc-input" type="number" data-field="wordCount" value="' + h(t.wordCount || wordsCount(t.body)) + '"></div></div>' +
         '<label class="rc-label" style="margin-top:14px">Passage body</label><textarea class="rc-textarea" data-field="body">' + h(t.body) + '</textarea></div></section>' +
-
       '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">🖊</div><div class="rc-card-title">Highlighted vocabulary words</div><div class="rc-pill">' + t.words.length + ' words</div></div><div class="rc-card-body">' +
         '<div class="rc-note">📌 Add each word that appears in the passage. It will be highlighted in orange for students.</div>' +
         '<label class="rc-label">Live preview — highlighted words as students see them</label><div class="rc-preview">' + highlight(t.body, t.words) + '</div>' +
@@ -253,14 +252,12 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
           '<div class="rc-grid-2"><div><label class="rc-label">Word as it appears in text</label><input class="rc-input" data-word="' + i + '" data-prop="word" value="' + h(w.word) + '"></div><div><label class="rc-label">Correct meaning</label><input class="rc-input" data-word="' + i + '" data-prop="correct" value="' + h(w.correct) + '"></div></div>' +
           '<div class="rc-grid-2" style="margin-top:12px"><div><label class="rc-label">Wrong option 1</label><input class="rc-input" data-word="' + i + '" data-prop="d0" value="' + h(w.distractors[0]) + '"></div><div><label class="rc-label">Wrong option 2</label><input class="rc-input" data-word="' + i + '" data-prop="d1" value="' + h(w.distractors[1]) + '"></div></div></div>').join('') +
         '<button class="rc-add" data-action="add-word">＋ Add vocabulary word</button></div></section>' +
-
       (t.mode === 'comp' ? '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">?</div><div class="rc-card-title">Comprehension questions</div><div class="rc-pill">' + t.questions.length + ' questions</div></div><div class="rc-card-body">' +
         t.questions.map((q, qi) => '<div class="rc-item"><button class="rc-remove" data-action="remove-question" data-index="' + qi + '">Remove</button><div class="rc-item-title">Question ' + (qi+1) + '</div>' +
           '<label class="rc-label">Question</label><input class="rc-input" data-question="' + qi + '" data-prop="stem" value="' + h(q.stem) + '">' +
           q.options.map((op, oi) => '<div style="display:grid;grid-template-columns:42px 1fr;gap:8px;margin-top:10px"><button class="rc-btn" data-action="correct" data-question="' + qi + '" data-option="' + oi + '" style="padding:8px;background:' + (q.correct === oi ? '#1D9E75' : '#fff') + ';color:' + (q.correct === oi ? '#fff' : '#7F77DD') + '">' + ['A','B','C','D'][oi] + '</button><input class="rc-input" data-question="' + qi + '" data-prop="option" data-option="' + oi + '" value="' + h(op) + '"></div>').join('') +
           '<label class="rc-label" style="margin-top:10px">Feedback</label><input class="rc-input" data-question="' + qi + '" data-prop="feedback" value="' + h(q.feedback) + '"></div>').join('') +
         '<button class="rc-add" data-action="add-question">＋ Add comprehension question</button></div></section>' : '') +
-
       '<div class="rc-savebar"><button class="rc-btn" data-action="preview">👁 Preview as student</button><div class="rc-status">' + h(status) + '</div><button class="rc-btn rc-primary" data-action="save" ' + (saving ? 'disabled' : '') + '>' + (saving ? 'Saving...' : '💾 Save activity') + '</button></div>' +
     '</div></div></div>';
   }
@@ -284,7 +281,6 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
 
   function render() {
     if (!root) return;
-    // Close any open panel fullscreen before rebuilding the DOM
     var activePf = root.querySelector ? root.querySelector('.pf-active') : null;
     if (activePf && typeof activePf._pfClose === 'function') activePf._pfClose();
     root.innerHTML = preview ? '<div class="rc-app"><div style="padding:10px;background:#fff"><button class="rc-btn" data-action="back-editor">← Back to editor</button></div><div style="flex:1;min-height:0">' + playerHtml() + '</div></div>' : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml());
@@ -374,7 +370,6 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     }
   });
 
-  // panel_fullscreen.js loads after this IIFE (template footer); set up after DOM ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { setupPanelFullscreenRC(); });
   }
