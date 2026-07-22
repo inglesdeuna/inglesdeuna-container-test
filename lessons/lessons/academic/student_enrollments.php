@@ -75,20 +75,14 @@ function load_students_from_database(): array
     }, is_array($rows) ? $rows : []));
 }
 
-function find_existing_student(array $students, string $name, string $contact): ?array
+function find_existing_student(array $students, string $name, string $_contact): ?array
 {
     $normalizedName = mb_strtolower(trim($name));
-    $normalizedContact = trim($contact);
 
     foreach ($students as $student) {
         $studentName = mb_strtolower(trim((string) ($student['name'] ?? '')));
-        $studentContact = trim((string) ($student['contact'] ?? ''));
 
         if ($normalizedName !== '' && $studentName === $normalizedName) {
-            return (array) $student;
-        }
-
-        if ($normalizedContact !== '' && $studentContact !== '' && $studentContact === $normalizedContact) {
             return (array) $student;
         }
     }
@@ -194,7 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'updated_at' => $now,
             ];
         } else {
-            // Creación o deduplicación por nombre/contacto
+            // Creación o deduplicación por nombre
             $existingStudent = find_existing_student($students, $form['student_name'], $form['student_contact']);
             $studentRecord = [
                 'id'         => $existingStudent
