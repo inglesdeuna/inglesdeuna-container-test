@@ -97,6 +97,8 @@ function normalize_multiple_choice_payload($rawData): array
                 isset($item['option_c']) ? (string) $item['option_c'] : '',
             );
 
+        $optionImages = isset($item['option_images']) && is_array($item['option_images']) ? $item['option_images'] : array();
+
         $normalized[] = array(
             'question_type' => (isset($item['question_type']) && $item['question_type'] === 'listen') ? 'listen' : 'text',
             'question' => isset($item['question']) ? trim((string) $item['question']) : '',
@@ -108,6 +110,11 @@ function normalize_multiple_choice_payload($rawData): array
                 isset($options[0]) ? trim((string) $options[0]) : '',
                 isset($options[1]) ? trim((string) $options[1]) : '',
                 isset($options[2]) ? trim((string) $options[2]) : '',
+            ),
+            'option_images' => array(
+                isset($optionImages[0]) ? trim((string) $optionImages[0]) : '',
+                isset($optionImages[1]) ? trim((string) $optionImages[1]) : '',
+                isset($optionImages[2]) ? trim((string) $optionImages[2]) : '',
             ),
             'correct' => isset($item['correct']) ? max(0, min(2, (int) $item['correct'])) : 0,
         );
