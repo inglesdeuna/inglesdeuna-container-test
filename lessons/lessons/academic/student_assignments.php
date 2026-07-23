@@ -1474,6 +1474,66 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
+    /* ---- UPDATE USERNAME ---- */
+    if ($postAction === 'update_student_username') {
+        $usernameStudentId = trim((string) ($_POST['username_student_id'] ?? ''));
+        $newUsernameRaw    = trim((string) ($_POST['new_username'] ?? ''));
+        $newUsername       = $newUsernameRaw !== '' ? slugify_username($newUsernameRaw) : '';
+        $usernameOk        = false;
+        $usernameStatus    = 'invalid';
+
+        if ($usernameStudentId !== '' && $newUsername !== '') {
+            $duplicate = false;
+            foreach ($studentAccounts as $acc) {
+                if ((string) ($acc['student_id'] ?? '') === $usernameStudentId) {
+                    continue;
+                }
+                if (mb_strtolower(trim((string) ($acc['username'] ?? '')), 'UTF-8') === mb_strtolower($newUsername, 'UTF-8')) {
+                    $duplicate = true;
+                    break;
+                }
+            }
+
+            if ($duplicate) {
+                $usernameStatus = 'duplicate';
+            } else {
+                $accountRecord = ensure_student_account($usernameStudentId, $students, $studentAccounts, $studentAccountsFile);
+
+                if ($accountRecord) {
+                    foreach ($studentAccounts as $idx => $acc) {
+                        if ((string) ($acc['student_id'] ?? '') === $usernameStudentId) {
+                            $studentAccounts[$idx]['username'] = $newUsername;
+                            $studentAccounts[$idx]['updated_at'] = date('Y-m-d H:i:s');
+                            save_student_account_to_database($studentAccounts[$idx]);
+                            $usernameOk = true;
+                            break;
+                        }
+                    }
+
+                    if ($usernameOk) {
+                        save_json_file($studentAccountsFile, $studentAccounts);
+
+                        foreach ($studentAssignments as $idx => $assignment) {
+                            if ((string) ($assignment['student_id'] ?? '') === $usernameStudentId) {
+                                $studentAssignments[$idx]['student_username'] = $newUsername;
+                                save_student_assignment_to_database($studentAssignments[$idx]);
+                            }
+                        }
+                        save_json_file($studentAssignmentsFile, $studentAssignments);
+                        $usernameStatus = 'ok';
+                    } else {
+                        $usernameStatus = 'not_found';
+                    }
+                } else {
+                    $usernameStatus = 'not_found';
+                }
+            }
+        }
+
+        header('Location: student_assignments.php?username_status=' . $usernameStatus);
+        exit;
+    }
+
     /* ---- SAVE ASSIGNMENT ---- */
     $editId = trim((string) ($_POST['edit_id'] ?? ''));
     $studentId = trim((string) ($_POST['student_id'] ?? ''));
@@ -1709,6 +1769,9 @@ if ($selectedProgram === 'technical' && $editRecord) {
         <div class="notice notice-pwd">🔑 Contraseña actualizada. El estudiante quedó habilitado y deberá cambiarla al ingresar.</div>
     <?php elseif (isset($_GET['pwd_reset'])): ?>
         <div class="notice notice-warn">⚠️ No fue posible actualizar la cuenta del estudiante. Verifica que tenga una asignación válida.</div>
+    <?php endif; ?>
+    <?php if (isset($_GET['username_status']) && (string) $_GET['username_status'] === 'ok'): ?>
+        <div class="notice notice-pwd">✅ Nombre de usuario actualizado correctamente.</div>
     <?php endif; ?>
 
     <div class="stack">
@@ -1963,10 +2026,20 @@ if ($selectedProgram === 'technical' && $editRecord) {
                                                 <button type="button" class="btn-sm btn-cancel-sm" onclick="togglePwd('<?= $gRowId ?>')">Cancelar</button>
                                             </form>
                                         </div>
+                                        <div class="pwd-form" id="user<?= $gRowId ?>">
+                                            <form method="post" onsubmit="return validateUsernameForm(this)">
+                                                <input type="hidden" name="action" value="update_student_username">
+                                                <input type="hidden" name="username_student_id" value="<?= h($gStudentId) ?>">
+                                                <input type="text" name="new_username" value="<?= h($gUsername) ?>" placeholder="Nuevo nombre de usuario" required>
+                                                <button type="submit" class="btn-sm btn-save">Guardar</button>
+                                                <button type="button" class="btn-sm btn-cancel-sm" onclick="togglePwd('user<?= $gRowId ?>')">Cancelar</button>
+                                            </form>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="student-actions">
                                     <button type="button" class="btn-sm btn-pwd" onclick="togglePwd('<?= $gRowId ?>')">🔑 Contraseña</button>
+                                    <button type="button" class="btn-sm btn-pwd" onclick="togglePwd('user<?= $gRowId ?>')">👤 Usuario</button>
                                     <button type="button" class="btn-sm btn-edit" onclick="location.href='student_assignments.php?edit=<?= h($gAssignId) ?>'">✏️ <?= $assignedUnitCount > 1 ? 'Editar grupo' : 'Cambiar grupo' ?></button>
                                     <button type="button" class="btn-sm btn-del" onclick="if(confirm('<?= h(addslashes($deleteQuestion)) ?>')) location.href='<?= h($deleteUrl) ?>'">🗑️ Eliminar</button>
                                 </div>
@@ -1993,17 +2066,78 @@ function toggleGroup(key) {
     if (hdr)  hdr.style.borderBottomColor = isOpen ? 'var(--line)' : 'transparent';
 }
 
-/* ---- Inline password form ---- */
+/* ---- Inline password / username forms ---- */
 function togglePwd(rowId) {
     const form = document.getElementById(rowId);
     if (!form) return;
     const visible = form.style.display !== 'none' && form.style.display !== '';
     form.style.display = visible ? 'none' : 'block';
     if (!visible) {
-        const input = form.querySelector('input[name="new_password"]');
+        const input = form.querySelector('input[name="new_password"], input[name="new_username"]');
         if (input) input.focus();
     }
 }
+
+/* ---- Username uniqueness check ---- */
+const existingStudentUsernames = <?= json_encode(array_values(array_map(function ($acc) {
+    return [
+        'student_id' => (string) ($acc['student_id'] ?? ''),
+        'username' => (string) ($acc['username'] ?? ''),
+    ];
+}, $studentAccounts)), JSON_UNESCAPED_UNICODE) ?>;
+
+function slugifyUsernameClient(value) {
+    return String(value || '')
+        .toLowerCase()
+        .trim()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '.')
+        .replace(/^\.+|\.+$/g, '');
+}
+
+function validateUsernameForm(form) {
+    const studentId = form.querySelector('input[name="username_student_id"]').value;
+    const usernameInput = form.querySelector('input[name="new_username"]');
+    const candidate = slugifyUsernameClient(usernameInput.value);
+
+    if (!candidate) {
+        alert('Ingresa un nombre de usuario válido.');
+        return false;
+    }
+
+    const isTaken = existingStudentUsernames.some(function (acc) {
+        return acc.student_id !== studentId && String(acc.username || '').toLowerCase() === candidate;
+    });
+
+    if (isTaken) {
+        alert('Ese nombre de usuario ya está en uso. Por favor elige otro.');
+        return false;
+    }
+
+    return true;
+}
+
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('username_status');
+    if (!status) return;
+
+    if (status === 'duplicate') {
+        alert('Ese nombre de usuario ya está en uso. Por favor elige otro.');
+    } else if (status === 'invalid') {
+        alert('Ingresa un nombre de usuario válido.');
+    } else if (status === 'not_found') {
+        alert('No fue posible actualizar el nombre de usuario. Intenta nuevamente.');
+    }
+
+    if (status !== 'ok') {
+        params.delete('username_status');
+        const newQuery = params.toString();
+        const newUrl = window.location.pathname + (newQuery ? '?' + newQuery : '');
+        window.history.replaceState({}, '', newUrl);
+    }
+})();
 
 /* ---- Dropdown selects ---- */
 const englishLevels = <?= json_encode($englishLevels, JSON_UNESCAPED_UNICODE) ?>;
