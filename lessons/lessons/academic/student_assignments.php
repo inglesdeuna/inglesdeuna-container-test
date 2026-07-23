@@ -684,16 +684,27 @@ function ensure_student_account(string $studentId, array $students, array &$acco
             $currentName = trim((string) ($account['student_name'] ?? ''));
             $dirty = false;
 
-            if ($studentData && $currentName === '') {
-                $account['student_name'] = (string) ($studentData['name'] ?? 'Estudiante');
-                $dirty = true;
-            }
+            if ($studentData) {
+                $freshName = trim((string) ($studentData['name'] ?? ''));
+                // Detect stale/orphaned account: stored name doesn't match the current student's name.
+                // This happens when a student is deleted and re-enrolled, or when the old bug merged
+                // siblings into one record — the username was generated for a different person.
+                $nameMismatched = $freshName !== '' &&
+                    mb_strtolower($currentName, 'UTF-8') !== mb_strtolower($freshName, 'UTF-8');
 
-            if ($existingUsername === '' && $studentData) {
-                $newUsername = canonical_student_username($studentData, $accounts, $studentId);
-                if ($newUsername !== '') {
-                    $account['username'] = $newUsername;
+                if ($currentName === '' || $nameMismatched) {
+                    $account['student_name'] = $freshName ?: 'Estudiante';
                     $dirty = true;
+                }
+
+                // Regenerate username if blank, or if the stored name was mismatched
+                // (the existing username was derived from a different student's name).
+                if ($existingUsername === '' || $nameMismatched) {
+                    $newUsername = canonical_student_username($studentData, $accounts, $studentId);
+                    if ($newUsername !== '') {
+                        $account['username'] = $newUsername;
+                        $dirty = true;
+                    }
                 }
             }
 
@@ -739,6 +750,99 @@ function ensure_student_account(string $studentId, array $students, array &$acco
     }
 
     return $newAccount;
+}
+
+/**
+ * Cross-run integrity pass: find accounts whose stored student_name no longer matches
+ * the actual student record, then regenerate the username and propagate it to all
+ * student_assignments rows for that student.
+ *
+ * Mirrors the role that repair_duplicate_usernames() plays in student_profiles.php,
+ * but focused on name/account mismatches rather than duplicate collisions.
+ * Call once during page load so accumulated stale data self-heals.
+ */
+function repair_mismatched_account_names(
+    array $students,
+    array &$studentAccounts,
+    array &$studentAssignments,
+    string $accountsFile,
+    string $assignmentsFile
+): void {
+    if (empty($studentAccounts) || empty($students)) {
+        return;
+    }
+
+    $accountsDirty     = false;
+    $assignmentsDirty  = false;
+
+    foreach ($studentAccounts as &$account) {
+        $studentId  = trim((string) ($account['student_id'] ?? ''));
+        if ($studentId === '') {
+            continue;
+        }
+
+        $studentData = null;
+        foreach ($students as $s) {
+            if ((string) ($s['id'] ?? '') === $studentId) {
+                $studentData = (array) $s;
+                break;
+            }
+        }
+
+        if (!$studentData) {
+            continue; // Student row removed; deletion logic should handle cleanup.
+        }
+
+        $freshName  = trim((string) ($studentData['name'] ?? ''));
+        $storedName = trim((string) ($account['student_name'] ?? ''));
+
+        if ($freshName === '') {
+            continue;
+        }
+
+        // No mismatch — nothing to do for this account.
+        if (mb_strtolower($storedName, 'UTF-8') === mb_strtolower($freshName, 'UTF-8')) {
+            continue;
+        }
+
+        // Name mismatch: regenerate a correct, unique username for this student.
+        $oldUsername = trim((string) ($account['username'] ?? ''));
+        $newUsername = canonical_student_username($studentData, $studentAccounts, $studentId);
+        if ($newUsername === '') {
+            continue;
+        }
+
+        $account['student_name'] = $freshName;
+        $account['username']     = $newUsername;
+        $account['updated_at']   = date('Y-m-d H:i:s');
+
+        save_student_account_to_database($account);
+        $accountsDirty = true;
+
+        // Propagate the corrected username to every assignment row for this student.
+        foreach ($studentAssignments as &$assignment) {
+            if (trim((string) ($assignment['student_id'] ?? '')) !== $studentId) {
+                continue;
+            }
+            // Only update rows that still carry the old (wrong) username or are blank.
+            $rowUsername = trim((string) ($assignment['student_username'] ?? ''));
+            if ($rowUsername !== '' && $rowUsername !== $oldUsername) {
+                continue;
+            }
+            $assignment['student_username'] = $newUsername;
+            save_student_assignment_to_database($assignment);
+            $assignmentsDirty = true;
+        }
+        unset($assignment);
+    }
+    unset($account);
+
+    if ($accountsDirty) {
+        save_json_file($accountsFile, $studentAccounts);
+    }
+    if ($assignmentsDirty) {
+        save_json_file($assignmentsFile, $studentAssignments);
+    }
 }
 
 function sync_assignment_usernames(
@@ -1125,6 +1229,17 @@ $teachers = load_teachers_from_database();
 $studentAssignments = load_student_assignments_from_database();
 $studentAccounts = load_student_accounts_from_database();
 
+/* Self-healing pass: fix accounts whose stored name no longer matches the student record.
+   Regenerates usernames derived from a different person's name (e.g. after the old
+   sibling-merge bug or after a delete-and-re-enroll cycle). */
+repair_mismatched_account_names(
+    $students,
+    $studentAccounts,
+    $studentAssignments,
+    $studentAccountsFile,
+    $studentAssignmentsFile
+);
+
 sync_assignment_usernames(
     $studentAssignments,
     $students,
@@ -1178,6 +1293,12 @@ if (isset($_GET['delete_group']) && (string) $_GET['delete_group'] === '1') {
     // Si el estudiante ya no tiene ninguna asignación, se elimina completamente del sistema
     if ($deleteStudentId !== '' && count_remaining_student_assignments_in_database($deleteStudentId) === 0) {
         delete_student_completely_from_database($deleteStudentId);
+        // Also purge any orphaned account row from the JSON fallback so it cannot
+        // resurface and be linked to a future student re-enrolled under the same name.
+        $studentAccounts = array_values(array_filter($studentAccounts, function ($acc) use ($deleteStudentId) {
+            return trim((string) ($acc['student_id'] ?? '')) !== $deleteStudentId;
+        }));
+        save_json_file($studentAccountsFile, $studentAccounts);
     }
 
     header('Location: student_assignments.php?saved=1');
@@ -1208,6 +1329,12 @@ if (isset($_GET['delete']) && $_GET['delete'] !== '') {
     // Si el estudiante ya no tiene ninguna asignación, se elimina completamente del sistema
     if ($deleteStudentIdForCheck !== '' && count_remaining_student_assignments_in_database($deleteStudentIdForCheck) === 0) {
         delete_student_completely_from_database($deleteStudentIdForCheck);
+        // Also purge any orphaned account row from the JSON fallback so it cannot
+        // resurface and be linked to a future student re-enrolled under the same name.
+        $studentAccounts = array_values(array_filter($studentAccounts, function ($acc) use ($deleteStudentIdForCheck) {
+            return trim((string) ($acc['student_id'] ?? '')) !== $deleteStudentIdForCheck;
+        }));
+        save_json_file($studentAccountsFile, $studentAccounts);
     }
 
     header('Location: student_assignments.php?saved=1');
