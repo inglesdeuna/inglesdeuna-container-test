@@ -180,7 +180,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">🖊</div><div class="rc-card-title">Highlighted vocabulary words</div><div class="rc-pill">' + t.words.length + ' words</div></div><div class="rc-card-body"><div class="rc-note">📌 Add each word that appears in the passage. It will be highlighted in orange for students.</div><label class="rc-label">Live preview — highlighted words as students see them</label><div class="rc-preview">' + highlight(t.body, t.words) + '</div>' +
       t.words.map((w, i) => '<div class="rc-item"><button class="rc-remove" data-action="remove-word" data-index="' + i + '">Remove</button><div class="rc-item-title">' + (i+1) + '. ' + h(w.word || 'Word card') + '</div><div class="rc-grid-2"><div><label class="rc-label">Word as it appears in text</label><input class="rc-input" data-word="' + i + '" data-prop="word" value="' + h(w.word) + '"></div><div><label class="rc-label">Correct meaning</label><input class="rc-input" data-word="' + i + '" data-prop="correct" value="' + h(w.correct) + '"></div></div><div class="rc-grid-2" style="margin-top:12px"><div><label class="rc-label">Wrong option 1</label><input class="rc-input" data-word="' + i + '" data-prop="d0" value="' + h(w.distractors[0]) + '"></div><div><label class="rc-label">Wrong option 2</label><input class="rc-input" data-word="' + i + '" data-prop="d1" value="' + h(w.distractors[1]) + '"></div></div></div>').join('') + '<button class="rc-add" data-action="add-word">＋ Add vocabulary word</button></div></section>' +
       (t.mode === 'comp' ? '<section class="rc-card"><div class="rc-card-head"><div class="rc-icon">?</div><div class="rc-card-title">Comprehension questions</div><div class="rc-pill">' + t.questions.length + ' questions</div></div><div class="rc-card-body">' + t.questions.map((q, qi) => '<div class="rc-item"><button class="rc-remove" data-action="remove-question" data-index="' + qi + '">Remove</button><div class="rc-item-title">Question ' + (qi+1) + '</div><label class="rc-label">Question</label><input class="rc-input" data-question="' + qi + '" data-prop="stem" value="' + h(q.stem) + '">' + q.options.map((op, oi) => '<div style="display:grid;grid-template-columns:42px 1fr;gap:8px;margin-top:10px"><button class="rc-btn" data-action="correct" data-question="' + qi + '" data-option="' + oi + '">' + ['A','B','C','D'][oi] + '</button><input class="rc-input" data-question="' + qi + '" data-prop="option" data-option="' + oi + '" value="' + h(op) + '"></div>').join('') + '<label class="rc-label" style="margin-top:10px">Feedback</label><input class="rc-input" data-question="' + qi + '" data-prop="feedback" value="' + h(q.feedback) + '"></div>').join('') + '<button class="rc-add" data-action="add-question">＋ Add comprehension question</button></div></section>' : '') +
-      '<div class="rc-savebar"><button class="rc-btn" data-action="preview">👁 Preview as student</button><div class="rc-status">' + h(status) + '</div><button class="rc-btn rc-primary" data-action="save">💾 Save activity</button></div></div></div></div>';
+      '<div class="rc-savebar"><button class="rc-btn" data-action="preview">👁 Preview as student</button><div class="rc-status">' + h(status) + '</div><button class="rc-btn rc-primary" data-action="save" ' + (saving ? 'disabled' : '') + '>' + (saving ? 'Saving...' : '💾 Save activity') + '</button></div></div></div></div>';
   }
 
   function playerHtml() {
@@ -193,7 +193,71 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   function render() { if (!root) return; root.innerHTML = preview ? playerHtml() : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml()); if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); setupPanelFullscreenRC(); } }
   function setupPanelFullscreenRC() { if (!window.initPanelFullscreen) return; var passage = root.querySelector('.rc-passage'); var quiz = root.querySelector('.rc-quiz'); if (passage) window.initPanelFullscreen(passage, { label: 'Texto en pantalla completa' }); if (quiz) window.initPanelFullscreen(quiz, { label: 'Preguntas en pantalla completa' }); }
 
-  root.addEventListener('click', function(e) { const btn = e.target.closest('[data-action]'); if (!btn) return; const action = btn.dataset.action; if (action === 'zoom-in') { zoomScale = Math.min(ZOOM_MAX, zoomScale + ZOOM_STEP); applyZoom(); } if (action === 'zoom-out') { zoomScale = Math.max(ZOOM_MIN, zoomScale - ZOOM_STEP); applyZoom(); } if (action === 'preview') { preview = true; render(); } });
+  root.addEventListener('input', function(e) {
+    const el = e.target;
+    if (el.dataset.field !== undefined) {
+      const field = el.dataset.field;
+      const val = field === 'wordCount' ? Number(el.value) : el.value;
+      Object.assign(text(), { [field]: val });
+      if (field === 'title') { root.querySelectorAll('[data-field="title"]').forEach(inp => { if (inp !== el) inp.value = el.value; }); }
+      if (field === 'body') refreshLivePreview();
+      return;
+    }
+    if (el.dataset.word !== undefined) {
+      const w = text().words[Number(el.dataset.word)];
+      if (!w) return;
+      const prop = el.dataset.prop;
+      if (prop === 'd0') w.distractors[0] = el.value;
+      else if (prop === 'd1') w.distractors[1] = el.value;
+      else w[prop] = el.value;
+      if (prop === 'word') refreshLivePreview();
+      return;
+    }
+    if (el.dataset.question !== undefined) {
+      const q = text().questions[Number(el.dataset.question)];
+      if (!q) return;
+      const prop = el.dataset.prop;
+      if (prop === 'option') q.options[Number(el.dataset.option)] = el.value;
+      else q[prop] = el.value;
+      return;
+    }
+  });
+
+  root.addEventListener('click', async function(e) {
+    const btn = e.target.closest('[data-action]'); if (!btn) return; const action = btn.dataset.action;
+    if (action === 'zoom-in') { zoomScale = Math.min(ZOOM_MAX, zoomScale + ZOOM_STEP); applyZoom(); }
+    if (action === 'zoom-out') { zoomScale = Math.max(ZOOM_MIN, zoomScale - ZOOM_STEP); applyZoom(); }
+    if (action === 'preview') { preview = true; render(); }
+    if (action === 'mode') { patchText({ mode: btn.dataset.mode }); }
+    if (action === 'add-word') { text().words.push(normalizeWord({})); render(); }
+    if (action === 'remove-word') { text().words.splice(Number(btn.dataset.index), 1); render(); }
+    if (action === 'add-question') { text().questions.push(normalizeQuestion({})); render(); }
+    if (action === 'remove-question') { text().questions.splice(Number(btn.dataset.index), 1); render(); }
+    if (action === 'correct') {
+      const q = text().questions[Number(btn.dataset.question)];
+      if (q) { q.correct = Number(btn.dataset.option); render(); }
+    }
+    if (action === 'save') {
+      if (!window.RC_ACTIVITY_ID) { status = 'No activity ID - cannot save.'; render(); return; }
+      if (saving) return;
+      saving = true; status = 'Saving...'; render();
+      try {
+        const resp = await fetch('save.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ id: window.RC_ACTIVITY_ID, title: state.title, texts: state.texts })
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok || !json.ok) throw new Error(json.error || ('HTTP ' + resp.status));
+        status = 'Saved successfully';
+      } catch (err) {
+        status = 'Could not save: ' + err.message;
+      } finally {
+        saving = false; render();
+      }
+    }
+  });
   try { render(); } catch (err) { console.error(err); }
 })();
 </script>
