@@ -112,6 +112,8 @@ function normalize_multiple_choice_payload($rawData): array
                 isset($item['option_c']) ? (string) $item['option_c'] : '',
             );
 
+        $optionImages = isset($item['option_images']) && is_array($item['option_images']) ? $item['option_images'] : array();
+
         $questions[] = array(
             'id'            => isset($item['id']) && trim((string) $item['id']) !== '' ? trim((string) $item['id']) : uniqid('mc_'),
             'question_type' => (isset($item['question_type']) && $item['question_type'] === 'listen') ? 'listen' : 'text',
@@ -124,6 +126,11 @@ function normalize_multiple_choice_payload($rawData): array
                 isset($options[0]) ? trim((string) $options[0]) : '',
                 isset($options[1]) ? trim((string) $options[1]) : '',
                 isset($options[2]) ? trim((string) $options[2]) : '',
+            ),
+            'option_images' => array(
+                isset($optionImages[0]) ? trim((string) $optionImages[0]) : '',
+                isset($optionImages[1]) ? trim((string) $optionImages[1]) : '',
+                isset($optionImages[2]) ? trim((string) $optionImages[2]) : '',
             ),
             'correct'       => isset($item['correct']) ? max(0, min(2, (int) $item['correct'])) : 0,
         );
@@ -326,6 +333,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $optBImgFiles    = isset($_FILES['option_b_img']) ? $_FILES['option_b_img'] : null;
     $optCImgFiles    = isset($_FILES['option_c_img']) ? $_FILES['option_c_img'] : null;
 
+    // Optional supplementary image for each text answer (kept even when option_type is 'text')
+    $optAAnsImgExisting = isset($_POST['option_a_ansimg_existing']) && is_array($_POST['option_a_ansimg_existing']) ? $_POST['option_a_ansimg_existing'] : array();
+    $optBAnsImgExisting = isset($_POST['option_b_ansimg_existing']) && is_array($_POST['option_b_ansimg_existing']) ? $_POST['option_b_ansimg_existing'] : array();
+    $optCAnsImgExisting = isset($_POST['option_c_ansimg_existing']) && is_array($_POST['option_c_ansimg_existing']) ? $_POST['option_c_ansimg_existing'] : array();
+    $optAAnsImgFiles    = isset($_FILES['option_a_ansimg']) ? $_FILES['option_a_ansimg'] : null;
+    $optBAnsImgFiles    = isset($_FILES['option_b_ansimg']) ? $_FILES['option_b_ansimg'] : null;
+    $optCAnsImgFiles    = isset($_FILES['option_c_ansimg']) ? $_FILES['option_c_ansimg'] : null;
+
     $sanitized = array();
 
     foreach ($questionTexts as $i => $questionRaw) {
@@ -375,6 +390,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $c = $cImg;
         }
 
+        // Optional supplementary images for text-mode answers (ignored when option_type is 'image')
+        $aAnsImg = isset($optAAnsImgExisting[$i]) ? trim((string) $optAAnsImgExisting[$i]) : '';
+        if ($optAAnsImgFiles && isset($optAAnsImgFiles['name'][$i]) && $optAAnsImgFiles['name'][$i] !== '' && isset($optAAnsImgFiles['tmp_name'][$i]) && $optAAnsImgFiles['tmp_name'][$i] !== '') {
+            $up = upload_to_cloudinary($optAAnsImgFiles['tmp_name'][$i]);
+            if ($up) $aAnsImg = $up;
+        }
+
+        $bAnsImg = isset($optBAnsImgExisting[$i]) ? trim((string) $optBAnsImgExisting[$i]) : '';
+        if ($optBAnsImgFiles && isset($optBAnsImgFiles['name'][$i]) && $optBAnsImgFiles['name'][$i] !== '' && isset($optBAnsImgFiles['tmp_name'][$i]) && $optBAnsImgFiles['tmp_name'][$i] !== '') {
+            $up = upload_to_cloudinary($optBAnsImgFiles['tmp_name'][$i]);
+            if ($up) $bAnsImg = $up;
+        }
+
+        $cAnsImg = isset($optCAnsImgExisting[$i]) ? trim((string) $optCAnsImgExisting[$i]) : '';
+        if ($optCAnsImgFiles && isset($optCAnsImgFiles['name'][$i]) && $optCAnsImgFiles['name'][$i] !== '' && isset($optCAnsImgFiles['tmp_name'][$i]) && $optCAnsImgFiles['tmp_name'][$i] !== '') {
+            $up = upload_to_cloudinary($optCAnsImgFiles['tmp_name'][$i]);
+            if ($up) $cAnsImg = $up;
+        }
+
+        if ($optionType === 'image') {
+            // Full-image options already carry their own image in $a/$b/$c; supplementary field unused.
+            $aAnsImg = '';
+            $bAnsImg = '';
+            $cAnsImg = '';
+        }
+
         $correct = isset($corrects[$i]) ? max(0, min(2, (int) $corrects[$i])) : 0;
 
         if ($question === '' && $image === '' && $a === '' && $b === '' && $c === '') {
@@ -391,6 +432,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'image'         => $image,
             'option_type'   => $optionType,
             'options'       => array($a, $b, $c),
+            'option_images' => array($aAnsImg, $bAnsImg, $cAnsImg),
             'correct'       => $correct,
         );
     }
@@ -601,6 +643,29 @@ ob_start();
     margin-bottom:8px;
 }
 
+.opt-ans-img-col{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin:4px 0 10px 0;
+    padding:8px 10px;
+    border:1px dashed #d1d5db;
+    border-radius:10px;
+    background:#fafafa;
+}
+.opt-ans-img-col input[type="file"]{
+    font-size:12px;
+}
+.opt-ans-img-hint{
+    font-size:12px;
+    color:#6b7280;
+}
+.opt-ans-img-preview{
+    max-height:56px;
+    max-width:56px;
+    margin-bottom:0;
+}
+
 .q-tts-hint{
     background:#ede9fe;
     border:1px solid #c4b5fd;
@@ -799,6 +864,9 @@ ob_start();
                 <input type="hidden" name="option_a_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][0])) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="option_b_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][1])) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>">
                 <input type="hidden" name="option_c_img_existing[]" value="<?= htmlspecialchars(($optType === 'image' && isset($question['options'][2])) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_a_ansimg_existing[]" value="<?= htmlspecialchars(isset($question['option_images'][0]) ? $question['option_images'][0] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_b_ansimg_existing[]" value="<?= htmlspecialchars(isset($question['option_images'][1]) ? $question['option_images'][1] : '', ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="option_c_ansimg_existing[]" value="<?= htmlspecialchars(isset($question['option_images'][2]) ? $question['option_images'][2] : '', ENT_QUOTES, 'UTF-8') ?>">
 
                 <div class="q-mode-row">
                     <div>
@@ -840,12 +908,33 @@ ob_start();
                 <div class="q-text-opts-section" <?= $optType === 'image' ? 'style="display:none"' : '' ?>>
                     <label>Option A</label>
                     <input type="text" name="option_a[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][0])) ? $question['options'][0] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
+                    <div class="opt-ans-img-col">
+                        <?php if (!empty($question['option_images'][0])): ?>
+                            <img src="<?= htmlspecialchars($question['option_images'][0], ENT_QUOTES, 'UTF-8') ?>" class="opt-img-preview opt-ans-img-preview">
+                        <?php endif; ?>
+                        <input type="file" name="option_a_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                        <span class="opt-ans-img-hint">🖼 Optional image for Option A</span>
+                    </div>
 
                     <label>Option B</label>
                     <input type="text" name="option_b[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][1])) ? $question['options'][1] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
+                    <div class="opt-ans-img-col">
+                        <?php if (!empty($question['option_images'][1])): ?>
+                            <img src="<?= htmlspecialchars($question['option_images'][1], ENT_QUOTES, 'UTF-8') ?>" class="opt-img-preview opt-ans-img-preview">
+                        <?php endif; ?>
+                        <input type="file" name="option_b_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                        <span class="opt-ans-img-hint">🖼 Optional image for Option B</span>
+                    </div>
 
                     <label>Option C</label>
                     <input type="text" name="option_c[]" value="<?= htmlspecialchars(($optType === 'text' && isset($question['options'][2])) ? $question['options'][2] : '', ENT_QUOTES, 'UTF-8') ?>" <?= $optType !== 'image' ? 'required' : '' ?>>
+                    <div class="opt-ans-img-col">
+                        <?php if (!empty($question['option_images'][2])): ?>
+                            <img src="<?= htmlspecialchars($question['option_images'][2], ENT_QUOTES, 'UTF-8') ?>" class="opt-img-preview opt-ans-img-preview">
+                        <?php endif; ?>
+                        <input type="file" name="option_c_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                        <span class="opt-ans-img-hint">🖼 Optional image for Option C</span>
+                    </div>
                 </div>
 
                 <!-- IMAGE OPTIONS -->
@@ -927,12 +1016,15 @@ function previewOptImg(input) {
     const file = input.files[0];
     if (!file) return;
     const reader = new FileReader();
-    const col = input.closest('.opt-img-col');
+    const col = input.closest('.opt-img-col, .opt-ans-img-col');
     reader.onload = function(e) {
         let preview = col.querySelector('.opt-img-preview');
         if (!preview) {
             preview = document.createElement('img');
             preview.className = 'opt-img-preview';
+            if (col.classList.contains('opt-ans-img-col')) {
+                preview.classList.add('opt-ans-img-preview');
+            }
             col.insertBefore(preview, input);
         }
         preview.src = e.target.result;
@@ -950,6 +1042,9 @@ function addQuestion() {
         <input type="hidden" name="option_a_img_existing[]" value="">
         <input type="hidden" name="option_b_img_existing[]" value="">
         <input type="hidden" name="option_c_img_existing[]" value="">
+        <input type="hidden" name="option_a_ansimg_existing[]" value="">
+        <input type="hidden" name="option_b_ansimg_existing[]" value="">
+        <input type="hidden" name="option_c_ansimg_existing[]" value="">
 
         <div class="q-mode-row">
             <div>
@@ -986,10 +1081,22 @@ function addQuestion() {
         <div class="q-text-opts-section">
             <label>Option A</label>
             <input type="text" name="option_a[]" required>
+            <div class="opt-ans-img-col">
+                <input type="file" name="option_a_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                <span class="opt-ans-img-hint">🖼 Optional image for Option A</span>
+            </div>
             <label>Option B</label>
             <input type="text" name="option_b[]" required>
+            <div class="opt-ans-img-col">
+                <input type="file" name="option_b_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                <span class="opt-ans-img-hint">🖼 Optional image for Option B</span>
+            </div>
             <label>Option C</label>
             <input type="text" name="option_c[]" required>
+            <div class="opt-ans-img-col">
+                <input type="file" name="option_c_ansimg[]" accept="image/*" onchange="previewOptImg(this)">
+                <span class="opt-ans-img-hint">🖼 Optional image for Option C</span>
+            </div>
         </div>
 
         <div class="q-img-opts-section" style="display:none">

@@ -494,6 +494,50 @@ body {
     display:block;
 }
 
+.mc-option {
+    position:relative;
+}
+
+.mc-option-thumb {
+    max-width:100%;
+    max-height:70px;
+    object-fit:contain;
+    border-radius:8px;
+    display:block;
+    margin:0 auto 6px;
+}
+
+.mc-option-text {
+    display:block;
+    padding-right:22px;
+}
+
+.mc-option-listen {
+    position:absolute;
+    top:6px;
+    right:6px;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    border:none;
+    background:var(--mc-lila,#7F77DD);
+    color:#fff;
+    font-size:13px;
+    line-height:26px;
+    padding:0;
+    cursor:pointer;
+    box-shadow:0 2px 6px rgba(0,0,0,.18);
+}
+
+.mc-option-listen:hover {
+    filter:brightness(1.08);
+}
+
+.mc-option-listen:disabled {
+    opacity:.45;
+    cursor:not-allowed;
+}
+
 .mc-controls {
     margin-top:14px;
     display:flex;
