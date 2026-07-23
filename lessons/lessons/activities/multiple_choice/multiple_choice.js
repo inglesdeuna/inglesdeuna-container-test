@@ -274,7 +274,33 @@ document.addEventListener('DOMContentLoaded', function () {
         img.alt = 'Option ' + String.fromCharCode(65 + optIndex);
         button.appendChild(img);
       } else {
-        button.textContent = optionText;
+        const optionImage = (item.option_images && item.option_images[optIndex]) || '';
+
+        if (optionImage) {
+          const thumb = document.createElement('img');
+          thumb.src = optionImage;
+          thumb.alt = 'Option ' + String.fromCharCode(65 + optIndex);
+          thumb.className = 'mc-option-thumb';
+          button.appendChild(thumb);
+        }
+
+        const textSpan = document.createElement('span');
+        textSpan.className = 'mc-option-text';
+        textSpan.textContent = optionText;
+        button.appendChild(textSpan);
+
+        if (optionText !== '') {
+          const listenIcon = document.createElement('button');
+          listenIcon.type = 'button';
+          listenIcon.className = 'mc-option-listen';
+          listenIcon.textContent = '🔊';
+          listenIcon.setAttribute('aria-label', 'Listen to option ' + String.fromCharCode(65 + optIndex));
+          listenIcon.addEventListener('click', function (evt) {
+            evt.stopPropagation();
+            speakText(optionText, String(item.voice_id || 'josh'));
+          });
+          button.appendChild(listenIcon);
+        }
       }
 
       button.addEventListener('click', function () {
@@ -332,7 +358,6 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadQuestion() {
     const item = questions[index] || {};
     const cleanQuestion = normalizeQuestion(item);
-    const isListen = item.question_type === 'listen';
 
     selected = null;
     revealed = false;
@@ -365,7 +390,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (listenBtn) {
-      listenBtn.disabled = !isListen || cleanQuestion === '';
+      listenBtn.disabled = cleanQuestion === '';
     }
 
     if (item.image) {
