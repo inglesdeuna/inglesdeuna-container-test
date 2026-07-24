@@ -49,6 +49,26 @@ function wpe_resolve_unit(PDO $pdo, string $activityId): string
 
 function wpe_default_title(): string { return 'Writing Practice'; }
 
+const WPE_GRAMMAR_OPTIONS = array(
+    'present_simple'     => 'Present Simple',
+    'present_continuous' => 'Present Continuous',
+    'because'            => 'because',
+    'can_cant'           => "can / can't",
+    'should'             => 'should',
+);
+
+function wpe_list_from_lines($raw): array
+{
+    $raw = (string) $raw;
+    $parts = preg_split('/[\r\n,]+/', $raw);
+    $out = array();
+    foreach ($parts as $p) {
+        $p = trim((string) $p);
+        if ($p !== '') $out[] = $p;
+    }
+    return $out;
+}
+
 function wpe_normalize_payload($rawData): array
 {
     $default = array('title' => wpe_default_title(), 'items' => array());
@@ -61,11 +81,32 @@ function wpe_normalize_payload($rawData): array
     $items = array();
     foreach ($src as $item) {
         if (!is_array($item)) continue;
+        $mode = isset($item['mode']) ? trim((string)$item['mode']) : 'exact';
+        if ($mode !== 'essay') $mode = 'exact';
+
+        $grammar = array();
+        if (isset($item['grammar_checklist']) && is_array($item['grammar_checklist'])) {
+            foreach ($item['grammar_checklist'] as $g) {
+                $g = trim((string)$g);
+                if (isset(WPE_GRAMMAR_OPTIONS[$g])) $grammar[] = $g;
+            }
+        }
+
         $items[] = array(
-            'id'          => isset($item['id'])          ? trim((string)$item['id'])          : uniqid('wp_'),
-            'instruction' => isset($item['instruction']) ? trim((string)$item['instruction']) : '',
-            'prompt_text' => isset($item['prompt_text']) ? trim((string)$item['prompt_text']) : '',
-            'answer'      => isset($item['answer'])      ? trim((string)$item['answer'])      : '',
+            'id'                => isset($item['id'])          ? trim((string)$item['id'])          : uniqid('wp_'),
+            'instruction'       => isset($item['instruction']) ? trim((string)$item['instruction']) : '',
+            'prompt_text'       => isset($item['prompt_text']) ? trim((string)$item['prompt_text']) : '',
+            'answer'            => isset($item['answer'])      ? trim((string)$item['answer'])      : '',
+            'mode'              => $mode,
+            'min_words'         => isset($item['min_words'])      ? max(0, (int)$item['min_words'])      : 0,
+            'max_words'         => isset($item['max_words'])      ? max(0, (int)$item['max_words'])      : 0,
+            'min_sentences'     => isset($item['min_sentences'])  ? max(0, (int)$item['min_sentences'])  : 0,
+            'max_sentences'     => isset($item['max_sentences'])  ? max(0, (int)$item['max_sentences'])  : 0,
+            'required_any'      => isset($item['required_any']) && is_array($item['required_any']) ? array_values(array_filter(array_map('trim', $item['required_any']))) : array(),
+            'vocab_bank'        => isset($item['vocab_bank']) && is_array($item['vocab_bank']) ? array_values(array_filter(array_map('trim', $item['vocab_bank']))) : array(),
+            'vocab_min'         => isset($item['vocab_min'])       ? max(0, (int)$item['vocab_min'])      : 0,
+            'grammar_checklist' => $grammar,
+            'sentence_guide'    => isset($item['sentence_guide']) && is_array($item['sentence_guide']) ? array_values(array_filter(array_map('trim', $item['sentence_guide']))) : array(),
         );
     }
     return array('title' => $title !== '' ? $title : wpe_default_title(), 'items' => $items);
@@ -175,6 +216,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $prompts      = isset($_POST['prompt_text'])  && is_array($_POST['prompt_text'])  ? $_POST['prompt_text']  : array();
     $answers      = isset($_POST['answer'])       && is_array($_POST['answer'])       ? $_POST['answer']       : array();
     $ids          = isset($_POST['item_id'])      && is_array($_POST['item_id'])      ? $_POST['item_id']      : array();
+    $modes        = isset($_POST['mode'])         && is_array($_POST['mode'])         ? $_POST['mode']         : array();
+    $minWords     = isset($_POST['min_words'])    && is_array($_POST['min_words'])    ? $_POST['min_words']    : array();
+    $maxWords     = isset($_POST['max_words'])    && is_array($_POST['max_words'])    ? $_POST['max_words']    : array();
+    $minSent      = isset($_POST['min_sentences']) && is_array($_POST['min_sentences']) ? $_POST['min_sentences'] : array();
+    $maxSent      = isset($_POST['max_sentences']) && is_array($_POST['max_sentences']) ? $_POST['max_sentences'] : array();
+    $requiredAny  = isset($_POST['required_any']) && is_array($_POST['required_any']) ? $_POST['required_any'] : array();
+    $vocabBank    = isset($_POST['vocab_bank'])   && is_array($_POST['vocab_bank'])   ? $_POST['vocab_bank']   : array();
+    $vocabMin     = isset($_POST['vocab_min'])    && is_array($_POST['vocab_min'])    ? $_POST['vocab_min']    : array();
+    $grammarSel   = isset($_POST['grammar_checklist']) && is_array($_POST['grammar_checklist']) ? $_POST['grammar_checklist'] : array();
+    $sentGuide    = isset($_POST['sentence_guide']) && is_array($_POST['sentence_guide']) ? $_POST['sentence_guide'] : array();
 
     $sanitized = array();
     foreach ($prompts as $i => $promptRaw) {
@@ -183,7 +234,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $answer      = trim((string)($answers[$i]  ?? ''));
         $itemId      = trim((string)($ids[$i]      ?? '')) ?: uniqid('wp_');
         if ($prompt === '' && $answer === '') continue;
-        $sanitized[] = array('id' => $itemId, 'instruction' => $instruction, 'prompt_text' => $prompt, 'answer' => $answer);
+
+        $mode = trim((string)($modes[$itemId] ?? 'exact'));
+        if ($mode !== 'essay') $mode = 'exact';
+
+        $grammarRaw = isset($grammarSel[$itemId]) && is_array($grammarSel[$itemId]) ? $grammarSel[$itemId] : array();
+        $grammar = array();
+        foreach ($grammarRaw as $g) {
+            $g = trim((string)$g);
+            if (isset(WPE_GRAMMAR_OPTIONS[$g])) $grammar[] = $g;
+        }
+
+        $sanitized[] = array(
+            'id'                => $itemId,
+            'instruction'       => $instruction,
+            'prompt_text'       => $prompt,
+            'answer'            => $answer,
+            'mode'              => $mode,
+            'min_words'         => max(0, (int)($minWords[$i] ?? 0)),
+            'max_words'         => max(0, (int)($maxWords[$i] ?? 0)),
+            'min_sentences'     => max(0, (int)($minSent[$i] ?? 0)),
+            'max_sentences'     => max(0, (int)($maxSent[$i] ?? 0)),
+            'required_any'      => wpe_list_from_lines($requiredAny[$i] ?? ''),
+            'vocab_bank'        => wpe_list_from_lines($vocabBank[$i] ?? ''),
+            'vocab_min'         => max(0, (int)($vocabMin[$i] ?? 0)),
+            'grammar_checklist' => $grammar,
+            'sentence_guide'    => wpe_list_from_lines($sentGuide[$i] ?? ''),
+        );
     }
 
     $savedId = wpe_save($pdo, $unit, $activityId, $postedTitle, $sanitized);
@@ -216,6 +293,16 @@ ob_start();
 .wp-btn-save{background:#F97316;color:#fff;padding:10px 22px;border:none;border-radius:10px;cursor:pointer;font-weight:900;font-family:'Nunito',sans-serif;font-size:15px;}
 .wp-btn-remove{background:#ef4444;color:#fff;border:none;padding:7px 12px;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;}
 .wp-saved-msg{color:#1D9E75;font-weight:900;margin-bottom:14px;}
+.wp-mode-toggle{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;}
+.wp-mode-opt{flex:1;min-width:180px;position:relative;}
+.wp-mode-opt input{position:absolute;opacity:0;}
+.wp-mode-opt span{display:block;padding:10px 12px;border-radius:10px;border:1.5px solid #d1d5db;font-weight:800;font-size:13px;text-align:center;cursor:pointer;color:#534AB7;background:#fff;transition:.15s;}
+.wp-mode-opt input:checked + span{background:#7F77DD;border-color:#7F77DD;color:#fff;}
+.wp-rubric-box{background:#FAFAFE;border:1.5px dashed #EDE9FA;border-radius:12px;padding:14px;margin-bottom:10px;display:none;}
+.wp-rubric-box.show{display:block;}
+.wp-rubric-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.wp-rubric-grammar{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px;}
+.wp-rubric-grammar label{display:flex;align-items:center;gap:5px;font-size:13px;font-weight:700;color:#271B5D;background:#fff;border:1px solid #EDE9FA;border-radius:8px;padding:6px 10px;}
 </style>
 
 <?php if (isset($_GET['saved'])): ?>
@@ -248,10 +335,54 @@ ob_start();
             <textarea class="wp-editor-textarea" name="prompt_text[]"
                       placeholder="Write the source text here (e.g. Spanish paragraph to translate)"><?= htmlspecialchars($item['prompt_text'], ENT_QUOTES, 'UTF-8') ?></textarea>
 
-            <label class="wp-editor-label" style="color:#0F6E56;">Model answer (used for scoring)</label>
-            <p class="wp-editor-hint">Write the expected correct answer exactly as students should write it. The scoring system compares word by word.</p>
+            <label class="wp-editor-label">Scoring mode</label>
+            <div class="wp-mode-toggle">
+                <label class="wp-mode-opt">
+                    <input type="radio" name="mode[<?= htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8') ?>]" value="exact" onchange="wpToggleMode(this)" <?= $item['mode'] !== 'essay' ? 'checked' : '' ?>>
+                    <span>&#127919; Exact match</span>
+                </label>
+                <label class="wp-mode-opt">
+                    <input type="radio" name="mode[<?= htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8') ?>]" value="essay" onchange="wpToggleMode(this)" <?= $item['mode'] === 'essay' ? 'checked' : '' ?>>
+                    <span>&#128221; Essay / rubric</span>
+                </label>
+            </div>
+
+            <label class="wp-editor-label" style="color:#0F6E56;">Model answer <span class="wp-editor-hint" style="margin:0;display:inline;">(reference text shown to the student)</span></label>
+            <p class="wp-editor-hint">In <b>Exact match</b> mode the student's answer is compared word by word against this text. In <b>Essay / rubric</b> mode this is shown only as an example — the student's own writing is scored against the rubric below.</p>
             <textarea class="wp-editor-textarea answer" name="answer[]"
-                      placeholder="Write the correct English translation here..."><?= htmlspecialchars($item['answer'], ENT_QUOTES, 'UTF-8') ?></textarea>
+                      placeholder="Write the correct answer here..."><?= htmlspecialchars($item['answer'], ENT_QUOTES, 'UTF-8') ?></textarea>
+
+            <div class="wp-rubric-box <?= $item['mode'] === 'essay' ? 'show' : '' ?>">
+                <label class="wp-editor-label">Word count</label>
+                <div class="wp-rubric-row">
+                    <input type="number" min="0" class="wp-editor-input" name="min_words[]" placeholder="Min words (e.g. 80)" value="<?= $item['min_words'] ?: '' ?>">
+                    <input type="number" min="0" class="wp-editor-input" name="max_words[]" placeholder="Max words (e.g. 100)" value="<?= $item['max_words'] ?: '' ?>">
+                </div>
+
+                <label class="wp-editor-label">Sentence count</label>
+                <div class="wp-rubric-row">
+                    <input type="number" min="0" class="wp-editor-input" name="min_sentences[]" placeholder="Min sentences (e.g. 6)" value="<?= $item['min_sentences'] ?: '' ?>">
+                    <input type="number" min="0" class="wp-editor-input" name="max_sentences[]" placeholder="Max sentences (e.g. 8)" value="<?= $item['max_sentences'] ?: '' ?>">
+                </div>
+
+                <label class="wp-editor-label">Must include one of these words (e.g. app names)</label>
+                <input type="text" class="wp-editor-input" name="required_any[]" placeholder="WhatsApp, YouTube, Instagram, TikTok, Canva, ChatGPT, Spotify" value="<?= htmlspecialchars(implode(', ', $item['required_any']), ENT_QUOTES, 'UTF-8') ?>">
+
+                <label class="wp-editor-label">Vocabulary bank</label>
+                <textarea class="wp-editor-textarea" name="vocab_bank[]" placeholder="app, frustrated, message, loading, buffering, update, internet connection, account, notification, error, problem, video call, download, password, restart"><?= htmlspecialchars(implode(', ', $item['vocab_bank']), ENT_QUOTES, 'UTF-8') ?></textarea>
+                <label class="wp-editor-label">Minimum vocabulary words required</label>
+                <input type="number" min="0" class="wp-editor-input" name="vocab_min[]" placeholder="e.g. 6" value="<?= $item['vocab_min'] ?: '' ?>">
+
+                <label class="wp-editor-label">Grammar checklist</label>
+                <div class="wp-rubric-grammar">
+                    <?php foreach (WPE_GRAMMAR_OPTIONS as $gKey => $gLabel): ?>
+                        <label><input type="checkbox" name="grammar_checklist[<?= htmlspecialchars($item['id'], ENT_QUOTES, 'UTF-8') ?>][]" value="<?= $gKey ?>" <?= in_array($gKey, $item['grammar_checklist'], true) ? 'checked' : '' ?>> <?= htmlspecialchars($gLabel, ENT_QUOTES, 'UTF-8') ?></label>
+                    <?php endforeach; ?>
+                </div>
+
+                <label class="wp-editor-label">Sentence guide (one instruction per line, shown to the student)</label>
+                <textarea class="wp-editor-textarea" name="sentence_guide[]" placeholder="Introduce your favorite app.&#10;Describe the problem.&#10;Explain why you are frustrated.&#10;..."><?= htmlspecialchars(implode("\n", $item['sentence_guide']), ENT_QUOTES, 'UTF-8') ?></textarea>
+            </div>
         </div>
     <?php endforeach; ?>
     </div>
@@ -266,30 +397,69 @@ ob_start();
 var wpItemCount = <?= count($items) ?>;
 var formChanged = false;
 var formSubmitted = false;
+var WPE_GRAMMAR_OPTIONS = <?= json_encode(WPE_GRAMMAR_OPTIONS, JSON_UNESCAPED_UNICODE) ?>;
 
 function removeItem(btn){
     btn.closest('.wp-editor-item').remove();
     formChanged = true;
 }
 
+function wpToggleMode(radio){
+    var box = radio.closest('.wp-editor-item').querySelector('.wp-rubric-box');
+    if(box) box.classList.toggle('show', radio.value === 'essay');
+    formChanged = true;
+}
+
 function addItem(){
-    wpItemCount++;
+    var n = wpItemCount++;
+    var itemId = 'wp_' + Date.now() + '_' + Math.floor(Math.random()*1000);
     var c = document.getElementById('wpItemsContainer');
     var d = document.createElement('div');
     d.className = 'wp-editor-item';
+    var grammarHtml = '';
+    Object.keys(WPE_GRAMMAR_OPTIONS).forEach(function(key){
+        grammarHtml += '<label><input type="checkbox" name="grammar_checklist[' + itemId + '][]" value="' + key + '"> ' + WPE_GRAMMAR_OPTIONS[key] + '</label>';
+    });
     d.innerHTML =
         '<div class="wp-editor-item-header">' +
-            '<span class="wp-editor-item-num">Prompt ' + wpItemCount + '</span>' +
+            '<span class="wp-editor-item-num">Prompt ' + (n+1) + '</span>' +
             '<button type="button" class="wp-btn-remove" onclick="removeItem(this)">&#10006; Remove</button>' +
         '</div>' +
-        '<input type="hidden" name="item_id[]" value="wp_' + Date.now() + '_' + Math.floor(Math.random()*1000) + '">' +
+        '<input type="hidden" name="item_id[]" value="' + itemId + '">' +
         '<label class="wp-editor-label">Instruction shown to student</label>' +
         '<input type="text" class="wp-editor-input" name="instruction[]" placeholder="e.g. Translate to English">' +
         '<label class="wp-editor-label">Text / prompt the student reads</label>' +
         '<textarea class="wp-editor-textarea" name="prompt_text[]" placeholder="Write the source text here"></textarea>' +
-        '<label class="wp-editor-label" style="color:#0F6E56;">Model answer (used for scoring)</label>' +
-        '<p class="wp-editor-hint">Write the correct answer exactly as students should write it.</p>' +
-        '<textarea class="wp-editor-textarea answer" name="answer[]" placeholder="Write the correct answer here..."></textarea>';
+        '<label class="wp-editor-label">Scoring mode</label>' +
+        '<div class="wp-mode-toggle">' +
+            '<label class="wp-mode-opt"><input type="radio" name="mode[' + itemId + ']" value="exact" onchange="wpToggleMode(this)" checked><span>&#127919; Exact match</span></label>' +
+            '<label class="wp-mode-opt"><input type="radio" name="mode[' + itemId + ']" value="essay" onchange="wpToggleMode(this)"><span>&#128221; Essay / rubric</span></label>' +
+        '</div>' +
+        '<label class="wp-editor-label" style="color:#0F6E56;">Model answer</label>' +
+        '<p class="wp-editor-hint">In Exact match mode the student\'s answer is compared word by word. In Essay / rubric mode this is only a reference example.</p>' +
+        '<textarea class="wp-editor-textarea answer" name="answer[]" placeholder="Write the correct answer here..."></textarea>' +
+        '<div class="wp-rubric-box">' +
+            '<label class="wp-editor-label">Word count</label>' +
+            '<div class="wp-rubric-row">' +
+                '<input type="number" min="0" class="wp-editor-input" name="min_words[]" placeholder="Min words (e.g. 80)">' +
+                '<input type="number" min="0" class="wp-editor-input" name="max_words[]" placeholder="Max words (e.g. 100)">' +
+            '</div>' +
+            '<label class="wp-editor-label">Sentence count</label>' +
+            '<div class="wp-rubric-row">' +
+                '<input type="number" min="0" class="wp-editor-input" name="min_sentences[]" placeholder="Min sentences (e.g. 6)">' +
+                '<input type="number" min="0" class="wp-editor-input" name="max_sentences[]" placeholder="Max sentences (e.g. 8)">' +
+            '</div>' +
+            '<label class="wp-editor-label">Must include one of these words (e.g. app names)</label>' +
+            '<input type="text" class="wp-editor-input" name="required_any[]" placeholder="WhatsApp, YouTube, Instagram, TikTok, Canva, ChatGPT, Spotify">' +
+            '<label class="wp-editor-label">Vocabulary bank</label>' +
+            '<textarea class="wp-editor-textarea" name="vocab_bank[]" placeholder="app, frustrated, message, loading, buffering, update..."></textarea>' +
+            '<label class="wp-editor-label">Minimum vocabulary words required</label>' +
+            '<input type="number" min="0" class="wp-editor-input" name="vocab_min[]" placeholder="e.g. 6">' +
+            '<label class="wp-editor-label">Grammar checklist</label>' +
+            '<div class="wp-rubric-grammar">' + grammarHtml + '</div>' +
+            '<label class="wp-editor-label">Sentence guide (one instruction per line)</label>' +
+            '<textarea class="wp-editor-textarea" name="sentence_guide[]" placeholder="Introduce your favorite app.&#10;Describe the problem."></textarea>' +
+        '</div>';
     c.appendChild(d);
     formChanged = true;
 }
