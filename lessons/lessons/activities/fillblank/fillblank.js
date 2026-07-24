@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var mediaAudioEl = document.getElementById('fb-audio-player');
   var streamAudio = null;
   var streamAudioUrl = '';
+  var userPausedAudio = false;
 
   if (!questions.length) {
     if (sentenceEl) {
@@ -102,11 +103,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (!mediaAudioEl.paused) {
+      userPausedAudio = true;
       mediaAudioEl.pause();
       listenBtn.textContent = 'Resume';
       return;
     }
 
+    userPausedAudio = false;
     mediaAudioEl.play().then(function () {
       listenBtn.textContent = 'Pause';
     }).catch(function () {
@@ -121,9 +124,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (streamAudio) {
       if (!streamAudio.paused) {
+        userPausedAudio = true;
         streamAudio.pause();
         listenBtn.textContent = 'Resume';
       } else {
+        userPausedAudio = false;
         streamAudio.play().then(function () {
           listenBtn.textContent = 'Pause';
         }).catch(function () {
@@ -149,6 +154,7 @@ document.addEventListener('DOMContentLoaded', function () {
       .then(function (blob) {
         streamAudioUrl = URL.createObjectURL(blob);
         streamAudio = new Audio(streamAudioUrl);
+        userPausedAudio = false;
 
         streamAudio.onended = function () {
           cleanupStreamAudio();
@@ -156,8 +162,21 @@ document.addEventListener('DOMContentLoaded', function () {
         };
 
         streamAudio.onpause = function () {
-          if (streamAudio && streamAudio.currentTime < (streamAudio.duration || Infinity)) {
+          if (!streamAudio) {
+            return;
+          }
+          var hasEnded = streamAudio.currentTime >= (streamAudio.duration || Infinity);
+          if (hasEnded) {
+            return;
+          }
+          if (userPausedAudio) {
             listenBtn.textContent = 'Resume';
+          } else {
+            streamAudio.play().then(function () {
+              listenBtn.textContent = 'Pause';
+            }).catch(function () {
+              listenBtn.textContent = 'Resume';
+            });
           }
         };
 
@@ -650,10 +669,26 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   if (mediaAudioEl) {
-    mediaAudioEl.addEventListener('ended', resetListenButton);
+    mediaAudioEl.addEventListener('ended', function () {
+      userPausedAudio = false;
+      resetListenButton();
+    });
     mediaAudioEl.addEventListener('pause', function () {
-      if (mediaAudioEl.currentTime < (mediaAudioEl.duration || Infinity) && listenBtn) {
+      if (!listenBtn) {
+        return;
+      }
+      var hasEnded = mediaAudioEl.currentTime >= (mediaAudioEl.duration || Infinity);
+      if (hasEnded) {
+        return;
+      }
+      if (userPausedAudio) {
         listenBtn.textContent = 'Resume';
+      } else {
+        mediaAudioEl.play().then(function () {
+          listenBtn.textContent = 'Pause';
+        }).catch(function () {
+          listenBtn.textContent = 'Resume';
+        });
       }
     });
   }
