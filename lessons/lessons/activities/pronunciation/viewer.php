@@ -101,6 +101,7 @@ function normalize_pronunciation_payload($rawData): array
                 'ph' => isset($item['ph']) ? trim((string) $item['ph']) : '',
                 'es' => isset($item['es']) ? trim((string) $item['es']) : '',
                 'audio' => isset($item['audio']) ? trim((string) $item['audio']) : '',
+                'voice_id' => isset($item['voice_id']) ? trim((string) $item['voice_id']) : '',
             );
         }
     }
