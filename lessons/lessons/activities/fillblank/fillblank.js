@@ -127,7 +127,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* When the student finishes typing the last blank of a block while the
      narration audio is playing, automatically pause it, reveal the
-     feedback, advance to the next block, and resume the same audio. */
+     feedback, advance to the next block, and resume the same audio.
+     This works no matter how the answer gets checked (typing the last
+     blank, pressing Enter, or clicking the Check button) because the
+     pause/auto-advance/resume logic lives inside checkAnswer()/nextQuestion()
+     themselves rather than only in this scheduler. */
   function scheduleAutoAdvance() {
     clearAutoAdvanceTimer();
     autoAdvanceTimer = setTimeout(function () {
@@ -146,15 +150,7 @@ document.addEventListener('DOMContentLoaded', function () {
         return;
       }
 
-      pauseActiveAudio();
       checkAnswer();
-
-      setTimeout(function () {
-        nextQuestion();
-        if (!finished) {
-          resumeActiveAudio();
-        }
-      }, 1400);
     }, 600);
   }
 
@@ -575,6 +571,11 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     clearAutoAdvanceTimer();
 
+    var wasAudioPlaying = isAudioPlaying();
+    if (wasAudioPlaying) {
+      pauseActiveAudio();
+    }
+
     var q = questions[index] || {};
     var user = selectedAnswers[index].slice();
     var score = computeQuestionScore(q, user);
@@ -606,6 +607,12 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (nextBtn) {
       nextBtn.disabled = false;
+    }
+
+    if (wasAudioPlaying) {
+      setTimeout(function () {
+        nextQuestion();
+      }, 1400);
     }
   }
 
@@ -652,6 +659,14 @@ document.addEventListener('DOMContentLoaded', function () {
       loadQuestion();
     } else {
       showCompleted();
+    }
+
+    /* Resume the narration audio if it was auto-paused for the check,
+       regardless of whether "next" was triggered automatically or by
+       the student clicking the Next button. No-ops if nothing was
+       auto-paused (e.g. the student paused it manually). */
+    if (!finished) {
+      resumeActiveAudio();
     }
   }
 
