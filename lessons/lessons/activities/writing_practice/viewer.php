@@ -785,6 +785,9 @@ function renderEssayPanels(item){
     el('wp-essay-prompt').style.display = isEssay ? '' : 'none';
     el('wp-essay-counts').style.display = isEssay ? 'flex' : 'none';
     el('wp-wordcount').style.display = isEssay ? 'none' : '';
+    el('wp-btn-show').style.display = isEssay ? 'none' : '';
+    el('wp-answer-reveal').style.display = isEssay ? 'none' : '';
+    el('wp-answer-reveal').classList.remove('show');
     el('wp-rubric-panel').classList.remove('show');
     if(!isEssay) return;
 
@@ -966,7 +969,8 @@ function checkEssay(){
     el('wp-rubric-grammar-sub').style.display = grammar.length ? '' : 'none';
     grammar.forEach(function(g){
         var label = WP_GRAMMAR_LABELS[g] || g;
-        var hit = lower.indexOf(String(label).toLowerCase().replace(/[^a-z' ]/g,'').trim()) !== -1;
+        var pattern = WP_GRAMMAR_PATTERNS[g];
+        var hit = pattern ? pattern.test(text) : false;
         var chip = document.createElement('span');
         chip.className = 'wp-grammar-chip' + (hit ? ' hit' : '');
         chip.textContent = '\u2022 ' + label;
