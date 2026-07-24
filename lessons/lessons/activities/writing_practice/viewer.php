@@ -817,6 +817,7 @@ var WP_GRAMMAR_PATTERNS = {
 var TOTAL = ITEMS.length;
 var idx = 0;
 var SCORES = new Array(TOTAL).fill(null);
+var RUBRIC = new Array(TOTAL).fill(null);
 var finished = false;
 
 function normalize(str){
@@ -978,6 +979,12 @@ function updateWC(){
     el('wp-wordcount').textContent = words + ' word' + (words!==1?'s':'');
 }
 
+function rangeScore(value, min, max){
+    if(min && value < min) return Math.max(0, Math.round((value/min)*100));
+    if(max && value > max) return Math.max(0, Math.round((max/value)*100));
+    return 100;
+}
+
 function checkEssay(){
     var item = ITEMS[idx] || {};
     var text = el('wp-textarea').value;
@@ -995,46 +1002,70 @@ function checkEssay(){
         grid.appendChild(chip);
     }
 
-    if(item.min_words || item.max_words){
+    var categories = {};
+
+    var hasWords = !!(item.min_words || item.max_words);
+    if(hasWords){
         var wordsOk = words >= (item.min_words||0) && (item.max_words ? words <= item.max_words : true);
         addChip(words + ' words', wordsOk);
+        categories.words = rangeScore(words, item.min_words||0, item.max_words||0);
     }
-    if(item.min_sentences || item.max_sentences){
+
+    var hasSentences = !!(item.min_sentences || item.max_sentences);
+    if(hasSentences){
         var sentOk = sentences >= (item.min_sentences||0) && (item.max_sentences ? sentences <= item.max_sentences : true);
         addChip(sentences + ' sentences', sentOk);
+        categories.sentences = rangeScore(sentences, item.min_sentences||0, item.max_sentences||0);
     }
+
     var vocab = item.vocab_bank || [];
+    var vocabScore = null;
     if(vocab.length){
         var vocabUsed = vocab.filter(function(w){ return lower.indexOf(w.toLowerCase()) !== -1; }).length;
         addChip(vocabUsed + '/' + (item.vocab_min||0) + ' vocabulary words', vocabUsed >= (item.vocab_min||0));
+        var vocabTarget = item.vocab_min > 0 ? item.vocab_min : vocab.length;
+        vocabScore = vocabTarget > 0 ? Math.min(100, Math.round((vocabUsed/vocabTarget)*100)) : (vocabUsed > 0 ? 100 : 0);
     }
+
     var apps = item.required_any || [];
+    var requiredScore = null;
     if(apps.length){
         var mentionedWord = apps.filter(function(app){ return lower.indexOf(app.toLowerCase()) !== -1; })[0];
         addChip('Mentions one of: ' + apps.join(', '), !!mentionedWord);
+        requiredScore = mentionedWord ? 100 : 0;
     }
+
+    if(vocabScore !== null && requiredScore !== null) categories.vocabulary = Math.round((vocabScore+requiredScore)/2);
+    else if(vocabScore !== null) categories.vocabulary = vocabScore;
+    else if(requiredScore !== null) categories.vocabulary = requiredScore;
 
     var grammar = item.grammar_checklist || [];
     var grammarChipsWrap = el('wp-rubric-grammar-chips');
     grammarChipsWrap.innerHTML = '';
     el('wp-rubric-grammar-sub').style.display = grammar.length ? '' : 'none';
+    var grammarHits = 0;
     grammar.forEach(function(g){
         var label = WP_GRAMMAR_LABELS[g] || g;
         var pattern = WP_GRAMMAR_PATTERNS[g];
         var hit = pattern ? pattern.test(text) : false;
+        if(hit) grammarHits++;
         var chip = document.createElement('span');
         chip.className = 'wp-grammar-chip' + (hit ? ' hit' : '');
         chip.textContent = '\u2022 ' + label;
         grammarChipsWrap.appendChild(chip);
         addChip(label, hit);
     });
+    if(grammar.length) categories.grammar = Math.round((grammarHits/grammar.length)*100);
 
     el('wp-rubric-panel').classList.add('show');
     el('wp-answer-reveal').classList.remove('show');
 
-    var allPass = grid.querySelectorAll('.wp-rubric-chip.fail').length === 0;
-    SCORES[idx] = allPass ? 1 : 0;
-    if(allPass) launchConfetti();
+    var keys = Object.keys(categories);
+    var total = keys.length ? Math.round(keys.reduce(function(sum, k){ return sum + categories[k]; }, 0)/keys.length) : 100;
+
+    RUBRIC[idx] = categories;
+    SCORES[idx] = total;
+    if(total >= 80) launchConfetti();
 }
 
 function checkAnswer(){
