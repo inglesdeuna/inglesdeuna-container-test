@@ -73,6 +73,91 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  var autoAdvanceTimer = null;
+
+  function clearAutoAdvanceTimer() {
+    if (autoAdvanceTimer) {
+      clearTimeout(autoAdvanceTimer);
+      autoAdvanceTimer = null;
+    }
+  }
+
+  var autoPausedSource = null; /* 'media' | 'stream' | null */
+
+  function isAudioPlaying() {
+    if (mediaAudioEl && mediaAudioEl.src && !mediaAudioEl.paused) {
+      return true;
+    }
+    if (streamAudio && !streamAudio.paused) {
+      return true;
+    }
+    return false;
+  }
+
+  function pauseActiveAudio() {
+    autoPausedSource = null;
+    if (mediaAudioEl && !mediaAudioEl.paused) {
+      mediaAudioEl.pause();
+      autoPausedSource = 'media';
+    } else if (streamAudio && !streamAudio.paused) {
+      streamAudio.pause();
+      autoPausedSource = 'stream';
+    }
+    if (listenBtn && autoPausedSource) {
+      listenBtn.textContent = 'Resume';
+    }
+    return !!autoPausedSource;
+  }
+
+  function resumeActiveAudio() {
+    if (!listenBtn || !autoPausedSource) {
+      return;
+    }
+    var el = autoPausedSource === 'media' ? mediaAudioEl : streamAudio;
+    autoPausedSource = null;
+    if (!el) {
+      return;
+    }
+    el.play().then(function () {
+      listenBtn.textContent = 'Pause';
+    }).catch(function () {
+      resetListenButton();
+    });
+  }
+
+  /* When the student finishes typing the last blank of a block while the
+     narration audio is playing, automatically pause it, reveal the
+     feedback, advance to the next block, and resume the same audio. */
+  function scheduleAutoAdvance() {
+    clearAutoAdvanceTimer();
+    autoAdvanceTimer = setTimeout(function () {
+      autoAdvanceTimer = null;
+
+      if (answered || revealed || finished) {
+        return;
+      }
+
+      var values = selectedAnswers[index] || [];
+      var lastIdx = values.length - 1;
+      if (lastIdx < 0 || String(values[lastIdx] || '').trim() === '') {
+        return;
+      }
+      if (!isAudioPlaying()) {
+        return;
+      }
+
+      pauseActiveAudio();
+      checkAnswer();
+
+      setTimeout(function () {
+        nextQuestion();
+        if (!finished) {
+          resumeActiveAudio();
+        }
+      }, 1400);
+    }, 600);
+  }
+
   function cleanupStreamAudio() {
     if (streamAudio) {
       try { streamAudio.pause(); } catch (e) {}
@@ -321,6 +406,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
         selectedAnswers[index][idx] = input.value;
         resizeBlankInput(input);
+
+        var isLastBlank = idx === inputEls.length - 1;
+        if (isLastBlank) {
+          scheduleAutoAdvance();
+        }
       });
 
       input.addEventListener('keydown', (function (capturedIdx) {
@@ -439,6 +529,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function loadQuestion() {
+    clearAutoAdvanceTimer();
     var q = questions[index] || {};
     answered = false;
     revealed = false;
@@ -482,6 +573,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (answered || finished) {
       return;
     }
+    clearAutoAdvanceTimer();
 
     var q = questions[index] || {};
     var user = selectedAnswers[index].slice();
@@ -521,6 +613,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (answered || finished) {
       return;
     }
+    clearAutoAdvanceTimer();
 
     var q = questions[index] || {};
     var correct = Array.isArray(q.answers) ? q.answers.slice() : [];
@@ -620,6 +713,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function restartActivity() {
+    clearAutoAdvanceTimer();
     index = 0;
     answered = false;
     revealed = false;
