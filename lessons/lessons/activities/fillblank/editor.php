@@ -130,14 +130,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $voiceId   = trim((string)($_POST['voice_id']  ?? 'nzFihrBIvB34imQBuxub'));
     if (!in_array($voiceId, $allowedVoices, true)) $voiceId = 'nzFihrBIvB34imQBuxub';
     $ttsAudioUrl = trim((string)($_POST['tts_audio_url'] ?? ''));
+    $audioUploadFailed = false;
 
     if ($mediaType === 'audio') {
-        if (isset($_FILES['media_file'])
+        $hasNewUpload = isset($_FILES['media_file'])
             && !empty($_FILES['media_file']['name'])
-            && ($_FILES['media_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            && ($_FILES['media_file']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+        if ($hasNewUpload) {
             $uploaded = upload_audio_to_cloudinary($_FILES['media_file']['tmp_name']);
-            if ($uploaded) $mediaUrl = $uploaded;
+            if ($uploaded) {
+                $mediaUrl = $uploaded;
+            } else {
+                // Upload to Cloudinary failed (missing credentials, network error, etc).
+                // Keep the previously saved audio instead of silently dropping it,
+                // and surface the failure to the teacher so it isn't mistaken for success.
+                $audioUploadFailed = true;
+                $mediaUrl = trim((string)($_POST['current_media_url'] ?? ''));
+            }
         }
+
         if ($mediaUrl === '') $mediaUrl = trim((string)($_POST['current_media_url'] ?? ''));
     }
 
@@ -205,6 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($assignment !== '') $params[] = 'assignment='.urlencode($assignment);
     if ($source     !== '') $params[] = 'source='.urlencode($source);
     if ($examId > 0) $params[] = 'exam_id='.urlencode((string)$examId);
+    if ($audioUploadFailed) $params[] = 'audio_upload_error=1';
 
     header('Location: editor.php?'.implode('&', $params));
     exit;
@@ -217,6 +230,9 @@ ob_start();
 
 if (isset($_GET['saved'])) {
     echo '<div class="fb-saved-banner">&#10004; Saved successfully</div>';
+}
+if (isset($_GET['audio_upload_error'])) {
+    echo '<div class="fb-error-banner">&#9888; The mp3 file could not be uploaded (storage error). The previous audio was kept — please try uploading again.</div>';
 }
 ?>
 
@@ -249,6 +265,17 @@ if (isset($_GET['saved'])) {
     background: #FFF0E6;
     border: 1px solid #FCDDBF;
     color: #C2580A;
+    font-weight: 900;
+    font-size: 14px;
+    padding: 10px 16px;
+    border-radius: 14px;
+    margin-bottom: 16px;
+}
+
+.fb-error-banner {
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    color: #B91C1C;
     font-weight: 900;
     font-size: 14px;
     padding: 10px 16px;
@@ -329,6 +356,9 @@ if (isset($_GET['saved'])) {
             <div class="fb-field">
                 <label class="fb-label">Upload Audio</label>
                 <input class="fb-input" type="file" name="media_file" accept="audio/*">
+                <?php if ($activity['media_type'] === 'audio' && $activity['media_url'] !== ''): ?>
+                <div class="fb-help">Current: <audio controls preload="none" style="height:32px;vertical-align:middle;" src="<?= htmlspecialchars($activity['media_url'], ENT_QUOTES, 'UTF-8') ?>"></audio></div>
+                <?php endif; ?>
             </div>
             <div class="fb-field">
                 <label class="fb-label">Word Bank</label>
