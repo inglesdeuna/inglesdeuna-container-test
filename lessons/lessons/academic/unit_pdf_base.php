@@ -258,6 +258,7 @@ function ws_mc(array $d, int $n, bool $k): string {
         $qimg = trim((string)($q['image'] ?? ''));
         $op   = is_array($q['options'] ?? null) ? $q['options'] : [];
         $otp  = $q['option_type'] ?? 'text';
+        $oimg = is_array($q['option_images'] ?? null) ? $q['option_images'] : [];
         $ck   = (int)($q['correct'] ?? 0);
         $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>';
         if ($qtp === 'listen') {
@@ -282,8 +283,11 @@ function ws_mc(array $d, int $n, bool $k): string {
             $out .= '<div class="ws-opts">';
             foreach ($op as $oi => $o) {
                 $ot = trim((string)$o);
+                $oimgUrl = trim((string)($oimg[$oi] ?? ''));
                 $ck_cls = ($k && $oi === $ck) ? ' ws-ck' : '';
-                $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>'.h($ot).'</div>';
+                $out .= '<div class="ws-opt'.$ck_cls.'"><span class="opt-l">'.($ltrs[$oi] ?? chr(65+$oi)).'</span>';
+                if ($oimgUrl !== '') $out .= '<img class="ws-opt-thumb" src="'.h($oimgUrl).'" alt="" loading="eager">';
+                $out .= '<span class="ws-opt-txt">'.h($ot).'</span></div>';
             }
             $out .= '</div>';
         }
@@ -944,6 +948,9 @@ table.ws-tbl .tr-alt td { background: #f9f8ff; }
 .opt-l   { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--lila2);
            color: var(--lila3); display: flex; align-items: center; justify-content: center;
            font-weight: 800; flex-shrink: 0; font-size: 10px; }
+.ws-opt-thumb { width: 30px; height: 30px; object-fit: contain; border-radius: 6px;
+           flex-shrink: 0; background: #fff; }
+.ws-opt-txt { flex: 1; }
 .ws-ck   { background: #f0eeff; border-color: var(--lila); }
 .ws-ck .opt-l { background: var(--lila); color: #fff; border-color: var(--lila); }
 .ws-expl { font-size: 10.5px; color: var(--lila); background: var(--lila2);
