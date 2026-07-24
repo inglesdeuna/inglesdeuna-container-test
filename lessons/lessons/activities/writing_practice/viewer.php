@@ -735,11 +735,34 @@ body.presentation-mode .wp-actions{
 var ITEMS = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var viewerTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
 var WP_GRAMMAR_LABELS = {
-    'present_simple': 'Present Simple',
+    'present_tense': 'Present Tense',
     'present_continuous': 'Present Continuous',
-    'because': 'because',
-    'can_cant': "can / can't",
-    'should': 'should'
+    'past_tense': 'Past Tense',
+    'future_tense': 'Future Tense',
+    'present_perfect': 'Present Perfect',
+    'present_perfect_continuous': 'Present Perfect Continuous',
+    'past_perfect': 'Past Perfect',
+    'past_perfect_continuous': 'Past Perfect Continuous',
+    'future_perfect': 'Future Perfect',
+    'future_perfect_continuous': 'Future Perfect Continuous',
+    'conditionals': 'Conditionals',
+    'passive_voice': 'Passive Voice',
+    'clauses': 'Clauses'
+};
+var WP_GRAMMAR_PATTERNS = {
+    'present_tense': /\b(am|is|are)\b|\b(do|does|don't|doesn't)\b|\b(he|she|it)\s+\w+s\b|\b(I|you|we|they)\s+\w+\b/i,
+    'present_continuous': /\b(am|is|are)\s+(not\s+)?\w+ing\b/i,
+    'past_tense': /\b\w+ed\b|\b(was|were|wasn't|weren't|did|didn't)\b/i,
+    'future_tense': /\b(will|won't|shall)\b|\bgoing to\b/i,
+    'present_perfect_continuous': /\b(have|has)\s+been\s+\w+ing\b/i,
+    'present_perfect': /\b(have|has|haven't|hasn't)\s+\w+/i,
+    'past_perfect_continuous': /\bhad\s+been\s+\w+ing\b/i,
+    'past_perfect': /\bhad(n't)?\s+\w+/i,
+    'future_perfect_continuous': /\bwill\s+have\s+been\s+\w+ing\b/i,
+    'future_perfect': /\bwill\s+have\s+\w+/i,
+    'conditionals': /\bif\b|\bunless\b/i,
+    'passive_voice': /\b(is|are|was|were|be|been|being|am)\s+\w+(ed|en)\b/i,
+    'clauses': /\b(which|who|whom|whose|that|because|although|though|since|while|when)\b/i
 };
 var TOTAL = ITEMS.length;
 var idx = 0;
@@ -762,6 +785,9 @@ function renderEssayPanels(item){
     el('wp-essay-prompt').style.display = isEssay ? '' : 'none';
     el('wp-essay-counts').style.display = isEssay ? 'flex' : 'none';
     el('wp-wordcount').style.display = isEssay ? 'none' : '';
+    el('wp-btn-show').style.display = isEssay ? 'none' : '';
+    el('wp-answer-reveal').style.display = isEssay ? 'none' : '';
+    el('wp-answer-reveal').classList.remove('show');
     el('wp-rubric-panel').classList.remove('show');
     if(!isEssay) return;
 
@@ -943,7 +969,8 @@ function checkEssay(){
     el('wp-rubric-grammar-sub').style.display = grammar.length ? '' : 'none';
     grammar.forEach(function(g){
         var label = WP_GRAMMAR_LABELS[g] || g;
-        var hit = lower.indexOf(String(label).toLowerCase().replace(/[^a-z' ]/g,'').trim()) !== -1;
+        var pattern = WP_GRAMMAR_PATTERNS[g];
+        var hit = pattern ? pattern.test(text) : false;
         var chip = document.createElement('span');
         chip.className = 'wp-grammar-chip' + (hit ? ' hit' : '');
         chip.textContent = '\u2022 ' + label;

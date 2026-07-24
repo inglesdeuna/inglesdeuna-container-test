@@ -50,11 +50,19 @@ function wpe_resolve_unit(PDO $pdo, string $activityId): string
 function wpe_default_title(): string { return 'Writing Practice'; }
 
 const WPE_GRAMMAR_OPTIONS = array(
-    'present_simple'     => 'Present Simple',
-    'present_continuous' => 'Present Continuous',
-    'because'            => 'because',
-    'can_cant'           => "can / can't",
-    'should'             => 'should',
+    'present_tense'               => 'Present Tense',
+    'present_continuous'         => 'Present Continuous',
+    'past_tense'                  => 'Past Tense',
+    'future_tense'                => 'Future Tense',
+    'present_perfect'             => 'Present Perfect',
+    'present_perfect_continuous' => 'Present Perfect Continuous',
+    'past_perfect'                => 'Past Perfect',
+    'past_perfect_continuous'    => 'Past Perfect Continuous',
+    'future_perfect'              => 'Future Perfect',
+    'future_perfect_continuous'  => 'Future Perfect Continuous',
+    'conditionals'                => 'Conditionals',
+    'passive_voice'               => 'Passive Voice',
+    'clauses'                     => 'Clauses',
 );
 
 function wpe_list_from_lines($raw): array
@@ -347,8 +355,8 @@ ob_start();
                 </label>
             </div>
 
-            <label class="wp-editor-label" style="color:#0F6E56;">Model answer <span class="wp-editor-hint" style="margin:0;display:inline;">(reference text shown to the student)</span></label>
-            <p class="wp-editor-hint">In <b>Exact match</b> mode the student's answer is compared word by word against this text. In <b>Essay / rubric</b> mode this is shown only as an example — the student's own writing is scored against the rubric below.</p>
+            <label class="wp-editor-label" style="color:#0F6E56;">Model answer <span class="wp-editor-hint" style="margin:0;display:inline;">(reference text for teachers)</span></label>
+            <p class="wp-editor-hint">In <b>Exact match</b> mode the student's answer is compared word by word against this text and it is shown to the student. In <b>Essay / rubric</b> mode this text is for teacher reference only — it is never shown to the student, who is scored against the rubric below instead.</p>
             <textarea class="wp-editor-textarea answer" name="answer[]"
                       placeholder="Write the correct answer here..."><?= htmlspecialchars($item['answer'], ENT_QUOTES, 'UTF-8') ?></textarea>
 
