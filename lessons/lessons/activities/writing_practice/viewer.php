@@ -958,9 +958,8 @@ function checkEssay(){
     }
     var apps = item.required_any || [];
     if(apps.length){
-        var chosen = selectedAppChip();
-        var mentioned = chosen && lower.indexOf(chosen.toLowerCase()) !== -1;
-        addChip('Mentions "' + (chosen||'') + '"', mentioned);
+        var mentionedWord = apps.filter(function(app){ return lower.indexOf(app.toLowerCase()) !== -1; })[0];
+        addChip('Mentions one of: ' + apps.join(', '), !!mentionedWord);
     }
 
     var grammar = item.grammar_checklist || [];
@@ -975,6 +974,7 @@ function checkEssay(){
         chip.className = 'wp-grammar-chip' + (hit ? ' hit' : '');
         chip.textContent = '\u2022 ' + label;
         grammarChipsWrap.appendChild(chip);
+        addChip(label, hit);
     });
 
     el('wp-rubric-panel').classList.add('show');
