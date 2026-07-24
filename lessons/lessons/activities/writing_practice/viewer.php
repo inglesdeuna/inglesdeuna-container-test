@@ -63,11 +63,23 @@ function wp_normalize_payload($rawData): array
     $items = array();
     foreach ($itemsSource as $item) {
         if (!is_array($item)) continue;
+        $mode = isset($item['mode']) ? trim((string) $item['mode']) : 'exact';
+        if ($mode !== 'essay') $mode = 'exact';
         $items[] = array(
-            'id'           => isset($item['id'])           ? trim((string) $item['id'])           : uniqid('wp_'),
-            'instruction'  => isset($item['instruction'])  ? trim((string) $item['instruction'])  : '',
-            'prompt_text'  => isset($item['prompt_text'])  ? trim((string) $item['prompt_text'])  : '',
-            'answer'       => isset($item['answer'])       ? trim((string) $item['answer'])       : '',
+            'id'                => isset($item['id'])           ? trim((string) $item['id'])           : uniqid('wp_'),
+            'instruction'       => isset($item['instruction'])   ? trim((string) $item['instruction'])   : '',
+            'prompt_text'       => isset($item['prompt_text'])   ? trim((string) $item['prompt_text'])   : '',
+            'answer'            => isset($item['answer'])        ? trim((string) $item['answer'])        : '',
+            'mode'              => $mode,
+            'min_words'         => isset($item['min_words'])     ? max(0, (int) $item['min_words'])      : 0,
+            'max_words'         => isset($item['max_words'])     ? max(0, (int) $item['max_words'])      : 0,
+            'min_sentences'     => isset($item['min_sentences']) ? max(0, (int) $item['min_sentences'])  : 0,
+            'max_sentences'     => isset($item['max_sentences']) ? max(0, (int) $item['max_sentences'])  : 0,
+            'required_any'      => isset($item['required_any']) && is_array($item['required_any']) ? array_values(array_filter(array_map('trim', $item['required_any']))) : array(),
+            'vocab_bank'        => isset($item['vocab_bank']) && is_array($item['vocab_bank']) ? array_values(array_filter(array_map('trim', $item['vocab_bank']))) : array(),
+            'vocab_min'         => isset($item['vocab_min'])     ? max(0, (int) $item['vocab_min'])      : 0,
+            'grammar_checklist' => isset($item['grammar_checklist']) && is_array($item['grammar_checklist']) ? array_values(array_filter(array_map('trim', $item['grammar_checklist']))) : array(),
+            'sentence_guide'    => isset($item['sentence_guide']) && is_array($item['sentence_guide']) ? array_values(array_filter(array_map('trim', $item['sentence_guide']))) : array(),
         );
     }
     return array('title' => wp_normalize_title($title), 'items' => $items);
@@ -235,6 +247,51 @@ ob_start();
     color:#C2580A;background:#FFF0E6;border:1px solid #FCDDBF;
     border-radius:999px;padding:4px 12px;margin-bottom:10px;
 }
+
+.wp-rubric-panel{
+    display:none;background:#FAFAFE;border:1.5px solid #EDE9FA;
+    border-radius:18px;padding:16px 18px;margin-bottom:14px;
+}
+.wp-rubric-panel.show{display:block;}
+.wp-rubric-title{
+    font-family:'Fredoka',sans-serif;font-size:16px;font-weight:600;
+    color:#534AB7;margin:0 0 10px;display:flex;align-items:center;gap:8px;
+}
+.wp-rubric-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:10px;margin-bottom:14px;
+}
+.wp-rubric-chip{
+    background:#fff;border:1.5px solid #EDE9FA;border-radius:14px;
+    padding:10px 12px;display:flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:800;color:#271B5D;transition:.2s;
+}
+.wp-rubric-chip .wp-chip-icon{font-size:16px;line-height:1;}
+.wp-rubric-chip.pass{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
+.wp-rubric-chip.fail{background:#FCEBEB;border-color:#F7C1C1;color:#A32D2D;}
+.wp-rubric-sub{
+    font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+    color:#9B94BE;margin:12px 0 8px;
+}
+.wp-rubric-list{
+    margin:0;padding-left:20px;font-size:13px;font-weight:700;
+    color:#271B5D;line-height:1.9;
+}
+.wp-checklist{
+    display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;
+}
+.wp-checklist-item{
+    display:flex;align-items:center;gap:6px;padding:6px 12px;
+    border-radius:999px;background:#fff;border:1.5px solid #EDE9FA;
+    font-size:12px;font-weight:800;color:#9B94BE;transition:.2s;
+}
+.wp-checklist-item.done{
+    background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;
+}
+.wp-checklist-item .wp-ci-dot{
+    width:8px;height:8px;border-radius:50%;background:#D8D4F5;flex-shrink:0;
+}
+.wp-checklist-item.done .wp-ci-dot{background:#1D9E75;}
 
 .wp-prompt-text{
     font-size:15px;font-weight:700;color:#271B5D;line-height:1.7;
