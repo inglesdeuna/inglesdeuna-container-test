@@ -1002,7 +1002,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var DICT_VOICE_ID = <?php echo json_encode($activityVoiceId, JSON_UNESCAPED_UNICODE); ?>;
 
     if (completedTitleEl) {
-        completedTitleEl.textContent = activityTitle || 'Dictation';
+        completedTitleEl.textContent = 'All Done!';
     }
 
     if (completedTextEl) {

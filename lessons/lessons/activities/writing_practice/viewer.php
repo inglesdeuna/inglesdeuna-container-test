@@ -4,6 +4,7 @@ require_once __DIR__ . '/../../core/_activity_viewer_template.php';
 
 $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
+$returnTo = isset($_GET['return_to']) ? trim((string) $_GET['return_to']) : '';
 
 if ($activityId === '' && $unit === '') {
     die('Activity not specified');
@@ -123,6 +124,7 @@ function wp_load_activity(PDO $pdo, string $unit, string $activityId): array
     if ($columnTitle !== '') $payload['title'] = $columnTitle;
 
     return array(
+        'id'    => isset($row['id']) ? (string) $row['id'] : '',
         'title' => wp_normalize_title((string) $payload['title']),
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
@@ -133,6 +135,10 @@ if ($unit === '' && $activityId !== '') $unit = wp_resolve_unit($pdo, $activityI
 $activity = wp_load_activity($pdo, $unit, $activityId);
 $items    = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : wp_default_title();
+
+if ($activityId === '' && !empty($activity['id'])) {
+    $activityId = (string) $activity['id'];
+}
 
 if (count($items) === 0) die('No writing prompts found for this activity');
 
@@ -543,6 +549,24 @@ ob_start();
     animation:wpFall linear forwards;pointer-events:none;
 }
 
+.wp-final-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.wp-final-score-grid.visible{display:grid}
+.wp-final-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:14px;padding:12px;text-align:center}
+.wp-final-score-num{font-family:'Fredoka',sans-serif;font-size:24px;line-height:1;font-weight:600;color:#7F77DD}
+.wp-final-score-lbl{margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb}
+
+.wp-completed-screen{display:none;text-align:center;padding:24px 12px}
+.wp-completed-screen.active{display:block}
+.wp-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.wp-completed-title{margin:0;color:#F97316;font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700}
+.wp-completed-text{color:#9B94BE;font-size:14px;font-weight:700}
+#wp-final-score-text{color:#666;font-size:14px;font-weight:800}
+.wp-completed-button{border:none;border-radius:10px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD}
+
+@media (max-width:640px){
+    .wp-completed-button{width:100%}
+}
+
 @keyframes wpFall{
     to{transform:translateY(110vh) rotate(720deg);opacity:1}
 }
@@ -724,20 +748,42 @@ body.presentation-mode .wp-actions{
 
     </div>
 
-    <div class="wp-completed" id="wp-completed"></div>
+    <div id="wp-final-score-grid" class="wp-final-score-grid">
+        <div class="wp-final-score-card">
+            <div class="wp-final-score-num" id="wp-final-score-correct">0</div>
+            <div class="wp-final-score-lbl">Correct</div>
+        </div>
+        <div class="wp-final-score-card">
+            <div class="wp-final-score-num" id="wp-final-score-wrong">0</div>
+            <div class="wp-final-score-lbl">Wrong</div>
+        </div>
+        <div class="wp-final-score-card">
+            <div class="wp-final-score-num" id="wp-final-score-pct">0%</div>
+            <div class="wp-final-score-lbl">Score</div>
+        </div>
+    </div>
+
+    <div class="wp-completed-screen" id="wp-completed">
+        <div class="wp-completed-icon">&#9989;</div>
+        <h2 class="wp-completed-title" id="wp-completed-title">All Done!</h2>
+        <p class="wp-completed-text" id="wp-completed-text">Great job practicing writing.</p>
+        <p id="wp-final-score-text"></p>
+        <button type="button" class="wp-completed-button" id="wp-restart">Restart</button>
+    </div>
 
 </div>
 </div>
 
 <audio id="wp-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
-<script src="../../core/_activity_feedback.js"></script>
 <script>
 (function(){
 'use strict';
 
 var ITEMS = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var viewerTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+var WP_ACTIVITY_ID = <?php echo json_encode($activityId, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var WP_RETURN_TO = <?php echo json_encode($returnTo, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 var WP_GRAMMAR_LABELS = {
     'present_tense': 'Present Tense',
     'present_continuous': 'Present Continuous',
@@ -771,6 +817,7 @@ var WP_GRAMMAR_PATTERNS = {
 var TOTAL = ITEMS.length;
 var idx = 0;
 var SCORES = new Array(TOTAL).fill(null);
+var finished = false;
 
 function normalize(str){
     return String(str||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').trim().split(/\s+/).filter(Boolean);
@@ -1091,6 +1138,9 @@ el('wp-btn-prev').addEventListener('click', function(){
     if(idx>0){ idx--; loadItem(); }
 });
 el('wp-btn-next').addEventListener('click', function(){
+    if (finished) {
+        return;
+    }
     if(idx<TOTAL-1){ idx++; loadItem(); }
     else{
         checkAnswer();
@@ -1098,31 +1148,84 @@ el('wp-btn-next').addEventListener('click', function(){
     }
 });
 
-function showCompleted(){
-    var completedEl = el('wp-completed');
-    completedEl.innerHTML = '';
-    completedEl.classList.add('active');
-    window.ActivityFeedback.showCompleted({
-        target:        completedEl,
-        scores:        SCORES.map(function(s){ return s === null ? 0 : s; }),
-        title:         viewerTitle,
-        activityType:  'Writing Practice',
-        questionCount: TOTAL,
-        onRetry:       restartActivity,
-        hideActivity:  el('wp-board'),
-        winAudio:      el('wp-win')
+function updateFinalScoreCards(correct, wrong, pct){
+    var correctEl = el('wp-final-score-correct');
+    var wrongEl = el('wp-final-score-wrong');
+    var pctEl = el('wp-final-score-pct');
+    if(correctEl) correctEl.textContent = String(correct);
+    if(wrongEl) wrongEl.textContent = String(wrong);
+    if(pctEl) pctEl.textContent = pct + '%';
+    var gridEl = el('wp-final-score-grid');
+    if(gridEl) gridEl.classList.add('visible');
+}
+
+function persistScoreSilently(targetUrl){
+    if(!targetUrl) return Promise.resolve(false);
+    return fetch(targetUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store'
+    }).then(function(response){
+        return !!(response && response.ok);
+    }).catch(function(){
+        return false;
     });
+}
+
+async function showCompleted(){
+    if(finished) return;
+    finished = true;
+
+    var correct = 0;
+    var wrong = 0;
+    for(var i=0;i<SCORES.length;i++){
+        if(SCORES[i] === 1) correct++;
+        else wrong++;
+    }
+    var pct = TOTAL > 0 ? Math.round((correct / TOTAL) * 100) : 0;
+
+    el('wp-board').style.display = 'none';
+
+    var completedEl = el('wp-completed');
+    updateFinalScoreCards(correct, wrong, pct);
+    completedEl.classList.add('active');
+
+    el('wp-completed-title').textContent = 'All Done!';
+    el('wp-completed-text').textContent = "You've completed " + (viewerTitle || 'this activity') + '. Great job practicing writing.';
+    el('wp-final-score-text').textContent = correct + ' correct \u00b7 ' + wrong + ' wrong \u00b7 ' + pct + '%';
+
+    try{
+        var win = el('wp-win');
+        win.pause(); win.currentTime=0; win.play();
+    }catch(e){}
+
+    if(WP_ACTIVITY_ID && WP_RETURN_TO){
+        var joiner = WP_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
+        var saveUrl = WP_RETURN_TO + joiner
+            + 'activity_percent=' + pct
+            + '&activity_errors=' + wrong
+            + '&activity_total=' + TOTAL
+            + '&activity_id=' + encodeURIComponent(WP_ACTIVITY_ID)
+            + '&activity_type=writing_practice';
+        var ok = await persistScoreSilently(saveUrl);
+        if(!ok) window.location.href = saveUrl;
+    }
 }
 
 function restartActivity(){
     SCORES = new Array(TOTAL).fill(null);
     idx = 0;
+    finished = false;
     var completedEl = el('wp-completed');
     completedEl.classList.remove('active');
-    completedEl.innerHTML = '';
+    var gridEl = el('wp-final-score-grid');
+    if(gridEl) gridEl.classList.remove('visible');
+    updateFinalScoreCards(0, 0, 0);
     el('wp-board').style.display = '';
     loadItem();
 }
+
+el('wp-restart').addEventListener('click', restartActivity);
 
 loadItem();
 })();

@@ -348,6 +348,24 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
 .ddk-completed { display: none; padding: 8px 0; }
 .ddk-completed.active { display: block; }
 
+.ddk-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.ddk-score-grid.visible{display:grid}
+.ddk-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:14px;padding:12px;text-align:center}
+.ddk-score-num{font-family:'Fredoka',sans-serif;font-size:24px;line-height:1;font-weight:600;color:#7F77DD}
+.ddk-score-lbl{margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#bbb}
+
+.ddk-completed-screen{display:none;text-align:center;padding:24px 12px}
+.ddk-completed-screen.active{display:block}
+.ddk-completed-icon{font-size:30px;line-height:1;margin-bottom:6px}
+.ddk-completed-title{margin:0;color:#F97316;font-family:'Fredoka',sans-serif;font-size:32px;font-weight:700}
+.ddk-completed-text{color:#9B94BE;font-size:14px;font-weight:700}
+#ddk-score-text{color:#666;font-size:14px;font-weight:800}
+.ddk-completed-button{border:none;border-radius:10px;color:#fff;min-width:128px;padding:11px 20px;font-size:14px;font-weight:700;font-family:'Nunito',sans-serif;cursor:pointer;background:#7F77DD}
+
+@media (max-width:640px){
+    .ddk-completed-button{width:100%}
+}
+
 /* ── Small phones ───────────────────────────────── */
 @media (max-width: 480px) {
     .ddk-bg { max-height: calc(100vh - 220px); }
@@ -469,7 +487,28 @@ body.fullscreen-embedded .ddk-zoom-btn {
 
         <div id="ddkFeedback"></div>
 
-        <div id="ddkCompleted" class="ddk-completed"></div>
+        <div id="ddk-score-grid" class="ddk-score-grid">
+            <div class="ddk-score-card">
+                <div class="ddk-score-num" id="ddk-score-correct">0</div>
+                <div class="ddk-score-lbl">Correct</div>
+            </div>
+            <div class="ddk-score-card">
+                <div class="ddk-score-num" id="ddk-score-wrong">0</div>
+                <div class="ddk-score-lbl">Wrong</div>
+            </div>
+            <div class="ddk-score-card">
+                <div class="ddk-score-num" id="ddk-score-pct">0%</div>
+                <div class="ddk-score-lbl">Score</div>
+            </div>
+        </div>
+
+        <div id="ddkCompleted" class="ddk-completed-screen">
+            <div class="ddk-completed-icon">&#9989;</div>
+            <h2 class="ddk-completed-title" id="ddk-completed-title">All Done!</h2>
+            <p class="ddk-completed-text" id="ddk-completed-text">Great job matching!</p>
+            <p id="ddk-score-text"></p>
+            <button type="button" class="ddk-completed-button" id="ddk-restart">Restart</button>
+        </div>
 
     </div>
 
@@ -479,7 +518,6 @@ body.fullscreen-embedded .ddk-zoom-btn {
 <audio id="loseSnd" src="../../hangman/assets/lose.mp3"      preload="auto"></audio>
 <audio id="doneSnd" src="../../hangman/assets/win (1).mp3"   preload="auto"></audio>
 
-<script src="../../core/_activity_feedback.js"></script>
 <script>
 const DDK_PAIRS       = <?= json_encode($pairs, JSON_UNESCAPED_UNICODE) ?>;
 const DDK_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
@@ -751,35 +789,56 @@ function handleDrop(zone, chipId, chipEl) {
 }
 
 function checkAllDone() {
+    if (done) return;
     const allFilled = Array.from(document.querySelectorAll('.ddk-zone'))
         .every(function(z) { return z.classList.contains('filled'); });
     if (allFilled) setTimeout(showCompleted, 700);
 }
 
+function updateScoreCards(correct, wrong, pct) {
+    const correctEl = document.getElementById('ddk-score-correct');
+    const wrongEl   = document.getElementById('ddk-score-wrong');
+    const pctEl     = document.getElementById('ddk-score-pct');
+    if (correctEl) correctEl.textContent = String(correct);
+    if (wrongEl) wrongEl.textContent = String(wrong);
+    if (pctEl) pctEl.textContent = pct + '%';
+    const gridEl = document.getElementById('ddk-score-grid');
+    if (gridEl) gridEl.classList.add('visible');
+}
+
+function persistScoreSilently(targetUrl) {
+    if (!targetUrl) return Promise.resolve(false);
+    return fetch(targetUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' })
+        .then(function (response) { return !!(response && response.ok); })
+        .catch(function () { return false; });
+}
+
 /* ── Completion ────────────────────────────────────────── */
 async function showCompleted() {
+    if (done) return;
     done = true;
     playSound(doneSnd);
     if (controls) controls.style.display = 'none';
     setFeedback('', '');
 
+    const canvasWrap = document.getElementById('ddkCanvasWrap');
+    if (canvasWrap) canvasWrap.style.display = 'none';
+    if (bank) bank.style.display = 'none';
+
     const total  = DDK_PAIRS.length;
     const pct    = total > 0 ? Math.round((correctCount / total) * 100) : 0;
     const errors = Math.max(0, total - correctCount);
 
-    var scores = [];
-    for (var i = 0; i < total; i++) scores.push(i < correctCount ? 1 : 0);
+    updateScoreCards(correctCount, errors, pct);
 
     completedEl.classList.add('active');
-    completedEl.innerHTML = '';
-    window.ActivityFeedback.showCompleted({
-        target:        completedEl,
-        scores:        scores,
-        title:         DDK_TITLE,
-        activityType:  'Drag & Drop',
-        questionCount: total,
-        onRetry:       restartActivity
-    });
+
+    const titleEl = document.getElementById('ddk-completed-title');
+    const textEl  = document.getElementById('ddk-completed-text');
+    const scoreTextEl = document.getElementById('ddk-score-text');
+    if (titleEl) titleEl.textContent = 'All Done!';
+    if (textEl) textEl.textContent = "You've completed " + (DDK_TITLE || 'this activity') + '. Great job matching!';
+    if (scoreTextEl) scoreTextEl.textContent = correctCount + ' correct \u00b7 ' + errors + ' wrong \u00b7 ' + pct + '%';
 
     if (DDK_ACTIVITY_ID && DDK_RETURN_TO) {
         const joiner  = DDK_RETURN_TO.indexOf('?') !== -1 ? '&' : '?';
@@ -789,10 +848,8 @@ async function showCompleted() {
             + '&activity_total='  + total
             + '&activity_id='     + encodeURIComponent(DDK_ACTIVITY_ID)
             + '&activity_type=drag_drop_kids';
-        try {
-            const res = await fetch(saveUrl, { method: 'GET', credentials: 'same-origin', cache: 'no-store' });
-            if (!res.ok) throw new Error();
-        } catch (e) {
+        const ok = await persistScoreSilently(saveUrl);
+        if (!ok) {
             try {
                 if (window.top && window.top !== window.self) window.top.location.href = saveUrl;
                 else window.location.href = saveUrl;
@@ -821,8 +878,14 @@ function restartActivity() {
     done         = false;
     correctCount = 0;
     clearChip();
-    if (completedEl) { completedEl.classList.remove('active'); completedEl.innerHTML = ''; }
+    if (completedEl) { completedEl.classList.remove('active'); }
+    const gridEl = document.getElementById('ddk-score-grid');
+    if (gridEl) gridEl.classList.remove('visible');
+    updateScoreCards(0, 0, 0);
     if (controls) controls.style.display = '';
+    const canvasWrap = document.getElementById('ddkCanvasWrap');
+    if (canvasWrap) canvasWrap.style.display = '';
+    if (bank) bank.style.display = '';
     setFeedback('', '');
     document.querySelectorAll('.ddk-zone').forEach(function(z) {
         z.classList.remove('filled', 'wrong');
@@ -830,6 +893,8 @@ function restartActivity() {
     });
     buildBank();
 }
+
+document.getElementById('ddk-restart').addEventListener('click', restartActivity);
 
 /* ── Boot ──────────────────────────────────────────────── */
 if (isTouchLike && touchHint) touchHint.classList.remove('hidden');

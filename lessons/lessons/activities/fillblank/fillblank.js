@@ -606,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
     updateScoreCards(true);
 
     if (completedTitleEl) {
-      completedTitleEl.textContent = activityTitle;
+      completedTitleEl.textContent = 'All Done!';
     }
     if (completedTextEl) {
       completedTextEl.textContent = "You've completed " + activityTitle + '. Great job practicing.';
