@@ -297,6 +297,94 @@ ob_start();
     font-size:15px;font-weight:700;color:#271B5D;line-height:1.7;
 }
 
+.wp-panel{
+    background:#fff;border:1.5px solid #EDE9FA;
+    border-radius:18px;padding:16px 18px;margin-bottom:16px;
+}
+.wp-panel-head{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:10px;margin-bottom:14px;
+}
+.wp-panel-head-left{
+    display:flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:900;letter-spacing:.08em;
+    text-transform:uppercase;color:#534AB7;
+}
+.wp-panel-head-icon{font-size:15px;line-height:1;}
+
+.wp-req-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+    gap:12px;
+}
+.wp-req-card{
+    background:#FAFAFE;border:1.5px solid #EDE9FA;border-radius:14px;
+    padding:14px;text-align:center;
+}
+.wp-req-num{
+    font-family:'Fredoka',sans-serif;font-size:clamp(22px,4vw,28px);
+    font-weight:600;color:#7F77DD;line-height:1;
+}
+.wp-req-lbl{
+    font-size:11px;font-weight:900;letter-spacing:.08em;
+    text-transform:uppercase;color:#9B94BE;margin-top:6px;
+}
+
+.wp-badge-orange{
+    display:inline-block;font-size:11px;font-weight:900;
+    color:#C2580A;background:#FFF0E6;border:1px solid #FCDDBF;
+    border-radius:999px;padding:5px 12px;white-space:nowrap;
+}
+
+.wp-chip-row{display:flex;flex-wrap:wrap;gap:10px;}
+
+.wp-app-chip{
+    border:1.5px solid #7F77DD;border-radius:10px;
+    background:#fff;color:#534AB7;font-weight:900;font-size:13px;
+    padding:10px 16px;cursor:pointer;transition:.18s;
+    font-family:'Nunito',sans-serif;
+}
+.wp-app-chip:hover{background:#EEEDFE;}
+.wp-app-chip.active{background:#7F77DD;color:#fff;border-color:#7F77DD;}
+
+.wp-vocab-chip{
+    border:1.5px solid #E4E1F8;border-radius:10px;
+    background:#F4F2FD;color:#534AB7;font-weight:800;font-size:13px;
+    padding:9px 14px;transition:.18s;user-select:none;
+}
+.wp-vocab-chip.used{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
+
+.wp-grammar-chip{
+    border:1.5px solid #FCDDBF;border-radius:999px;
+    background:#FFF0E6;color:#C2580A;font-weight:900;font-size:13px;
+    padding:8px 16px;
+}
+.wp-grammar-chip.hit{background:#E6F9F2;border-color:#9FE1CB;color:#0F6E56;}
+
+.wp-guide-toggle{
+    background:none;border:0;cursor:pointer;font-size:14px;
+    color:#9B94BE;padding:4px;line-height:1;
+}
+.wp-guide-list{
+    list-style:none;margin:0;padding:0;
+}
+.wp-guide-list.collapsed{display:none;}
+.wp-guide-step{
+    display:flex;align-items:center;gap:12px;
+    padding:11px 0;border-bottom:1px dashed #EDE9FA;
+    font-size:14px;font-weight:700;color:#271B5D;
+}
+.wp-guide-step:last-child{border-bottom:0;}
+.wp-guide-num{
+    flex-shrink:0;width:26px;height:26px;border-radius:50%;
+    background:#7F77DD;color:#fff;display:flex;align-items:center;
+    justify-content:center;font-size:12px;font-weight:900;
+}
+
+.wp-essay-counts{
+    display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+    font-size:12px;font-weight:900;color:#7F77DD;margin-top:-8px;margin-bottom:16px;
+}
+
 .wp-writing-wrap{position:relative;margin-bottom:16px;}
 
 .wp-textarea{
@@ -517,16 +605,65 @@ body.presentation-mode .wp-actions{
             <div class="wp-progress-count" id="wp-progress-count">1 / <?php echo count($items); ?></div>
         </div>
 
-        <div class="wp-section-label">Prompt</div>
-        <div class="wp-prompt-box">
-            <div class="wp-instruction-badge" id="wp-instruction"></div>
-            <p class="wp-prompt-text" id="wp-prompt-text"></p>
+        <div id="wp-exact-prompt">
+            <div class="wp-section-label">Prompt</div>
+            <div class="wp-prompt-box">
+                <div class="wp-instruction-badge" id="wp-instruction"></div>
+                <p class="wp-prompt-text" id="wp-prompt-text"></p>
+            </div>
         </div>
 
-        <div class="wp-section-label">Your answer</div>
+        <div id="wp-essay-prompt" style="display:none;">
+            <div class="wp-kicker" id="wp-essay-kicker" style="margin:0 0 10px;">Writing Task</div>
+            <h2 class="wp-title" style="font-size:clamp(22px,3.6vw,32px);text-align:left;margin-bottom:6px;" id="wp-essay-title"></h2>
+            <p class="wp-subtitle" style="text-align:left;margin:0 0 18px;" id="wp-essay-subtitle">Everything you need is broken down below — pick your app, hit the vocabulary target, and follow the guide.</p>
+
+            <div class="wp-panel" id="wp-req-panel" style="display:none;">
+                <div class="wp-panel-head">
+                    <div class="wp-panel-head-left"><span class="wp-panel-head-icon">&#9999;&#65039;</span>Requirements</div>
+                </div>
+                <div class="wp-req-grid" id="wp-req-grid"></div>
+            </div>
+
+            <div class="wp-panel" id="wp-app-panel" style="display:none;">
+                <div class="wp-panel-head">
+                    <div class="wp-panel-head-left"><span class="wp-panel-head-icon">&#128241;</span>Choose one app to write about</div>
+                </div>
+                <div class="wp-chip-row" id="wp-app-chips"></div>
+            </div>
+
+            <div class="wp-panel" id="wp-vocab-panel" style="display:none;">
+                <div class="wp-panel-head">
+                    <div class="wp-panel-head-left"><span class="wp-panel-head-icon">&#10024;</span>Vocabulary Bank</div>
+                    <div class="wp-badge-orange" id="wp-vocab-badge"></div>
+                </div>
+                <div class="wp-chip-row" id="wp-vocab-chips"></div>
+            </div>
+
+            <div class="wp-panel" id="wp-grammar-panel" style="display:none;">
+                <div class="wp-panel-head">
+                    <div class="wp-panel-head-left"><span class="wp-panel-head-icon">&#9999;&#65039;</span>Grammar to include</div>
+                </div>
+                <div class="wp-chip-row" id="wp-grammar-chips"></div>
+            </div>
+
+            <div class="wp-panel" id="wp-guide-panel" style="display:none;">
+                <div class="wp-panel-head">
+                    <div class="wp-panel-head-left"><span class="wp-panel-head-icon">&#128203;</span>Step-by-step guide</div>
+                    <button type="button" class="wp-guide-toggle" id="wp-guide-toggle">&#9650;</button>
+                </div>
+                <ol class="wp-guide-list" id="wp-guide-list"></ol>
+            </div>
+        </div>
+
+        <div class="wp-section-label" id="wp-answer-label">Your answer</div>
         <div class="wp-writing-wrap">
             <textarea class="wp-textarea" id="wp-textarea" placeholder="Write your answer here..."></textarea>
             <div class="wp-wordcount" id="wp-wordcount">0 words</div>
+        </div>
+        <div class="wp-essay-counts" id="wp-essay-counts" style="display:none;">
+            <span id="wp-essay-wordcount">0 / 0 words</span>
+            <span id="wp-essay-vocabcount">0 / 0 vocabulary words used</span>
         </div>
 
         <div class="wp-actions">
@@ -572,6 +709,13 @@ body.presentation-mode .wp-actions{
             </div>
         </div>
 
+        <div class="wp-rubric-panel" id="wp-rubric-panel">
+            <div class="wp-rubric-title">&#128202; Rubric check</div>
+            <div class="wp-rubric-grid" id="wp-rubric-grid"></div>
+            <div class="wp-rubric-sub" id="wp-rubric-grammar-sub" style="display:none;">Grammar to include</div>
+            <div class="wp-chip-row" id="wp-rubric-grammar-chips"></div>
+        </div>
+
         <div class="wp-nav-row">
             <button type="button" class="wp-btn wp-btn-outline" id="wp-btn-prev" style="min-width:100px;">&#9664; Prev</button>
             <span class="wp-nav-info" id="wp-nav-info">1 / <?php echo count($items); ?></span>
@@ -589,6 +733,14 @@ body.presentation-mode .wp-actions{
 'use strict';
 
 var ITEMS = <?php echo json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+var viewerTitle = <?php echo json_encode($viewerTitle, JSON_UNESCAPED_UNICODE); ?>;
+var WP_GRAMMAR_LABELS = {
+    'present_simple': 'Present Simple',
+    'present_continuous': 'Present Continuous',
+    'because': 'because',
+    'can_cant': "can / can't",
+    'should': 'should'
+};
 var TOTAL = ITEMS.length;
 var idx = 0;
 
@@ -597,6 +749,125 @@ function normalize(str){
 }
 
 function el(id){ return document.getElementById(id); }
+function countWords(str){ return String(str||'').trim().split(/\s+/).filter(Boolean).length; }
+function countSentences(str){ return String(str||'').split(/[.!?]+/).map(function(s){return s.trim();}).filter(Boolean).length; }
+function selectedAppChip(){
+    var active = document.querySelector('#wp-app-chips .wp-app-chip.active');
+    return active ? active.textContent : '';
+}
+
+function renderEssayPanels(item){
+    var isEssay = item.mode === 'essay';
+    el('wp-exact-prompt').style.display = isEssay ? 'none' : '';
+    el('wp-essay-prompt').style.display = isEssay ? '' : 'none';
+    el('wp-essay-counts').style.display = isEssay ? 'flex' : 'none';
+    el('wp-wordcount').style.display = isEssay ? 'none' : '';
+    el('wp-rubric-panel').classList.remove('show');
+    if(!isEssay) return;
+
+    el('wp-essay-title').textContent = item.instruction || viewerTitle;
+    el('wp-essay-subtitle').textContent = item.prompt_text || 'Everything you need is broken down below \u2014 pick your app, hit the vocabulary target, and follow the guide.';
+
+    var hasWords = item.min_words > 0 || item.max_words > 0;
+    var hasSentences = item.min_sentences > 0 || item.max_sentences > 0;
+    el('wp-req-panel').style.display = (hasWords || hasSentences) ? '' : 'none';
+    var reqGrid = el('wp-req-grid');
+    reqGrid.innerHTML = '';
+    if(hasWords){
+        var wCard = document.createElement('div');
+        wCard.className = 'wp-req-card';
+        wCard.innerHTML = '<div class="wp-req-num">' + (item.min_words||0) + '\u2013' + (item.max_words||0) + '</div><div class="wp-req-lbl">Words</div>';
+        reqGrid.appendChild(wCard);
+    }
+    if(hasSentences){
+        var sCard = document.createElement('div');
+        sCard.className = 'wp-req-card';
+        sCard.innerHTML = '<div class="wp-req-num">' + (item.min_sentences||0) + '\u2013' + (item.max_sentences||0) + '</div><div class="wp-req-lbl">Sentences</div>';
+        reqGrid.appendChild(sCard);
+    }
+
+    var apps = item.required_any || [];
+    el('wp-app-panel').style.display = apps.length ? '' : 'none';
+    var appChips = el('wp-app-chips');
+    appChips.innerHTML = '';
+    apps.forEach(function(app, i){
+        var chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'wp-app-chip' + (i === 0 ? ' active' : '');
+        chip.textContent = app;
+        chip.addEventListener('click', function(){
+            appChips.querySelectorAll('.wp-app-chip').forEach(function(c){ c.classList.remove('active'); });
+            chip.classList.add('active');
+        });
+        appChips.appendChild(chip);
+    });
+
+    var vocab = item.vocab_bank || [];
+    el('wp-vocab-panel').style.display = vocab.length ? '' : 'none';
+    el('wp-vocab-badge').textContent = 'Use ' + (item.vocab_min||0) + ' of ' + vocab.length + ' words';
+    var vocabChips = el('wp-vocab-chips');
+    vocabChips.innerHTML = '';
+    vocab.forEach(function(w){
+        var chip = document.createElement('span');
+        chip.className = 'wp-vocab-chip';
+        chip.dataset.word = w.toLowerCase();
+        chip.textContent = w;
+        vocabChips.appendChild(chip);
+    });
+
+    var grammar = item.grammar_checklist || [];
+    el('wp-grammar-panel').style.display = grammar.length ? '' : 'none';
+    var grammarChips = el('wp-grammar-chips');
+    grammarChips.innerHTML = '';
+    grammar.forEach(function(g){
+        var chip = document.createElement('span');
+        chip.className = 'wp-grammar-chip';
+        chip.textContent = '\u2022 ' + (WP_GRAMMAR_LABELS[g] || g);
+        grammarChips.appendChild(chip);
+    });
+
+    var guide = item.sentence_guide || [];
+    el('wp-guide-panel').style.display = guide.length ? '' : 'none';
+    var guideList = el('wp-guide-list');
+    guideList.innerHTML = '';
+    guide.forEach(function(step, i){
+        var li = document.createElement('li');
+        li.className = 'wp-guide-step';
+        var numSpan = document.createElement('span');
+        numSpan.className = 'wp-guide-num';
+        numSpan.textContent = (i+1);
+        var textSpan = document.createElement('span');
+        textSpan.textContent = step;
+        li.appendChild(numSpan);
+        li.appendChild(textSpan);
+        guideList.appendChild(li);
+    });
+    guideList.classList.remove('collapsed');
+    el('wp-guide-toggle').textContent = '\u25B2';
+
+    updateEssayCounts();
+}
+
+function updateEssayCounts(){
+    var item = ITEMS[idx] || {};
+    if(item.mode !== 'essay') return;
+    var text = el('wp-textarea').value;
+    var words = countWords(text);
+    var wLabel = words;
+    if(item.min_words || item.max_words) wLabel = words + ' / ' + (item.min_words||0) + '-' + (item.max_words||0) + ' words';
+    else wLabel = words + ' word' + (words!==1?'s':'');
+    el('wp-essay-wordcount').textContent = wLabel;
+
+    var vocab = item.vocab_bank || [];
+    var lower = text.toLowerCase();
+    var usedCount = 0;
+    document.querySelectorAll('#wp-vocab-chips .wp-vocab-chip').forEach(function(chip){
+        var used = lower.indexOf(chip.dataset.word) !== -1;
+        chip.classList.toggle('used', used);
+        if(used) usedCount++;
+    });
+    el('wp-essay-vocabcount').textContent = usedCount + ' / ' + (item.vocab_min || vocab.length) + ' vocabulary words used';
+}
 
 function loadItem(){
     var item = ITEMS[idx] || {};
@@ -610,6 +881,8 @@ function loadItem(){
     el('wp-student-tokens').innerHTML = '';
     el('wp-answer-tokens').innerHTML = '';
 
+    renderEssayPanels(item);
+
     var pct = Math.max(1, Math.round(((idx+1)/TOTAL)*100));
     el('wp-progress-fill').style.width = pct + '%';
     var countText = (idx+1) + ' / ' + TOTAL;
@@ -621,12 +894,72 @@ function loadItem(){
 }
 
 function updateWC(){
-    var words = el('wp-textarea').value.trim().split(/\s+/).filter(Boolean).length;
+    var item = ITEMS[idx] || {};
+    if(item.mode === 'essay'){ updateEssayCounts(); return; }
+    var words = countWords(el('wp-textarea').value);
     el('wp-wordcount').textContent = words + ' word' + (words!==1?'s':'');
+}
+
+function checkEssay(){
+    var item = ITEMS[idx] || {};
+    var text = el('wp-textarea').value;
+    var words = countWords(text);
+    var sentences = countSentences(text);
+    var lower = text.toLowerCase();
+
+    var grid = el('wp-rubric-grid');
+    grid.innerHTML = '';
+
+    function addChip(label, passed){
+        var chip = document.createElement('div');
+        chip.className = 'wp-rubric-chip ' + (passed ? 'pass' : 'fail');
+        chip.innerHTML = '<span class="wp-chip-icon">' + (passed ? '\u2705' : '\u274C') + '</span><span>' + label + '</span>';
+        grid.appendChild(chip);
+    }
+
+    if(item.min_words || item.max_words){
+        var wordsOk = words >= (item.min_words||0) && (item.max_words ? words <= item.max_words : true);
+        addChip(words + ' words', wordsOk);
+    }
+    if(item.min_sentences || item.max_sentences){
+        var sentOk = sentences >= (item.min_sentences||0) && (item.max_sentences ? sentences <= item.max_sentences : true);
+        addChip(sentences + ' sentences', sentOk);
+    }
+    var vocab = item.vocab_bank || [];
+    if(vocab.length){
+        var vocabUsed = vocab.filter(function(w){ return lower.indexOf(w.toLowerCase()) !== -1; }).length;
+        addChip(vocabUsed + '/' + (item.vocab_min||0) + ' vocabulary words', vocabUsed >= (item.vocab_min||0));
+    }
+    var apps = item.required_any || [];
+    if(apps.length){
+        var chosen = selectedAppChip();
+        var mentioned = chosen && lower.indexOf(chosen.toLowerCase()) !== -1;
+        addChip('Mentions "' + (chosen||'') + '"', mentioned);
+    }
+
+    var grammar = item.grammar_checklist || [];
+    var grammarChipsWrap = el('wp-rubric-grammar-chips');
+    grammarChipsWrap.innerHTML = '';
+    el('wp-rubric-grammar-sub').style.display = grammar.length ? '' : 'none';
+    grammar.forEach(function(g){
+        var label = WP_GRAMMAR_LABELS[g] || g;
+        var hit = lower.indexOf(String(label).toLowerCase().replace(/[^a-z' ]/g,'').trim()) !== -1;
+        var chip = document.createElement('span');
+        chip.className = 'wp-grammar-chip' + (hit ? ' hit' : '');
+        chip.textContent = '\u2022 ' + label;
+        grammarChipsWrap.appendChild(chip);
+    });
+
+    el('wp-rubric-panel').classList.add('show');
+    el('wp-answer-reveal').classList.remove('show');
+
+    var allPass = grid.querySelectorAll('.wp-rubric-chip.fail').length === 0;
+    if(allPass) launchConfetti();
 }
 
 function checkAnswer(){
     var item = ITEMS[idx] || {};
+    if(item.mode === 'essay'){ checkEssay(); return; }
     var modelWords = normalize(item.answer || '');
     var studentWords = normalize(el('wp-textarea').value);
 
@@ -707,12 +1040,19 @@ el('wp-btn-reset').addEventListener('click', function(){
     el('wp-textarea').value='';
     el('wp-wordcount').textContent='0 words';
     el('wp-result').classList.remove('show');
+    el('wp-rubric-panel').classList.remove('show');
     el('wp-answer-reveal').classList.remove('show');
+    updateWC();
 });
 el('wp-btn-show').addEventListener('click', function(){
     el('wp-answer-reveal').classList.toggle('show');
 });
 el('wp-btn-check').addEventListener('click', checkAnswer);
+el('wp-guide-toggle').addEventListener('click', function(){
+    var list = el('wp-guide-list');
+    var collapsed = list.classList.toggle('collapsed');
+    el('wp-guide-toggle').textContent = collapsed ? '\u25BC' : '\u25B2';
+});
 el('wp-btn-prev').addEventListener('click', function(){
     if(idx>0){ idx--; loadItem(); }
 });
