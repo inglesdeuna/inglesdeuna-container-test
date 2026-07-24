@@ -330,6 +330,8 @@ document.addEventListener('DOMContentLoaded', function () {
     var pronIsPaused = false;
     var pronCurrentAudio = null;
     var pronUtter = null;
+    var pronTtsCache = {};
+    var pronTtsFetching = false;
 
     var els = {
         board: document.getElementById('pron-board'),
@@ -443,37 +445,33 @@ document.addEventListener('DOMContentLoaded', function () {
         listenBtn.textContent = pronIsPaused ? 'Resume' : (pronIsSpeaking ? 'Pause' : 'Listen');
     }
 
-    function speakCurrent() {
-        if (!data[index]) return;
-        var item = data[index];
-
-        if (item.audio) {
-            if (!pronCurrentAudio || pronCurrentAudio.getAttribute('data-src') !== item.audio) {
-                if (pronCurrentAudio) pronCurrentAudio.pause();
-                pronCurrentAudio = new Audio(item.audio);
-                pronCurrentAudio.setAttribute('data-src', item.audio);
-                pronCurrentAudio.onended = function () {
-                    pronIsSpeaking = false;
-                    pronIsPaused = false;
-                    setListenButtonLabel();
-                };
-            }
-
-            if (!pronCurrentAudio.paused) {
-                pronCurrentAudio.pause();
-                pronIsSpeaking = true;
-                pronIsPaused = true;
-            } else {
-                pronCurrentAudio.play().then(function () {
-                    pronIsSpeaking = true;
-                    pronIsPaused = false;
-                    setListenButtonLabel();
-                }).catch(function () {});
-            }
-            setListenButtonLabel();
-            return;
+    function playUrlAudio(url) {
+        if (!pronCurrentAudio || pronCurrentAudio.getAttribute('data-src') !== url) {
+            if (pronCurrentAudio) pronCurrentAudio.pause();
+            pronCurrentAudio = new Audio(url);
+            pronCurrentAudio.setAttribute('data-src', url);
+            pronCurrentAudio.onended = function () {
+                pronIsSpeaking = false;
+                pronIsPaused = false;
+                setListenButtonLabel();
+            };
         }
 
+        if (!pronCurrentAudio.paused) {
+            pronCurrentAudio.pause();
+            pronIsSpeaking = true;
+            pronIsPaused = true;
+        } else {
+            pronCurrentAudio.play().then(function () {
+                pronIsSpeaking = true;
+                pronIsPaused = false;
+                setListenButtonLabel();
+            }).catch(function () {});
+        }
+        setListenButtonLabel();
+    }
+
+    function speakWithBrowserVoice() {
         if (!window.speechSynthesis) return;
 
         if (speechSynthesis.speaking && !speechSynthesis.paused) {
@@ -514,6 +512,73 @@ document.addEventListener('DOMContentLoaded', function () {
             setListenButtonLabel();
         };
         speechSynthesis.speak(pronUtter);
+    }
+
+    function fetchElevenLabsAudio(currentIndex, text, voiceId) {
+        pronTtsFetching = true;
+        var formData = new FormData();
+        formData.append('text', text);
+        formData.append('voice_id', voiceId);
+
+        fetch('tts.php', {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (json) {
+                if (!response.ok || !json || !json.url) {
+                    throw new Error((json && json.error) || 'TTS request failed');
+                }
+                return json.url;
+            });
+        }).then(function (url) {
+            pronTtsFetching = false;
+            pronTtsCache[currentIndex] = url;
+            if (currentIndex === index) playUrlAudio(url);
+        }).catch(function () {
+            pronTtsFetching = false;
+            if (currentIndex === index) speakWithBrowserVoice();
+        });
+    }
+
+    function speakCurrent() {
+        if (!data[index]) return;
+        var item = data[index];
+
+        if (item.audio) {
+            playUrlAudio(item.audio);
+            return;
+        }
+
+        if (pronTtsCache[index]) {
+            playUrlAudio(pronTtsCache[index]);
+            return;
+        }
+
+        if (pronCurrentAudio && !pronCurrentAudio.paused) {
+            pronCurrentAudio.pause();
+            pronIsSpeaking = true;
+            pronIsPaused = true;
+            setListenButtonLabel();
+            return;
+        }
+
+        if (pronCurrentAudio && (pronCurrentAudio.paused && pronIsPaused)) {
+            pronCurrentAudio.play().then(function () {
+                pronIsSpeaking = true;
+                pronIsPaused = false;
+                setListenButtonLabel();
+            }).catch(function () {});
+            setListenButtonLabel();
+            return;
+        }
+
+        if (pronTtsFetching) return;
+
+        var text = getCurrentWord();
+        if (!text) return;
+
+        fetchElevenLabsAudio(index, text, String(item.voice_id || 'nzFihrBIvB34imQBuxub'));
     }
 
     function setCardMode(mode) {

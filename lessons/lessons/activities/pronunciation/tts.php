@@ -58,10 +58,12 @@ function tts_env(string $key): string
     return is_string($v) ? trim($v) : '';
 }
 
-if (
-    (empty($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) &&
-    (empty($_SESSION['admin_logged']) || !$_SESSION['admin_logged'])
-) {
+$ttsAllowed =
+    (!empty($_SESSION['academic_logged']) && $_SESSION['academic_logged']) ||
+    (!empty($_SESSION['admin_logged']) && $_SESSION['admin_logged']) ||
+    (!empty($_SESSION['student_logged']) && $_SESSION['student_logged']);
+
+if (!$ttsAllowed) {
     http_response_code(403);
     echo json_encode(['error' => 'Unauthorized']);
     exit;
