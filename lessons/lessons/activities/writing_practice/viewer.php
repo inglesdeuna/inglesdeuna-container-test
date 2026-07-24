@@ -723,11 +723,15 @@ body.presentation-mode .wp-actions{
         </div>
 
     </div>
+
+    <div class="wp-completed" id="wp-completed"></div>
+
 </div>
 </div>
 
 <audio id="wp-win" src="../../hangman/assets/win.mp3" preload="auto"></audio>
 
+<script src="../../core/_activity_feedback.js"></script>
 <script>
 (function(){
 'use strict';
@@ -766,6 +770,7 @@ var WP_GRAMMAR_PATTERNS = {
 };
 var TOTAL = ITEMS.length;
 var idx = 0;
+var SCORES = new Array(TOTAL).fill(null);
 
 function normalize(str){
     return String(str||'').toLowerCase().replace(/[^a-z0-9\s]/g,'').trim().split(/\s+/).filter(Boolean);
@@ -981,6 +986,7 @@ function checkEssay(){
     el('wp-answer-reveal').classList.remove('show');
 
     var allPass = grid.querySelectorAll('.wp-rubric-chip.fail').length === 0;
+    SCORES[idx] = allPass ? 1 : 0;
     if(allPass) launchConfetti();
 }
 
@@ -1036,6 +1042,7 @@ function checkAnswer(){
     el('wp-result').classList.add('show');
     el('wp-answer-reveal').classList.remove('show');
 
+    SCORES[idx] = pct >= 80 ? 1 : 0;
     if(pct >= 80) launchConfetti();
 }
 
@@ -1085,7 +1092,37 @@ el('wp-btn-prev').addEventListener('click', function(){
 });
 el('wp-btn-next').addEventListener('click', function(){
     if(idx<TOTAL-1){ idx++; loadItem(); }
+    else{
+        checkAnswer();
+        showCompleted();
+    }
 });
+
+function showCompleted(){
+    var completedEl = el('wp-completed');
+    completedEl.innerHTML = '';
+    completedEl.classList.add('active');
+    window.ActivityFeedback.showCompleted({
+        target:        completedEl,
+        scores:        SCORES.map(function(s){ return s === null ? 0 : s; }),
+        title:         viewerTitle,
+        activityType:  'Writing Practice',
+        questionCount: TOTAL,
+        onRetry:       restartActivity,
+        hideActivity:  el('wp-board'),
+        winAudio:      el('wp-win')
+    });
+}
+
+function restartActivity(){
+    SCORES = new Array(TOTAL).fill(null);
+    idx = 0;
+    var completedEl = el('wp-completed');
+    completedEl.classList.remove('active');
+    completedEl.innerHTML = '';
+    el('wp-board').style.display = '';
+    loadItem();
+}
 
 loadItem();
 })();
