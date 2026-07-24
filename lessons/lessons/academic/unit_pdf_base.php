@@ -263,10 +263,10 @@ function ws_mc(array $d, int $n, bool $k): string {
         $out .= '<div class="ws-qb"><div class="ws-qt"><span class="qnum">'.($qi+1).'</span>';
         if ($qtp === 'listen') {
             $out .= '<em class="ws-audio">&#127911; Listen and choose.</em>';
-        } else {
-            if ($qt !== '') $out .= h($qt);
-            if ($qimg !== '') $out .= '<div class="mc-qimg"><img src="'.h($qimg).'" alt="" loading="eager"></div>';
+        } elseif ($qt !== '') {
+            $out .= h($qt);
         }
+        if ($qimg !== '') $out .= '<div class="mc-qimg"><img src="'.h($qimg).'" alt="" loading="eager"></div>';
         $out .= '</div>';
         if ($otp === 'image') {
             $out .= '<div class="mc-img-opts">';
