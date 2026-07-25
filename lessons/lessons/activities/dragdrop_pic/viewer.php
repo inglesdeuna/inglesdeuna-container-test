@@ -302,7 +302,7 @@ body.ddp-page:not(.presentation-mode):not(.fullscreen-embedded) .viewer-content 
     position: fixed;
     z-index: 9998;
     pointer-events: none;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 8px;
     transition: left .32s cubic-bezier(0.2,1.0,0.3,1.0),
                 top  .32s cubic-bezier(0.2,1.0,0.3,1.0),
