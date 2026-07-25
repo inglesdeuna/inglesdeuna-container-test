@@ -247,7 +247,8 @@ ob_start();
     border-radius:12px; pointer-events:none; user-select:none;
 }
 .ddpe-overlay {
-    position:absolute; inset:0; cursor:crosshair; z-index:5;
+    position:absolute; cursor:crosshair; z-index:5;
+    pointer-events:auto;
 }
 .ddpe-empty {
     text-align:center; color:#64748b; font-size:14px;
@@ -455,8 +456,16 @@ function loadBgPreview(src) {
     bgImg.style.display = 'block';
     emptyHint.style.display = 'none';
     wrap.classList.add('has-image');
-    bgLoaded = true;
-    renderZones();
+    bgImg.onload = function() {
+        bgLoaded = true;
+        syncOverlayGeometry();
+        renderZones();
+    };
+    if (bgImg.complete && bgImg.naturalWidth > 0) {
+        bgLoaded = true;
+        syncOverlayGeometry();
+        renderZones();
+    }
 }
 
 bgFile.addEventListener('change', function() {
@@ -475,7 +484,18 @@ if (<?= json_encode($activity['background_image']) ?>) {
 }
 
 /* ── Zone rendering ─────────────────────── */
+function syncOverlayGeometry() {
+    if (!bgImg.complete || !bgImg.clientWidth || !bgImg.clientHeight) return;
+    var wrapRect = wrap.getBoundingClientRect();
+    var imageRect = bgImg.getBoundingClientRect();
+    overlay.style.left = (imageRect.left - wrapRect.left) + 'px';
+    overlay.style.top = (imageRect.top - wrapRect.top) + 'px';
+    overlay.style.width = imageRect.width + 'px';
+    overlay.style.height = imageRect.height + 'px';
+}
+
 function renderZones() {
+    syncOverlayGeometry();
     document.querySelectorAll('.ddpe-ed-zone').forEach(function(z){ z.remove(); });
     items.forEach(function(it){ createZoneEl(it); });
     renderItemList();
@@ -521,7 +541,7 @@ function createZoneEl(it) {
     handle.dataset.resize = 'true';
     el.appendChild(handle);
 
-    wrap.appendChild(el);
+    overlay.appendChild(el);
     makeDraggable(el, it);
     makeResizable(handle, el, it);
 }
@@ -739,14 +759,14 @@ function renderItemList() {
 overlay.addEventListener('click', function(e) {
     if (!bgLoaded) return;
     if (e.target.dataset.resize) return;
-    if (e.target.classList.contains('ddpe-ed-zone')) return;
+    if (e.target.closest && e.target.closest('.ddpe-ed-zone')) return;
 
-    var rect = wrap.getBoundingClientRect();
+    var rect = overlay.getBoundingClientRect();
     var imgW = bgImg.clientWidth  || rect.width;
     var imgH = bgImg.clientHeight || rect.height;
 
-    var xPct = (e.clientX - rect.left) / imgW * 100;
-    var yPct = (e.clientY - rect.top)  / imgH * 100;
+    var xPct = (e.clientX - rect.left) / rect.width * 100;
+    var yPct = (e.clientY - rect.top)  / rect.height * 100;
 
     var w = 14, h = 12;
     var clampedX = Math.min(xPct - w / 2, 100 - w);
@@ -794,9 +814,9 @@ function makeDraggable(el, it) {
 
     function onMove(e) {
         if (!dragging) return;
-        var rect = wrap.getBoundingClientRect();
-        var imgW = bgImg.clientWidth  || rect.width;
-        var imgH = bgImg.clientHeight || rect.height;
+        var rect = overlay.getBoundingClientRect();
+        var imgW = rect.width;
+        var imgH = rect.height;
         var dx = (e.clientX - startMouseX) / imgW * 100;
         var dy = (e.clientY - startMouseY) / imgH * 100;
         it.x = Math.max(0, Math.min(100 - it.w, parseFloat((startX + dx).toFixed(4))));
@@ -818,9 +838,9 @@ function makeResizable(handle, el, it) {
     handle.addEventListener('mousedown', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        var rect       = wrap.getBoundingClientRect();
-        var imgW       = bgImg.clientWidth  || rect.width;
-        var imgH       = bgImg.clientHeight || rect.height;
+        var rect       = overlay.getBoundingClientRect();
+        var imgW       = rect.width;
+        var imgH       = rect.height;
         var startMX    = e.clientX;
         var startMY    = e.clientY;
         var startW     = it.w;
@@ -862,6 +882,8 @@ document.getElementById('ddpeForm').addEventListener('submit', function(e) {
     /* serialize all items (including rot/flipH) */
     itemsInput.value = JSON.stringify(items);
 });
+
+window.addEventListener('resize', syncOverlayGeometry);
 
 /* ── Boot ────────────────────────────────── */
 renderItemList();

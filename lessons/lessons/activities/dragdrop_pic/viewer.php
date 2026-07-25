@@ -112,6 +112,20 @@ body,
 .viewer-content,
 body.presentation-mode .viewer-content,
 body.fullscreen-embedded .viewer-content { background: #fff !important; }
+body.ddp-page:not(.presentation-mode):not(.fullscreen-embedded) {
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+body.ddp-page:not(.presentation-mode):not(.fullscreen-embedded) .activity-wrapper {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+}
+body.ddp-page:not(.presentation-mode):not(.fullscreen-embedded) .viewer-content {
+    overflow: visible;
+}
 
 .act-header {
     max-width: 960px !important;
@@ -142,7 +156,7 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     align-items: flex-start;
     margin-bottom: 10px;
     line-height: 0;
-    overflow: hidden;
+    overflow: visible;
     border-radius: 16px;
     touch-action: none;
 }
@@ -207,6 +221,7 @@ body.fullscreen-embedded .viewer-content { background: #fff !important; }
     border-radius: 6px;
     pointer-events: none;
     box-sizing: border-box;
+    transform-origin: center center;
 }
 
 /* Picture bank */
@@ -422,6 +437,7 @@ const DDP_ITEMS       = <?= json_encode($items, JSON_UNESCAPED_UNICODE) ?>;
 const DDP_ACTIVITY_ID = <?= json_encode($activityId, JSON_UNESCAPED_UNICODE) ?>;
 const DDP_RETURN_TO   = <?= json_encode($returnTo, JSON_UNESCAPED_UNICODE) ?>;
 const DDP_TITLE       = <?= json_encode($title, JSON_UNESCAPED_UNICODE) ?>;
+document.body.classList.add('ddp-page');
 
 /* ── Transform helper ──────────────────── */
 function getChipTransform(it) {
