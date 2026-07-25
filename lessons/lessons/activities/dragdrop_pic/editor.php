@@ -285,7 +285,7 @@ ob_start();
 }
 .ddpe-ed-zone.selected .ddpe-ed-resize { background:#F97316; }
 .ddpe-ed-zone-img {
-    width:100%; height:100%; object-fit:cover;
+    width:100%; height:100%; object-fit:contain;
     display:block; opacity:.75; pointer-events:none; user-select:none;
 }
 .ddpe-ed-zone-placeholder {
