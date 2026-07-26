@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressFillEl  = document.getElementById('fc-progress-fill');
   var progressBadgeEl = document.getElementById('fc-progress-badge');
   var imgEl           = document.getElementById('fc-img');
+  var backImgEl       = document.getElementById('fc-back-img');
   var imgPlaceholder  = document.getElementById('fc-image-placeholder');
   var wordEl          = document.getElementById('fc-word');
   var listenBtn       = document.getElementById('fc-listen');
@@ -98,6 +99,10 @@ document.addEventListener('DOMContentLoaded', function () {
       imgEl.style.display = 'none';
       if (imgPlaceholder) imgPlaceholder.style.display = 'flex';
     }
+    if (backImgEl) {
+      backImgEl.src = card.back_image || '';
+      backImgEl.style.display = 'none';
+    }
 
     /* Word hidden until Listen or Show */
     if (wordEl) {
@@ -143,6 +148,23 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!wordEl) return;
     wordVisible = !wordVisible;
     wordEl.style.display = wordVisible ? 'block' : 'none';
+    var card = cards[index] || {};
+    if (backImgEl && card.back_image) {
+      if (wordVisible) {
+        imgEl.style.display = 'none';
+        if (imgPlaceholder) imgPlaceholder.style.display = 'none';
+        backImgEl.style.display = 'block';
+      } else {
+        backImgEl.style.display = 'none';
+        if (card.image) {
+          imgEl.style.display = 'block';
+          if (imgPlaceholder) imgPlaceholder.style.display = 'none';
+        } else {
+          imgEl.style.display = 'none';
+          if (imgPlaceholder) imgPlaceholder.style.display = 'flex';
+        }
+      }
+    }
     if (showBtn) showBtn.textContent = wordVisible ? 'Hide Word' : 'Show Word';
   }
 

@@ -40,6 +40,7 @@ if (!$rawCards || !count($rawCards)) {
 $jsCards = array_values(array_map(function ($card) {
     return [
         'image'    => (string) ($card['image']        ?? ''),
+        'back_image' => (string) ($card['back_image'] ?? ''),
         'text'     => (string) ($card['english_text'] ?? $card['text'] ?? ''),
         'audio'    => (string) ($card['audio']        ?? ''),
         'voice_id' => (string) ($card['voice_id']     ?? ''),
@@ -281,6 +282,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
                         </svg>
                     </div>
                     <img id="fc-img" src="" alt="" style="display:none;">
+                    <img id="fc-back-img" src="" alt="" style="display:none;">
                 </div>
 
                 <div class="fc-word" id="fc-word"></div>
