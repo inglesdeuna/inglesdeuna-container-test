@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var listenBtn       = document.getElementById('fc-listen');
   var showBtn         = document.getElementById('fc-show');
   var nextBtn         = document.getElementById('fc-next');
+  var cardShell     = document.querySelector('.fc-card-shell');
   var feedbackEl      = document.getElementById('fc-feedback');
   var activityEl      = document.getElementById('fc-activity');
   var completedEl     = document.getElementById('fc-completed');
@@ -28,6 +29,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   var index = 0;
   var wordVisible = false;
+  var flipped = false;
   var ttsCache = {};   /* key: voice_id + '|' + text → audio URL */
   var currentAudio = null;
 
@@ -84,31 +86,13 @@ document.addEventListener('DOMContentLoaded', function () {
   function loadCard() {
     var card    = cards[index] || {};
     wordVisible = false;
+    flipped = false;
 
     if (completedEl) completedEl.style.display = 'none';
     if (activityEl)  activityEl.style.display  = '';
     if (feedbackEl)  AF.clearFeedback(feedbackEl);
 
-    /* Image */
-    if (card.image) {
-      imgEl.src = card.image;
-      imgEl.style.display = 'block';
-      if (imgPlaceholder) imgPlaceholder.style.display = 'none';
-    } else {
-      imgEl.src = '';
-      imgEl.style.display = 'none';
-      if (imgPlaceholder) imgPlaceholder.style.display = 'flex';
-    }
-    if (backImgEl) {
-      backImgEl.src = card.back_image || '';
-      backImgEl.style.display = 'none';
-    }
-
-    /* Word hidden until Listen or Show */
-    if (wordEl) {
-      wordEl.textContent   = card.text || '';
-      wordEl.style.display = 'none';
-    }
+    renderSide();
 
     if (listenBtn) listenBtn.disabled = false;
     if (showBtn)   { showBtn.disabled = false; showBtn.textContent = 'Show Word'; }
@@ -120,23 +104,44 @@ document.addEventListener('DOMContentLoaded', function () {
     updateProgress();
   }
 
+  function renderSide() {
+    var card = cards[index] || {};
+    var image = flipped ? card.back_image : card.image;
+    var bothImages = !!card.image && !!card.back_image;
+    if (imgEl) {
+      imgEl.src = card.image || '';
+      imgEl.style.display = !flipped && card.image ? 'block' : 'none';
+    }
+    if (backImgEl) {
+      backImgEl.src = card.back_image || '';
+      backImgEl.style.display = flipped && card.back_image ? 'block' : 'none';
+    }
+    if (imgPlaceholder) imgPlaceholder.style.display = image ? 'none' : 'flex';
+    if (wordEl) {
+      wordEl.textContent = flipped ? (card.meaning || card.text || '') : (card.text || '');
+      wordEl.style.display = (!bothImages && wordVisible) ? 'block' : 'none';
+    }
+  }
+
   /* ── Listen (always ElevenLabs) ────────────────────────────── */
   function listen() {
     var card = cards[index] || {};
 
-    /* Reveal word when user listens */
-    if (wordEl) wordEl.style.display = 'block';
-    wordVisible = true;
-    if (showBtn) showBtn.textContent = 'Hide Word';
+    var bothImages = !!card.image && !!card.back_image;
+    if (!bothImages) {
+      if (wordEl) wordEl.style.display = 'block';
+      wordVisible = true;
+      if (showBtn) showBtn.textContent = 'Hide Word';
+    }
 
     /* If card already has a pre-generated audio URL, play it directly */
-    if (card.audio) {
+    if (!flipped && card.audio) {
       playUrl(card.audio);
       return;
     }
 
     /* Otherwise request ElevenLabs via tts.php */
-    var text    = card.text    || '';
+    var text    = (flipped ? (card.meaning || card.text) : card.text) || '';
     var voiceId = card.voice_id || '';
     if (!text) return;
 
@@ -148,24 +153,21 @@ document.addEventListener('DOMContentLoaded', function () {
     if (!wordEl) return;
     wordVisible = !wordVisible;
     wordEl.style.display = wordVisible ? 'block' : 'none';
-    var card = cards[index] || {};
-    if (backImgEl && card.back_image) {
-      if (wordVisible) {
-        imgEl.style.display = 'none';
-        if (imgPlaceholder) imgPlaceholder.style.display = 'none';
-        backImgEl.style.display = 'block';
-      } else {
-        backImgEl.style.display = 'none';
-        if (card.image) {
-          imgEl.style.display = 'block';
-          if (imgPlaceholder) imgPlaceholder.style.display = 'none';
-        } else {
-          imgEl.style.display = 'none';
-          if (imgPlaceholder) imgPlaceholder.style.display = 'flex';
-        }
-      }
-    }
+    renderSide();
     if (showBtn) showBtn.textContent = wordVisible ? 'Hide Word' : 'Show Word';
+  }
+
+  function flipCard() {
+    if (!cards[index] || !cards[index].back_image) return;
+    flipped = !flipped;
+    wordVisible = false;
+    if (cardShell) {
+      cardShell.classList.remove('fc-flipping');
+      void cardShell.offsetWidth;
+      cardShell.classList.add('fc-flipping');
+    }
+    renderSide();
+    if (showBtn) showBtn.textContent = 'Show Word';
   }
 
   /* ── Next ───────────────────────────────────────────────────── */
@@ -315,6 +317,7 @@ document.addEventListener('DOMContentLoaded', function () {
   if (listenBtn) listenBtn.addEventListener('click', listen);
   if (showBtn)   showBtn.addEventListener('click', toggleWord);
   if (nextBtn)   nextBtn.addEventListener('click', nextCard);
+  if (cardShell) cardShell.addEventListener('click', flipCard);
 
   loadCard();
 });
