@@ -154,6 +154,16 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     padding: clamp(16px, 2.4vw, 24px);
     box-shadow: 0 8px 40px rgba(127,119,221,.12);
     margin-bottom: 14px;
+    cursor: pointer;
+    perspective: 900px;
+}
+.fc-card-shell.fc-flipping {
+    animation: fc-card-flip .45s ease;
+}
+@keyframes fc-card-flip {
+    0% { transform: rotateY(0); }
+    50% { transform: rotateY(90deg); }
+    100% { transform: rotateY(0); }
 }
 .fc-image-wrap {
     width: 100%;

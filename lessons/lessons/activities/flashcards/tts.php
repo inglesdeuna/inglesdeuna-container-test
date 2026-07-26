@@ -60,7 +60,8 @@ function tts_env(string $key): string
 
 if (
     (empty($_SESSION['academic_logged']) || !$_SESSION['academic_logged']) &&
-    (empty($_SESSION['admin_logged']) || !$_SESSION['admin_logged'])
+    (empty($_SESSION['admin_logged']) || !$_SESSION['admin_logged']) &&
+    (empty($_SESSION['student_logged']) || !$_SESSION['student_logged'])
 ) {
     http_response_code(403);
     echo json_encode(['error' => 'Unauthorized']);
