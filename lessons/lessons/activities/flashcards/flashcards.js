@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     /* If card already has a pre-generated audio URL, play it directly */
-    if (card.audio) {
+    if (!flipped && card.audio) {
       playUrl(card.audio);
       return;
     }
