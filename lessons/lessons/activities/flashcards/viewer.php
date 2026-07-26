@@ -43,6 +43,7 @@ $jsCards = array_values(array_map(function ($card) {
         'back_image' => (string) ($card['back_image'] ?? ''),
         'text'     => (string) ($card['english_text'] ?? $card['text'] ?? ''),
         'audio'    => (string) ($card['audio']        ?? ''),
+        'back_audio' => (string) ($card['back_audio'] ?? ''),
         'voice_id' => (string) ($card['voice_id']     ?? ''),
     ];
 }, $rawCards));
@@ -300,7 +301,6 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 
             <div class="fc-actions">
                 <button class="fc-btn fc-btn-purple" id="fc-listen">🔊 Listen</button>
-                <button class="fc-btn fc-btn-orange" id="fc-show">Show Word</button>
                 <button class="fc-btn fc-btn-orange" id="fc-next">Next →</button>
             </div>
 

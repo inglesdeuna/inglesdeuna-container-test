@@ -127,16 +127,10 @@ document.addEventListener('DOMContentLoaded', function () {
   function listen() {
     var card = cards[index] || {};
 
-    var bothImages = !!card.image && !!card.back_image;
-    if (!bothImages) {
-      if (wordEl) wordEl.style.display = 'block';
-      wordVisible = true;
-      if (showBtn) showBtn.textContent = 'Hide Word';
-    }
-
     /* If card already has a pre-generated audio URL, play it directly */
-    if (!flipped && card.audio) {
-      playUrl(card.audio);
+    var savedAudio = flipped ? card.back_audio : card.audio;
+    if (savedAudio) {
+      playUrl(savedAudio);
       return;
     }
 
@@ -158,7 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function flipCard() {
-    if (!cards[index] || !cards[index].back_image) return;
+    if (!cards[index] || (!cards[index].back_image && !cards[index].meaning)) return;
     flipped = !flipped;
     wordVisible = false;
     if (cardShell) {
