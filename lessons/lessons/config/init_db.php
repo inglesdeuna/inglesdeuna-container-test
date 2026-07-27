@@ -67,6 +67,21 @@ try {
        memoria, lo que puede tumbar la conexion en instancias pequenas. */
     $pdo->exec("ALTER TABLE activities ADD COLUMN IF NOT EXISTS pdf_data BYTEA");
 
+    /* Roleplay revisions keep the previous JSONB value before an editor
+       update so an accidental destructive save can be rolled back. */
+    $pdo->exec("
+    CREATE TABLE IF NOT EXISTS roleplay_revisions (
+        id BIGSERIAL PRIMARY KEY,
+        activity_id INT NOT NULL REFERENCES activities(id) ON DELETE CASCADE,
+        data JSONB NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+    ");
+    $pdo->exec("
+    CREATE INDEX IF NOT EXISTS roleplay_revisions_activity_idx
+    ON roleplay_revisions (activity_id, created_at DESC);
+    ");
+
     /* ===============================
        UNIQUE (unit + type)
        =============================== */
