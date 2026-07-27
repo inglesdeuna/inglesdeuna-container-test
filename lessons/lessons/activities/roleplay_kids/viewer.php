@@ -247,8 +247,8 @@ window.RK_ALLOW_EDITOR = <?= json_encode($allowEditor) ?>;
       }
       const form = new FormData();
       form.append('text', text);
-      form.append('voice_id', voiceIdToLabel(scene.teacherVoiceId));
-      const resp = await fetch('../multiple_choice/tts.php', {method: 'POST', body: form, credentials: 'same-origin'});
+      form.append('voice_id', scene.teacherVoiceId);
+      const resp = await fetch('tts.php', {method: 'POST', body: form, credentials: 'same-origin'});
       if (!resp.ok) {
         let err = await resp.json().catch(() => ({}));
         throw new Error(err.error || 'ElevenLabs audio failed');
