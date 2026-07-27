@@ -303,6 +303,7 @@ body.presentation-mode .pron-shell{position:absolute!important;inset:0!important
                 <h2 class="pron-completed-title" id="pron-completed-title">All Done!</h2>
                 <p class="pron-completed-text" id="pron-completed-text">Great job practicing pronunciation.</p>
                 <p id="pron-score-text"></p>
+                <button type="button" class="pron-completed-button pron-purple" id="pron-dialogue">Listen to the complete dialogue</button>
                 <button type="button" class="pron-completed-button" id="pron-restart">Restart</button>
             </div>
         </section>
@@ -326,6 +327,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var checkedCards = {};
     var scores = data.map(function () { return null; });
     var capturedText = '';
+    var recordedTexts = data.map(function () { return ''; });
     var recognitionBusy = false;
     var pronIsSpeaking = false;
     var pronIsPaused = false;
@@ -364,6 +366,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var speakBtn = document.getElementById('pron-speak');
     var nextBtn = document.getElementById('pron-next');
     var restartBtn = document.getElementById('pron-restart');
+    var dialogueBtn = document.getElementById('pron-dialogue');
 
     var recognition = null;
     var SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition || null;
@@ -598,14 +601,14 @@ document.addEventListener('DOMContentLoaded', function () {
 
         pronIsSpeaking = false;
         pronIsPaused = false;
-        capturedText = '';
+        capturedText = recordedTexts[index] || '';
         setListenButtonLabel();
 
         setCardMode('');
         els.word.style.display = '';
         els.image = document.querySelector('.pron-image');
         els.word.textContent = word;
-        els.captured.textContent = '';
+        els.captured.textContent = capturedText ? 'You said: ' + capturedText : '';
         els.captured.className = 'pron-box pron-captured';
         els.answer.textContent = 'Text: ' + word;
         els.answer.classList.remove('show');
@@ -666,9 +669,13 @@ document.addEventListener('DOMContentLoaded', function () {
         els.feedback.className = 'pron-box pron-feedback';
 
         recognition.onresult = function (event) {
-            capturedText = String((event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '');
+            capturedText = String((event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '').trim();
+            recordedTexts[index] = capturedText;
             recognitionBusy = false;
-            checkAnswer();
+            els.captured.textContent = capturedText ? 'You said: ' + capturedText : 'Could not capture voice. Try again.';
+            els.captured.className = 'pron-box pron-captured';
+            els.feedback.textContent = capturedText ? 'Recorded. Continue the conversation.' : 'Try again.';
+            els.feedback.className = 'pron-box pron-feedback';
         };
 
         recognition.onerror = function () {
@@ -691,38 +698,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    function checkAnswer() {
-        var said = normalizeText(capturedText);
-        var expected = normalizeText(getCurrentWord());
+    function checkAnswer(cardIndex, showFeedback) {
+        var said = normalizeText(recordedTexts[cardIndex] || '');
+        var expected = normalizeText(data[cardIndex] && (data[cardIndex].en || data[cardIndex].word));
 
         if (!said) {
-            els.feedback.textContent = "You didn't record your voice.";
-            els.feedback.className = 'pron-box pron-feedback bad';
-            return;
+            checkedCards[cardIndex] = false;
+            scores[cardIndex] = 0;
+            return false;
         }
 
         var correct = isMatch(said, expected);
-        if (correct) {
-            els.captured.textContent = 'Good';
-            els.captured.className = 'pron-box pron-captured ok';
+        checkedCards[cardIndex] = correct;
+        scores[cardIndex] = correct ? 1 : 0;
+        if (showFeedback && cardIndex === index) {
+            els.captured.textContent = correct ? 'You said: ' + recordedTexts[cardIndex] : 'Try again: ' + recordedTexts[cardIndex];
+            els.captured.className = 'pron-box pron-captured ' + (correct ? 'ok' : 'bad');
             els.feedback.textContent = '';
-            playSound(els.win);
-        } else {
-            els.captured.textContent = 'Try again';
-            els.captured.className = 'pron-box pron-captured bad';
-            els.feedback.textContent = '';
-            playSound(els.lose);
+            playSound(correct ? els.win : els.lose);
         }
-
-        if (correct && !checkedCards[index]) {
-            checkedCards[index] = true;
-            correctCount++;
-        } else if (!correct && !checkedCards[index]) {
-            checkedCards[index] = false;
-        }
-
-        scores[index] = checkedCards[index] === true ? 1 : 0;
-        updateScoreCards(true);
+        return correct;
     }
 
     function persistScoreSilently(targetUrl) {
@@ -738,14 +733,83 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    function playFullDialogue() {
+        if (!TOTAL || dialogueBtn.disabled) return;
+        dialogueBtn.disabled = true;
+        dialogueBtn.textContent = 'Playing dialogue...';
+
+        function playItem(itemIndex) {
+            if (itemIndex >= TOTAL) {
+                dialogueBtn.disabled = false;
+                dialogueBtn.textContent = 'Listen to the complete dialogue';
+                return Promise.resolve();
+            }
+
+            var item = data[itemIndex] || {};
+            var text = String(item.en || item.word || '').trim();
+            if (!text) return playItem(itemIndex + 1);
+
+            var url = item.audio || pronTtsCache[itemIndex];
+            if (url) {
+                return new Promise(function (resolve) {
+                    var audio = new Audio(url);
+                    audio.onended = resolve;
+                    audio.onerror = resolve;
+                    audio.play().catch(resolve);
+                }).then(function () {
+                    return playItem(itemIndex + 1);
+                });
+            }
+
+            return new Promise(function (resolve) {
+                var formData = new FormData();
+                formData.append('text', text);
+                formData.append('voice_id', String(item.voice_id || 'nzFihrBIvB34imQBuxub'));
+                fetch('tts.php', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin'
+                }).then(function (response) {
+                    return response.json();
+                }).then(function (json) {
+                    if (!json || !json.url) throw new Error('TTS unavailable');
+                    pronTtsCache[itemIndex] = json.url;
+                    return new Promise(function (audioDone) {
+                        var audio = new Audio(json.url);
+                        audio.onended = audioDone;
+                        audio.onerror = audioDone;
+                        audio.play().catch(audioDone);
+                    });
+                }).catch(function () {
+                    if (!window.speechSynthesis) return;
+                    var utterance = new SpeechSynthesisUtterance(text);
+                    utterance.lang = 'en-US';
+                    utterance.onend = resolve;
+                    speechSynthesis.speak(utterance);
+                    return;
+                }).then(resolve);
+            }).then(function () {
+                return playItem(itemIndex + 1);
+            });
+        }
+
+        playItem(0).finally(function () {
+            dialogueBtn.disabled = false;
+            dialogueBtn.textContent = 'Listen to the complete dialogue';
+        });
+    }
+
     async function showCompleted() {
+        correctCount = 0;
+        checkedCards = {};
+        for (var cardIndex = 0; cardIndex < TOTAL; cardIndex++) {
+            if (checkAnswer(cardIndex, false)) correctCount++;
+        }
         if (els.card) els.card.style.display = 'none';
         if (els.actions) els.actions.style.display = 'none';
         els.completed.classList.add('active');
 
         updateScoreCards(true);
-
-        playSound(els.win);
 
         var pct = TOTAL > 0 ? Math.round((correctCount / TOTAL) * 100) : 0;
         var errors = Math.max(0, TOTAL - correctCount);
@@ -779,6 +843,7 @@ document.addEventListener('DOMContentLoaded', function () {
         correctCount = 0;
         checkedCards = {};
         scores = data.map(function () { return null; });
+        recordedTexts = data.map(function () { return ''; });
         index = 0;
 
         els.completed.classList.remove('active');
@@ -794,6 +859,7 @@ document.addEventListener('DOMContentLoaded', function () {
     listenBtn.addEventListener('click', speakCurrent);
     speakBtn.addEventListener('click', recordPronunciation);
     nextBtn.addEventListener('click', goNext);
+    dialogueBtn.addEventListener('click', playFullDialogue);
     restartBtn.addEventListener('click', restart);
 
     updateScoreCards(false);
