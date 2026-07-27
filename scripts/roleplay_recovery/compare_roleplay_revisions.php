@@ -14,7 +14,7 @@ try {
             WHERE lower(a.type) = 'roleplay'";
     $params = [];
     if ($ids !== null) {
-        $sql .= ' AND a.id = ANY(:ids)';
+        $sql .= ' AND a.id = ANY(CAST(:ids AS integer[]))';
         $params['ids'] = '{' . implode(',', array_map(static fn(string $id): string => '"' . str_replace('"', '\"', $id) . '"', $ids)) . '}';
     }
     $sql .= ' ORDER BY a.id, r.created_at, r.id';

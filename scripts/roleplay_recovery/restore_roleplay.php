@@ -15,7 +15,7 @@ try {
     $sql = "SELECT id, data FROM activities WHERE lower(type) = 'roleplay'";
     $params = [];
     if ($ids !== null) {
-        $sql .= ' AND id = ANY(:ids)';
+        $sql .= ' AND id = ANY(CAST(:ids AS integer[]))';
         $params['ids'] = '{' . implode(',', array_map(static fn(string $id): string => '"' . str_replace('"', '\"', $id) . '"', $ids)) . '}';
     }
     $sql .= ' ORDER BY id';
