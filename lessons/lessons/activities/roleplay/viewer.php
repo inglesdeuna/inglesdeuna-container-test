@@ -63,16 +63,25 @@ try {
                 $hasSavedPayload = true;
                 $baseScene = $allowEditor ? $blankScene : $demoScene;
                 $savedScene = isset($parsed['scene']) && is_array($parsed['scene']) ? array_merge($baseScene, $parsed['scene']) : $baseScene;
-                if (isset($parsed['turns']) && is_array($parsed['turns'])) {
+                $turnSource = null;
+                foreach (['turns', 'dialogue', 'dialogs', 'lines', 'items'] as $turnKey) {
+                    if (isset($parsed[$turnKey]) && is_array($parsed[$turnKey])) {
+                        $turnSource = $parsed[$turnKey];
+                        break;
+                    }
+                }
+                if (is_array($turnSource)) {
                     $loadedTurns = [];
-                    foreach ($parsed['turns'] as $turn) {
+                    foreach ($turnSource as $turn) {
                         if (!is_array($turn)) continue;
-                        $loadedTurns[] = [
+                        $loadedTurn = $turn;
+                        $loadedTurn = array_merge($loadedTurn, [
                             'agent' => (string)($turn['agent'] ?? $turn['teacherLine'] ?? ''),
                             'hint' => (string)($turn['hint'] ?? $turn['studentLine'] ?? ''),
                             'ideal' => (string)($turn['ideal'] ?? $turn['studentLine'] ?? ''),
                             'criteria' => (string)($turn['criteria'] ?? ''),
-                        ];
+                        ]);
+                        $loadedTurns[] = $loadedTurn;
                     }
                     if ($loadedTurns) $savedTurns = $loadedTurns;
                     elseif ($allowEditor) $savedTurns = $blankTurns;
@@ -104,11 +113,11 @@ window.RP_HAS_SAVED_PAYLOAD=<?= json_encode($hasSavedPayload) ?>;
 const root=document.getElementById('roleplay-root');
 let scene=normScene(window.RP_SAVED_SCENE||{},window.RP_ALLOW_EDITOR&&!window.RP_HAS_SAVED_PAYLOAD);
 let turns=normTurns(window.RP_SAVED_TURNS||[],window.RP_ALLOW_EDITOR&&!window.RP_HAS_SAVED_PAYLOAD);
-let view=window.RP_ALLOW_EDITOR?'editor':'player',completed=0,answers=[],scores=[],checked=[],activeInput='',status='',saving=false,pronunciationScores=[],hintOpen=[];
+let view=window.RP_ALLOW_EDITOR?'editor':'player',completed=0,answers=[],scores=[],checked=[],activeInput='',status='',saving=false,pronunciationScores=[],hintOpen=[],turnsReduced=false;
 function h(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
 function uid(){return 'rp_'+Math.random().toString(36).slice(2,9)+'_'+Date.now()}
 function normScene(s,blank){s=s||{};const voice=String(s.teacherVoiceId||'nzFihrBIvB34imQBuxub');if(blank)return{title:String(s.title||''),scenario:String(s.scenario||s.description||''),agentRole:String(s.agentRole||''),studentRole:String(s.studentRole||''),icon:String(s.icon||'🎭'),level:String(s.level||''),teacherVoiceId:voice};return{title:String(s.title||'Roleplay'),scenario:String(s.scenario||s.description||'At the Restaurant'),agentRole:String(s.agentRole||'Waiter'),studentRole:String(s.studentRole||'Customer'),icon:String(s.icon||'🎭'),level:String(s.level||'B1'),teacherVoiceId:voice}}
-function normTurn(t){t=t||{};const mode=String(t.mode||'').toLowerCase()==='clue'?'clue':(String(t.mode||'').toLowerCase()==='exact'?'exact':'');return{id:String(t.id||uid()),agent:String(t.agent||t.teacherLine||''),hint:String(t.hint||t.studentLine||''),ideal:String(t.ideal||t.studentLine||''),criteria:String(t.criteria||''),mode:mode}}
+function normTurn(t){t=t||{};const mode=String(t.mode||'').toLowerCase()==='clue'?'clue':(String(t.mode||'').toLowerCase()==='exact'?'exact':'');return{...t,id:String(t.id||uid()),agent:String(t.agent||t.teacherLine||''),hint:String(t.hint||t.studentLine||''),ideal:String(t.ideal||t.studentLine||''),criteria:String(t.criteria||''),mode:mode}}
 function normTurns(a,blank){const out=(Array.isArray(a)?a:[]).map(normTurn);if(out.length)return out;if(blank)return[normTurn({})];return[normTurn({agent:'Good evening! Are you ready to order?',hint:"Good evening! I'd like the pasta, please.",ideal:"Good evening! I'd like the pasta, please.",criteria:'must say same answer as hint'})]}
 function words(s){return String(s||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').split(/\s+/).filter(Boolean)}
 function sim(a,b){const aw=words(a),bw=words(b);if(!aw.length||!bw.length)return 0;const set=new Set(aw);let m=0;bw.forEach(w=>{if(set.has(w))m++});return m/Math.max(aw.length,bw.length)}
@@ -127,7 +136,7 @@ function doCheck(){const i=completed;if(!activeInput.trim()){alert('Please say o
 function next(){const i=completed;if(!checked[i]&&!doCheck())return;completed=Math.min(turns.length,completed+1);activeInput='';if(completed>=turns.length)view='complete';render()}
 function mic(i){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR){alert('Speech recognition is not supported in this browser. You can type your answer.');return}const rec=new SR();rec.lang='en-US';rec.continuous=false;rec.interimResults=false;const btn=root.querySelector('[data-action="mic"][data-index="'+i+'"]'),box=root.querySelector('[data-answer="1"]');if(btn){btn.classList.add('listening');btn.textContent='🎙 Listening...'}rec.onresult=e=>{const alt=e.results[0][0];activeInput=alt.transcript;pronunciationScores[i]=typeof alt.confidence==='number'?Math.round(alt.confidence*100):undefined;if(box)box.value=activeInput};rec.onend=rec.onerror=()=>{if(btn){btn.classList.remove('listening');btn.textContent='🎙 Now say it'}};rec.start()}
 root.addEventListener('input',e=>{const el=e.target;if(el.dataset.scene){scene[el.dataset.scene]=el.value;return}if(el.dataset.turn){const i=Number(el.dataset.turn);turns[i]=Object.assign({},turns[i]||normTurn({}),{[el.dataset.prop]:el.value});return}if(el.dataset.answer){activeInput=el.value;pronunciationScores[completed]=undefined;checked[completed]=false}});
-root.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;e.preventDefault();const a=b.dataset.action;if(a==='listen-agent')speakAgent(Number(b.dataset.index));if(a==='mic')mic(Number(b.dataset.index));if(a==='hint'){const i=Number(b.dataset.index);hintOpen[i]=!hintOpen[i];render()}if(a==='check-answer')doCheck();if(a==='next')next();if(a==='restart'){view='player';completed=0;answers=[];scores=[];checked=[];activeInput='';pronunciationScores=[];hintOpen=[];render()}if(a==='preview'){view='player';completed=0;answers=[];scores=[];checked=[];activeInput='';pronunciationScores=[];hintOpen=[];render()}if(a==='add-turn'){turns.push({id:uid(),agent:'',hint:'',ideal:'',criteria:''});render()}if(a==='remove-turn'){turns=turns.filter((_,i)=>i!==Number(b.dataset.index));if(!turns.length)turns=[normTurn({})];render()}if(a==='save'){if(!window.RP_ACTIVITY_ID){status='No activity ID - cannot save.';render();return}saving=true;status='Saving...';render();try{const resp=await fetch('save.php',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({id:window.RP_ACTIVITY_ID,scene,turns})});const json=await resp.json().catch(()=>({}));if(!resp.ok||!json.ok)throw new Error(json.error||('HTTP '+resp.status));window.RP_HAS_SAVED_PAYLOAD=true;status='Saved successfully'}catch(err){status='Could not save: '+err.message}finally{saving=false;render()}}});
+root.addEventListener('click',async e=>{const b=e.target.closest('[data-action]');if(!b)return;e.preventDefault();const a=b.dataset.action;if(a==='listen-agent')speakAgent(Number(b.dataset.index));if(a==='mic')mic(Number(b.dataset.index));if(a==='hint'){const i=Number(b.dataset.index);hintOpen[i]=!hintOpen[i];render()}if(a==='check-answer')doCheck();if(a==='next')next();if(a==='restart'){view='player';completed=0;answers=[];scores=[];checked=[];activeInput='';pronunciationScores=[];hintOpen=[];render()}if(a==='preview'){view='player';completed=0;answers=[];scores=[];checked=[];activeInput='';pronunciationScores=[];hintOpen=[];render()}if(a==='add-turn'){turns.push({id:uid(),agent:'',hint:'',ideal:'',criteria:''});render()}if(a==='remove-turn'){turns=turns.filter((_,i)=>i!==Number(b.dataset.index));turnsReduced=true;if(!turns.length)turns=[normTurn({})];render()}if(a==='save'){if(!window.RP_ACTIVITY_ID){status='No activity ID - cannot save.';render();return}saving=true;status='Saving...';render();try{const resp=await fetch('save.php',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({id:window.RP_ACTIVITY_ID,scene,turns,allow_turn_reduction:turnsReduced})});const json=await resp.json().catch(()=>({}));if(!resp.ok||!json.ok)throw new Error(json.error||('HTTP '+resp.status));window.RP_HAS_SAVED_PAYLOAD=true;status='Saved successfully'}catch(err){status='Could not save: '+err.message}finally{saving=false;render()}}});
 try{render()}catch(err){console.error('[roleplay] render error',err);root.innerHTML='<div style="padding:20px">Roleplay could not render. Check console.</div>'}
 })();
 </script>
