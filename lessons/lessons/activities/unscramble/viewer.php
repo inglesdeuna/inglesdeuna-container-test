@@ -514,12 +514,20 @@ function check(){
 
 function autoCheck(){
     if (locked) return;
+    // After the first attempt has already been consumed, do not auto-fire
+    // check() again while the user is freely rearranging chips.  The second
+    // attempt is only triggered by an explicit "Next" press.
+    if (attemptsThisSentence > 0) return;
     if (builtWords().length >= currentWords.length) check();
 }
 
 function showAnswer(){
     if (locked) return;
-    markScore(0, currentWords.length);
+    // Capture whatever the user had assembled before clearing the board;
+    // credit per-position correct words rather than a flat 0.
+    const builtAtShow = builtWords();
+    const correctAtShow = builtAtShow.filter(function(w, i){ return w === currentWords[i]; }).length;
+    markScore(correctAtShow, currentWords.length);
     locked = true;
     build.querySelectorAll('.us2-chip').forEach(function(el){ el.remove(); });
     bank.innerHTML = '';
