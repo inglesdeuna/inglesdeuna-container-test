@@ -33,6 +33,8 @@ if (!is_array($payload)) {
 $activityId = isset($payload['id']) ? trim((string) $payload['id']) : '';
 $title      = isset($payload['title']) ? trim((string) $payload['title']) : '';
 $texts      = $payload['texts'] ?? null;
+$incomingData = isset($payload['data']) && is_array($payload['data']) ? $payload['data'] : $payload;
+unset($incomingData['id'], $incomingData['title'], $incomingData['texts']);
 
 if ($activityId === '' || !is_array($texts)) {
     http_response_code(400);
@@ -40,7 +42,36 @@ if ($activityId === '' || !is_array($texts)) {
     exit;
 }
 
-$dataJson = json_encode(['title' => $title, 'texts' => $texts], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+foreach ($texts as $textIndex => $text) {
+    if (!is_array($text) || (($text['mode'] ?? '') !== 'comp')) {
+        continue;
+    }
+    foreach (($text['questions'] ?? []) as $questionIndex => $question) {
+        if (!is_array($question) || trim((string)($question['stem'] ?? '')) === '') {
+            http_response_code(422);
+            echo json_encode(['error' => 'Please complete Question ' . ($questionIndex + 1) . '.']);
+            exit;
+        }
+        $options = isset($question['options']) && is_array($question['options']) ? $question['options'] : [];
+        $optionIds = [];
+        foreach ($options as $option) {
+            $optionText = is_array($option) ? ($option['text'] ?? '') : $option;
+            $optionId = is_array($option) ? ($option['id'] ?? '') : '';
+            if (trim((string)$optionText) === '' || trim((string)$optionId) === '') {
+                http_response_code(422);
+                echo json_encode(['error' => 'Please complete every answer option for Question ' . ($questionIndex + 1) . '.']);
+                exit;
+            }
+            $optionIds[] = (string)$optionId;
+        }
+        $correctId = trim((string)($question['correct_option_id'] ?? ''));
+        if ($correctId === '' || !in_array($correctId, $optionIds, true)) {
+            http_response_code(422);
+            echo json_encode(['error' => 'Please select the correct answer for Question ' . ($questionIndex + 1) . '.']);
+            exit;
+        }
+    }
+}
 
 function rc_save_has_column(PDO $pdo, string $col): bool
 {
@@ -61,6 +92,17 @@ if (rc_save_has_column($pdo, 'title')) {
 }
 
 try {
+    $existingStmt = $pdo->prepare("SELECT data FROM activities WHERE id = :id AND type = 'reading_comprehension' LIMIT 1");
+    $existingStmt->execute(['id' => $activityId]);
+    $existing = $existingStmt->fetchColumn();
+    $existingData = is_string($existing) ? json_decode($existing, true) : $existing;
+    $data = is_array($existingData) ? array_merge($existingData, $incomingData) : $incomingData;
+    $data['title'] = $title;
+    $data['texts'] = $texts;
+    $dataJson = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    if ($dataJson === false) {
+        throw new RuntimeException('Could not encode activity data');
+    }
     if ($titleCol !== null && $title !== '') {
         $stmt = $pdo->prepare("UPDATE activities SET data = :data, {$titleCol} = :title WHERE id = :id AND type = 'reading_comprehension'");
         $stmt->execute(['data' => $dataJson, 'title' => $title, 'id' => $activityId]);
