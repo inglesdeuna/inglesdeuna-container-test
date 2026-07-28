@@ -201,7 +201,20 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><div class="rc-zoom-bar"><button class="rc-zoom-btn" data-action="zoom-out">−</button><span class="rc-zoom-label">100%</span><button class="rc-zoom-btn" data-action="zoom-in">+</button></div><div class="rc-passage-inner"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div></div><div class="rc-quiz">' + (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><h2>' + (isComp ? h(current.stem) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' + optionList.map((op, oi) => '<button class="rc-option ' + (checked && op.id === (isComp ? current.options[answerIndex]?.id : '') ? (op.id === current.options.find(o => o.ok)?.id ? 'correct' : 'wrong') : '') + ' ' + (checked && isComp && op.id === current.correct_option_id ? 'correct' : '') + '" data-action="answer" data-index="' + oi + '">' + h(op.text) + '</button>').join('') + (checked ? '<div class="rc-note">' + (isComp && answerIndex >= 0 && current.options[answerIndex]?.id === current.correct_option_id ? 'Correct!' : 'The correct answer is highlighted.') + '</div><button class="rc-btn rc-primary" data-action="next">' + (qIndex + 1 < questions.length ? 'Next question' : 'Finish') + '</button>' : '') + '</div>') + '</div></div></div>';
   }
 
-  function render() { if (!root) return; root.innerHTML = preview ? playerHtml() : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml()); if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); setupPanelFullscreenRC(); } }
+  function render() {
+    if (!root) return;
+    const scrollPositions = {};
+    ['.rc-body', '.rc-passage', '.rc-quiz'].forEach(selector => {
+      const element = root.querySelector(selector);
+      if (element) scrollPositions[selector] = element.scrollTop;
+    });
+    root.innerHTML = preview ? playerHtml() : (window.RC_ALLOW_EDITOR ? editorHtml() : playerHtml());
+    Object.entries(scrollPositions).forEach(([selector, scrollTop]) => {
+      const element = root.querySelector(selector);
+      if (element) element.scrollTop = scrollTop;
+    });
+    if (!window.RC_ALLOW_EDITOR || preview) { setupPinch(); applyZoom(); setupPanelFullscreenRC(); }
+  }
   function setupPanelFullscreenRC() { if (!window.initPanelFullscreen) return; var passage = root.querySelector('.rc-passage'); var quiz = root.querySelector('.rc-quiz'); if (passage) window.initPanelFullscreen(passage, { label: 'Texto en pantalla completa' }); if (quiz) window.initPanelFullscreen(quiz, { label: 'Preguntas en pantalla completa' }); }
 
   root.addEventListener('input', function(e) {
