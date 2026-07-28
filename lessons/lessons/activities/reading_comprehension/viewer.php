@@ -155,6 +155,8 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   let answerIndex = -1;
   let checked = false;
   let qIndex = 0;
+  let score = 0;
+  let completed = false;
   let zoomScale = 1;
   const ZOOM_STEP = 0.2, ZOOM_MIN = 0.6, ZOOM_MAX = 3.0;
 
@@ -192,9 +194,10 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
 
   function playerHtml() {
     const t = text(); const isComp = t.mode === 'comp';
-    const questions = isComp ? t.questions.filter(q => q.options.some(o => String(o).trim())) : t.words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
+    const questions = isComp ? t.questions.filter(q => q.options.some(o => String(o.text || '').trim())) : t.words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
     const current = questions[qIndex] || null;
     const optionList = current ? (isComp ? current.options : current.options.map((o, i) => Object.assign({}, o, { id: 'vocab_' + i }))) : [];
+    if (completed) return '<div class="rc-app">' + topBar(false) + '<div class="rc-body"><div class="rc-wrap"><div class="rc-card"><div class="rc-card-body" style="text-align:center"><h1 style="font-family:Fredoka,sans-serif;color:#F97316">Completed Activity</h1><p class="rc-status">' + score + ' correct out of ' + questions.length + '</p><button class="rc-btn rc-primary" data-action="restart">Restart</button></div></div></div></div></div>';
     return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><div class="rc-zoom-bar"><button class="rc-zoom-btn" data-action="zoom-out">−</button><span class="rc-zoom-label">100%</span><button class="rc-zoom-btn" data-action="zoom-in">+</button></div><div class="rc-passage-inner"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div></div><div class="rc-quiz">' + (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><h2>' + (isComp ? h(current.stem) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' + optionList.map((op, oi) => '<button class="rc-option ' + (checked && op.id === (isComp ? current.options[answerIndex]?.id : '') ? (op.id === current.options.find(o => o.ok)?.id ? 'correct' : 'wrong') : '') + ' ' + (checked && isComp && op.id === current.correct_option_id ? 'correct' : '') + '" data-action="answer" data-index="' + oi + '">' + h(op.text) + '</button>').join('') + (checked ? '<div class="rc-note">' + (isComp && answerIndex >= 0 && current.options[answerIndex]?.id === current.correct_option_id ? 'Correct!' : 'The correct answer is highlighted.') + '</div><button class="rc-btn rc-primary" data-action="next">' + (qIndex + 1 < questions.length ? 'Next question' : 'Finish') + '</button>' : '') + '</div>') + '</div></div></div>';
   }
 
@@ -247,13 +250,19 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
     }
     if (action === 'answer') {
       if (checked) return;
-      answerIndex = Number(btn.dataset.index); checked = true; render();
+      answerIndex = Number(btn.dataset.index); checked = true;
+      const currentQuestions = text().mode === 'comp' ? text().questions.filter(q => q.options.some(o => String(o.text || '').trim())) : text().words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
+      const selectedQuestion = currentQuestions[qIndex];
+      const selectedOption = selectedQuestion && selectedQuestion.options[answerIndex];
+      if (selectedOption && (text().mode === 'comp' ? selectedOption.id === selectedQuestion.correct_option_id : selectedOption.ok)) score += 1;
+      render();
     }
     if (action === 'next') {
       const isComp = text().mode === 'comp';
       const questions = isComp ? text().questions.filter(q => q.options.some(o => String(o.text || '').trim())) : text().words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
-      if (qIndex + 1 < questions.length) { qIndex += 1; answerIndex = -1; checked = false; render(); }
+      if (qIndex + 1 < questions.length) { qIndex += 1; answerIndex = -1; checked = false; render(); } else { completed = true; render(); }
     }
+    if (action === 'restart') { qIndex = 0; answerIndex = -1; checked = false; score = 0; completed = false; render(); }
     if (action === 'save') {
       if (!window.RC_ACTIVITY_ID) { status = 'No activity ID - cannot save.'; render(); return; }
       const validation = validateBeforeSave();
