@@ -127,6 +127,18 @@ ob_start();
   .rc-option { width: 100%; text-align: left; border: 1.5px solid #DCD7FF; border-radius: 12px; background: #FBFAFF; color: #3D3560; padding: 12px 14px; margin-bottom: 10px; font-weight: 800; cursor: pointer; }
   .rc-option.correct { background: #E1F5EE; border-color: #1D9E75; color: #085041; }
   .rc-option.wrong { background: #FAECE7; border-color: #D85A30; color: #4A1B0C; }
+  .rc-score-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 18px 0 14px; }
+  .rc-score-card { border: 1px solid #EDE9FA; border-radius: 14px; padding: 12px 8px; text-align: center; background: #fff; }
+  .rc-score-num { font: 700 28px Fredoka, sans-serif; line-height: 1; }
+  .rc-score-num.c { color: #1D9E75; }
+  .rc-score-num.w { color: #D85A30; }
+  .rc-score-num.p { color: #F97316; }
+  .rc-score-lbl { color: #9B8FCC; font-size: 12px; font-weight: 900; margin-top: 5px; }
+  .rc-completed { text-align: center; padding: 28px 22px; background: linear-gradient(160deg,#EDE9FA,#FFF0E6); border-radius: 22px; }
+  .rc-completed-icon { font-size: 48px; line-height: 1; }
+  .rc-completed-title { margin: 8px 0 4px; font-family: Fredoka, sans-serif; color: #7F77DD; }
+  .rc-completed-text { margin: 0; color: #534AB7; font-weight: 900; }
+  @media (max-width: 420px) { .rc-score-grid { grid-template-columns: 1fr; } }
   @media (max-width: 850px) { .rc-grid-2, .rc-grid-3, .rc-player { grid-template-columns: 1fr; } .rc-savebar { grid-template-columns: 1fr; } .rc-passage { padding: 26px 22px 32px; border-right: 0; border-bottom: 1px solid #F0EEF8; } }
   @media (max-width: 520px) { .rc-passage { padding: 22px 18px 28px; } }
   .rc-zoom-bar { display: flex; align-items: center; gap: 4px; padding: 0 0 14px; }
@@ -156,6 +168,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
   let checked = false;
   let qIndex = 0;
   let score = 0;
+  let questionScores = [];
   let completed = false;
   let zoomScale = 1;
   const ZOOM_STEP = 0.2, ZOOM_MIN = 0.6, ZOOM_MAX = 3.0;
@@ -192,13 +205,22 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       '<div class="rc-savebar"><button class="rc-btn" data-action="preview">👁 Preview as student</button><div class="rc-status">' + h(status) + '</div><button class="rc-btn rc-primary" data-action="save" ' + (saving ? 'disabled' : '') + '>' + (saving ? 'Saving...' : '💾 Save activity') + '</button></div></div></div></div>';
   }
 
+  function scoreResult() {
+    const questions = text().mode === 'comp' ? text().questions.filter(q => q.options.some(o => String(o.text || '').trim())) : text().words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
+    let correct = 0, wrong = 0;
+    questionScores.forEach(value => { if (value === 1) correct += 1; else if (value === 0) wrong += 1; });
+    const answered = correct + wrong;
+    return { correct, wrong, percent: answered ? Math.round((correct / answered) * 100) : 0, total: questions.length };
+  }
+
   function playerHtml() {
     const t = text(); const isComp = t.mode === 'comp';
     const questions = isComp ? t.questions.filter(q => q.options.some(o => String(o.text || '').trim())) : t.words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
     const current = questions[qIndex] || null;
     const optionList = current ? (isComp ? current.options : current.options.map((o, i) => Object.assign({}, o, { id: 'vocab_' + i }))) : [];
-    if (completed) return '<div class="rc-app">' + topBar(false) + '<div class="rc-body"><div class="rc-wrap"><div class="rc-card"><div class="rc-card-body" style="text-align:center"><h1 style="font-family:Fredoka,sans-serif;color:#F97316">Completed Activity</h1><p class="rc-status">' + score + ' correct out of ' + questions.length + '</p><button class="rc-btn rc-primary" data-action="restart">Restart</button></div></div></div></div></div>';
+    if (completed) { const result = scoreResult(); return '<div class="rc-app">' + topBar(false) + '<div class="rc-body"><div class="rc-wrap"><div class="rc-card"><div class="rc-completed"><div class="rc-completed-icon">✅</div><h1 class="rc-completed-title">Completed Activity</h1><p class="rc-completed-text">' + h(t.title || 'Reading Comprehension') + '</p><div class="rc-score-grid"><div class="rc-score-card"><div class="rc-score-num c">' + result.correct + '</div><div class="rc-score-lbl">Correct</div></div><div class="rc-score-card"><div class="rc-score-num w">' + result.wrong + '</div><div class="rc-score-lbl">Wrong</div></div><div class="rc-score-card"><div class="rc-score-num p">' + result.percent + '%</div><div class="rc-score-lbl">Score</div></div></div><p class="rc-status">' + result.correct + ' correct · ' + result.wrong + ' wrong · ' + result.percent + '%</p><button class="rc-btn rc-primary" data-action="restart">Restart</button></div></div></div></div></div>'; }
     return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><div class="rc-zoom-bar"><button class="rc-zoom-btn" data-action="zoom-out">−</button><span class="rc-zoom-label">100%</span><button class="rc-zoom-btn" data-action="zoom-in">+</button></div><div class="rc-passage-inner"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div></div><div class="rc-quiz">' + (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><h2>' + (isComp ? h(current.stem) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' + optionList.map((op, oi) => '<button class="rc-option ' + (checked && op.id === (isComp ? current.options[answerIndex]?.id : '') ? (op.id === current.options.find(o => o.ok)?.id ? 'correct' : 'wrong') : '') + ' ' + (checked && isComp && op.id === current.correct_option_id ? 'correct' : '') + '" data-action="answer" data-index="' + oi + '">' + h(op.text) + '</button>').join('') + (checked ? '<div class="rc-note">' + (isComp && answerIndex >= 0 && current.options[answerIndex]?.id === current.correct_option_id ? 'Correct!' : 'The correct answer is highlighted.') + '</div><button class="rc-btn rc-primary" data-action="next">' + (qIndex + 1 < questions.length ? 'Next question' : 'Finish') + '</button>' : '') + '</div>') + '</div></div></div>';
+    return '<div class="rc-app">' + topBar(false) + '<div class="rc-player"><div class="rc-passage"><div class="rc-zoom-bar"><button class="rc-zoom-btn" data-action="zoom-out">−</button><span class="rc-zoom-label">100%</span><button class="rc-zoom-btn" data-action="zoom-in">+</button></div><div class="rc-passage-inner"><h2 style="font-family:Fredoka,sans-serif;color:#F97316;margin-top:0">' + h(t.title || 'Untitled') + '</h2><div style="color:#9B8FCC;font-weight:900;margin-bottom:12px">' + h(t.genre) + ' · ' + h(t.wordCount || wordsCount(t.body)) + ' words</div><div>' + highlight(t.body || 'No passage text yet.', t.words) + '</div></div></div><div class="rc-quiz">' + (!current ? '<div class="rc-question">This activity is not configured yet.</div>' : '<div class="rc-question"><h2>' + (isComp ? h(current.stem) : 'What does <span style="color:#F97316">' + h(current.word) + '</span> mean?') + '</h2>' + optionList.map((op, oi) => { const selectedClass = checked && oi === answerIndex ? (isComp ? (op.id === current.correct_option_id ? 'correct' : 'wrong') : (op.ok ? 'correct' : 'wrong')) : ''; const correctClass = checked && isComp && op.id === current.correct_option_id ? 'correct' : ''; return '<button class="rc-option ' + selectedClass + ' ' + correctClass + '" data-action="answer" data-index="' + oi + '">' + h(op.text) + '</button>'; }).join('') + (checked ? '<div class="rc-note">' + ((isComp && answerIndex >= 0 && current.options[answerIndex]?.id === current.correct_option_id) || (!isComp && optionList[answerIndex]?.ok) ? 'Correct!' : 'The correct answer is highlighted.') + '</div><button class="rc-btn rc-primary" data-action="next">' + (qIndex + 1 < questions.length ? 'Next question' : 'Finish') + '</button>' : '') + '</div>') + '</div></div></div>';
   }
 
   function render() {
@@ -267,7 +289,9 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       const currentQuestions = text().mode === 'comp' ? text().questions.filter(q => q.options.some(o => String(o.text || '').trim())) : text().words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
       const selectedQuestion = currentQuestions[qIndex];
       const selectedOption = selectedQuestion && selectedQuestion.options[answerIndex];
-      if (selectedOption && (text().mode === 'comp' ? selectedOption.id === selectedQuestion.correct_option_id : selectedOption.ok)) score += 1;
+      const isCorrect = !!selectedOption && (text().mode === 'comp' ? selectedOption.id === selectedQuestion.correct_option_id : selectedOption.ok);
+      questionScores[qIndex] = isCorrect ? 1 : 0;
+      if (isCorrect) score += 1;
       render();
     }
     if (action === 'next') {
@@ -275,7 +299,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       const questions = isComp ? text().questions.filter(q => q.options.some(o => String(o.text || '').trim())) : text().words.filter(w => w.word.trim()).map((w, i) => ({ word: w.word, options: optionsForWord(w, i) })).filter(q => q.options.length >= 2);
       if (qIndex + 1 < questions.length) { qIndex += 1; answerIndex = -1; checked = false; render(); } else { completed = true; render(); }
     }
-    if (action === 'restart') { qIndex = 0; answerIndex = -1; checked = false; score = 0; completed = false; render(); }
+    if (action === 'restart') { qIndex = 0; answerIndex = -1; checked = false; score = 0; questionScores = []; completed = false; render(); }
     if (action === 'save') {
       if (!window.RC_ACTIVITY_ID) { status = 'No activity ID - cannot save.'; render(); return; }
       const validation = validateBeforeSave();
@@ -299,6 +323,7 @@ window.RC_SAVED_DATA   = <?= json_encode($savedData, JSON_HEX_TAG | JSON_HEX_APO
       }
     }
   });
+  questionScores = [];
   try { render(); } catch (err) { console.error(err); }
 })();
 </script>
