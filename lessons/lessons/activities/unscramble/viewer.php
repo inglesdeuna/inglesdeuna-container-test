@@ -310,8 +310,8 @@ let dragged = null;
 let locked = false;
 let scoredThisSentence = false;
 let attemptsThisSentence = 0;
-let correct = 0;
-let wrong = 0;
+let totalCorrectWords = 0;
+let totalAllWords = 0;
 let audioUrl = '';
 let currentAudio = null;
 let isSpeaking = false;
@@ -371,14 +371,14 @@ function stopAudio(){
 }
 
 function percent(){
-    const total = sentences.length || 1;
-    return Math.round((correct / total) * 100);
+    if (totalAllWords === 0) return 0;
+    return Math.round((totalCorrectWords / totalAllWords) * 100);
 }
 
 function updateScore(show){
     if (score) score.classList.toggle('is-visible', !!show);
-    if (correctEl) correctEl.textContent = String(correct);
-    if (wrongEl) wrongEl.textContent = String(wrong);
+    if (correctEl) correctEl.textContent = String(totalCorrectWords);
+    if (wrongEl) wrongEl.textContent = String(totalAllWords - totalCorrectWords);
     if (pctEl) pctEl.textContent = percent() + '%';
 }
 
@@ -442,11 +442,11 @@ function lockChips(clsByIndex){
     Array.from(bank.querySelectorAll('.us2-chip')).forEach(function(chip){ chip.disabled = true; chip.draggable = false; });
 }
 
-function markScore(isCorrect){
+function markScore(correctWords, totalWords){
     if (scoredThisSentence) return;
     scoredThisSentence = true;
-    if (isCorrect) correct += 1;
-    else wrong += 1;
+    totalCorrectWords += correctWords;
+    totalAllWords += totalWords;
     updateScore(true);
 }
 
@@ -490,7 +490,7 @@ function check(){
         locked = true;
         feedback.textContent = 'Correct!';
         feedback.className = 'us2-feedback good';
-        markScore(true);
+        markScore(currentWords.length, currentWords.length);
         lockChips('us2-correct');
         playSound(winSound);
         return true;
@@ -501,7 +501,8 @@ function check(){
         locked = true;
         feedback.textContent = 'Incorrect. Review the order and continue.';
         feedback.className = 'us2-feedback bad';
-        markScore(false);
+        const correctCount = built.filter(function(w, i){ return w === currentWords[i]; }).length;
+        markScore(correctCount, currentWords.length);
         lockChips(function(chip, i){ return (built[i] || '') === (currentWords[i] || '') ? 'us2-correct' : 'us2-wrong'; });
         return true;
     }
@@ -513,12 +514,20 @@ function check(){
 
 function autoCheck(){
     if (locked) return;
+    // After the first attempt has already been consumed, do not auto-fire
+    // check() again while the user is freely rearranging chips.  The second
+    // attempt is only triggered by an explicit "Next" press.
+    if (attemptsThisSentence > 0) return;
     if (builtWords().length >= currentWords.length) check();
 }
 
 function showAnswer(){
     if (locked) return;
-    markScore(false);
+    // Capture whatever the user had assembled before clearing the board;
+    // credit per-position correct words rather than a flat 0.
+    const builtAtShow = builtWords();
+    const correctAtShow = builtAtShow.filter(function(w, i){ return w === currentWords[i]; }).length;
+    markScore(correctAtShow, currentWords.length);
     locked = true;
     build.querySelectorAll('.us2-chip').forEach(function(el){ el.remove(); });
     bank.innerHTML = '';
@@ -539,8 +548,8 @@ async function persistScore(){
     const joiner = returnTo.indexOf('?') !== -1 ? '&' : '?';
     const url = returnTo + joiner
         + 'activity_percent=' + encodeURIComponent(String(percent()))
-        + '&activity_errors=' + encodeURIComponent(String(wrong))
-        + '&activity_total=' + encodeURIComponent(String(sentences.length))
+        + '&activity_errors=' + encodeURIComponent(String(totalAllWords - totalCorrectWords))
+        + '&activity_total=' + encodeURIComponent(String(totalAllWords))
         + '&activity_id=' + encodeURIComponent(activityId)
         + '&activity_type=unscramble';
     try {
@@ -554,7 +563,7 @@ function finish(){
     completed.classList.add('is-visible');
     playSound(doneSound);
     if (completedText) completedText.textContent = "You've completed " + (activityTitle || 'this activity') + '.';
-    if (scoreText) scoreText.textContent = correct + ' correct · ' + wrong + ' wrong · ' + percent() + '%';
+    if (scoreText) scoreText.textContent = totalCorrectWords + ' correct · ' + (totalAllWords - totalCorrectWords) + ' wrong · ' + percent() + '%';
     persistScore();
 }
 
@@ -574,8 +583,8 @@ function next(){
 function restart(){
     stopAudio();
     index = 0;
-    correct = 0;
-    wrong = 0;
+    totalCorrectWords = 0;
+    totalAllWords = 0;
     playArea.classList.remove('us2-hidden');
     completed.classList.remove('is-visible');
     updateScore(false);
