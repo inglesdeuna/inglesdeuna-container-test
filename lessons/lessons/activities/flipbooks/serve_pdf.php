@@ -162,11 +162,18 @@ if ($localPdfPath !== null) {
     exit;
 }
 
-// Handle remote URL storage (Cloudinary/raw) through the proxy.
+// Handle remote URL storage in the same request instead of redirecting.
+// Keeping one response avoids browsers marking the sidebar download as
+// unavailable when the <a download> request receives a 302 redirect.
 if (preg_match('/^https?:\/\//i', $pdfUrl)) {
-    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl)
-        . ($forceDownload ? '&dl=1' : '');
-    header('Location: ' . $proxyUrl, true, 302);
+    $_GET['url'] = $pdfUrl;
+    if ($forceDownload) {
+        $_GET['dl'] = '1';
+    } else {
+        unset($_GET['dl']);
+    }
+
+    require __DIR__ . '/pdf_proxy.php';
     exit;
 }
 
