@@ -77,7 +77,7 @@ if ($activityId === '') {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT data FROM activities WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id, unit_id, data FROM activities WHERE id = :id LIMIT 1");
     $stmt->execute(['id' => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
@@ -90,8 +90,40 @@ if (!$row) {
     exit('Actividad no encontrada.');
 }
 
+/*
+ * A unit can contain old/stale Flipbook rows. The sidebar historically chose
+ * the first row it encountered, while the Hub displayed the most recently
+ * uploaded resource. Resolve the newest Flipbook in the same unit that has a
+ * non-empty pdf_url so both entry points serve the same file.
+ */
+$resolvedActivityId = (string) ($row['id'] ?? $activityId);
+$unitId = trim((string) ($row['unit_id'] ?? ''));
+
+if ($unitId !== '') {
+    try {
+        $latestStmt = $pdo->prepare("
+            SELECT id, unit_id, data
+            FROM activities
+            WHERE unit_id = :unit_id
+              AND LOWER(TRIM(type)) = 'flipbooks'
+              AND COALESCE(NULLIF(TRIM(data->>'pdf_url'), ''), '') <> ''
+            ORDER BY created_at DESC NULLS LAST, id DESC
+            LIMIT 1
+        ");
+        $latestStmt->execute(['unit_id' => $unitId]);
+        $latestRow = $latestStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($latestRow)) {
+            $row = $latestRow;
+            $resolvedActivityId = (string) ($latestRow['id'] ?? $resolvedActivityId);
+        }
+    } catch (Throwable $e) {
+        // Fall back to the exact activity requested when schema/data differ.
+    }
+}
+
 $data = json_decode($row['data'] ?? '', true);
-$pdfUrl = isset($data['pdf_url']) ? (string) $data['pdf_url'] : '';
+$pdfUrl = isset($data['pdf_url']) ? trim((string) $data['pdf_url']) : '';
 $downloadName = safe_pdf_filename(
     (isset($data['pdf_filename']) && $data['pdf_filename'] !== '') ? (string) $data['pdf_filename'] : $pdfUrl
 );
@@ -105,7 +137,7 @@ if ($pdfUrl === '') {
 if (str_starts_with($pdfUrl, 'db-pdf://')) {
     try {
         $stmt = $pdo->prepare("SELECT pdf_data FROM activities WHERE id = :id LIMIT 1");
-        $stmt->bindValue(':id', $activityId);
+        $stmt->bindValue(':id', $resolvedActivityId);
         $stmt->execute();
         $stmt->bindColumn('pdf_data', $lob, PDO::PARAM_LOB);
         $stmt->fetch(PDO::FETCH_BOUND);
@@ -163,8 +195,6 @@ if ($localPdfPath !== null) {
 }
 
 // Handle remote URL storage in the same request instead of redirecting.
-// Keeping one response avoids browsers marking the sidebar download as
-// unavailable when the <a download> request receives a 302 redirect.
 if (preg_match('/^https?:\/\//i', $pdfUrl)) {
     $_GET['url'] = $pdfUrl;
     if ($forceDownload) {
