@@ -9,7 +9,8 @@ document.addEventListener('DOMContentLoaded', function () {
   var backImgEl       = document.getElementById('fc-back-img');
   var imgPlaceholder  = document.getElementById('fc-image-placeholder');
   var wordEl          = document.getElementById('fc-word');
-  var listenBtn       = document.getElementById('fc-listen');
+  var frontListenBtn  = document.getElementById('fc-front-listen');
+  var backListenBtn   = document.getElementById('fc-back-listen');
   var showBtn         = document.getElementById('fc-show');
   var nextBtn         = document.getElementById('fc-next');
   var cardShell     = document.querySelector('.fc-card-shell');
@@ -31,44 +32,64 @@ document.addEventListener('DOMContentLoaded', function () {
   var wordVisible = false;
   var flipped = false;
   var ttsCache = {};   /* key: voice_id + '|' + text → audio URL */
+  var pendingTts = {};
   var currentAudio = null;
+  var playbackToken = 0;
 
   /* ── ElevenLabs TTS via tts.php ────────────────────────────── */
-  function playElevenLabs(text, voiceId, onError) {
+  function stopAudio() {
+    playbackToken += 1;
+    if (currentAudio) { currentAudio.pause(); currentAudio.currentTime = 0; currentAudio = null; }
+  }
+
+  function setSideButton(button, loading) {
+    if (!button) return;
+    button.disabled = loading;
+    button.textContent = loading ? '⏳ Loading…' : (button === frontListenBtn ? '🔊 Front' : '🔊 Back');
+  }
+
+  function playElevenLabs(text, voiceId, button, onError) {
     var cacheKey = (voiceId || '') + '|' + text;
     if (ttsCache[cacheKey]) {
-      playUrl(ttsCache[cacheKey]);
+      playUrl(ttsCache[cacheKey], button);
       return;
     }
+    if (pendingTts[cacheKey]) return;
+    setSideButton(button, true);
 
-    if (listenBtn) { listenBtn.disabled = true; listenBtn.textContent = '⏳ Loading…'; }
-
+    var requestToken = playbackToken;
     var fd = new FormData();
     fd.append('text', text);
     if (voiceId) fd.append('voice_id', voiceId);
 
-    fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
+    pendingTts[cacheKey] = fetch('tts.php', { method: 'POST', body: fd, credentials: 'same-origin' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
-        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = '🔊 Listen'; }
         if (data.url) {
           ttsCache[cacheKey] = data.url;
-          playUrl(data.url);
+          if (requestToken === playbackToken) playUrl(data.url, button);
         } else {
           console.warn('TTS error:', data.error);
+          if (feedbackEl) feedbackEl.textContent = 'Audio is unavailable. Please try again.';
           if (onError) onError();
         }
       })
       .catch(function (err) {
-        if (listenBtn) { listenBtn.disabled = false; listenBtn.textContent = '🔊 Listen'; }
         console.warn('TTS fetch failed:', err);
+        if (feedbackEl) feedbackEl.textContent = 'Audio is unavailable. Please try again.';
         if (onError) onError();
+      })
+      .finally(function () {
+        delete pendingTts[cacheKey];
+        setSideButton(button, false);
       });
   }
 
-  function playUrl(url) {
-    if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  function playUrl(url, button) {
+    stopAudio();
+    var token = playbackToken;
     currentAudio = new Audio(url);
+    currentAudio.onended = function () { if (token === playbackToken) currentAudio = null; };
     currentAudio.play().catch(function (e) { console.warn('Audio play failed:', e); });
   }
 
@@ -84,6 +105,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
   /* ── Load card ──────────────────────────────────────────────── */
   function loadCard() {
+    stopAudio();
     var card    = cards[index] || {};
     wordVisible = false;
     flipped = false;
@@ -94,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     renderSide();
 
-    if (listenBtn) listenBtn.disabled = false;
     if (showBtn)   { showBtn.disabled = false; showBtn.textContent = 'Show Word'; }
     if (nextBtn)   {
       nextBtn.disabled    = false;
@@ -118,28 +139,32 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (imgPlaceholder) imgPlaceholder.style.display = image ? 'none' : 'flex';
     if (wordEl) {
-      wordEl.textContent = flipped ? (card.meaning || card.text || '') : (card.text || '');
+      wordEl.textContent = flipped ? (card.back_text || card.meaning || '') : (card.text || '');
       wordEl.style.display = (!bothImages && wordVisible) ? 'block' : 'none';
     }
+    var frontText = card.text || '';
+    var backText = card.back_text || card.meaning || '';
+    if (frontListenBtn) { frontListenBtn.classList.toggle('visible', !flipped && !!frontText); frontListenBtn.disabled = !frontText; }
+    if (backListenBtn) { backListenBtn.classList.toggle('visible', flipped && !!backText); backListenBtn.disabled = !backText; }
   }
 
   /* ── Listen (always ElevenLabs) ────────────────────────────── */
-  function listen() {
+  function listen(button, side) {
     var card = cards[index] || {};
 
     /* If card already has a pre-generated audio URL, play it directly */
-    var savedAudio = flipped ? card.back_audio : card.audio;
+    var savedAudio = side === 'back' ? card.back_audio : card.audio;
     if (savedAudio) {
-      playUrl(savedAudio);
+      playUrl(savedAudio, button);
       return;
     }
 
     /* Otherwise request ElevenLabs via tts.php */
-    var text    = (flipped ? (card.meaning || card.text) : card.text) || '';
+    var text    = (side === 'back' ? (card.back_text || card.meaning) : card.text) || '';
     var voiceId = card.voice_id || '';
     if (!text) return;
 
-    playElevenLabs(text, voiceId);
+    playElevenLabs(text, voiceId, button);
   }
 
   /* ── Show/Hide word ─────────────────────────────────────────── */
@@ -152,7 +177,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function flipCard() {
-    if (!cards[index] || (!cards[index].back_image && !cards[index].meaning)) return;
+    if (!cards[index] || (!cards[index].back_image && !(cards[index].back_text || cards[index].meaning))) return;
+    stopAudio();
     flipped = !flipped;
     wordVisible = false;
     if (cardShell) {
@@ -170,6 +196,7 @@ document.addEventListener('DOMContentLoaded', function () {
       index++;
       loadCard();
     } else {
+      stopAudio();
       showCompleted();
     }
   }
@@ -308,7 +335,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   /* ── Events ─────────────────────────────────────────────────── */
-  if (listenBtn) listenBtn.addEventListener('click', listen);
+  if (frontListenBtn) frontListenBtn.addEventListener('click', function (event) { event.stopPropagation(); listen(frontListenBtn, 'front'); });
+  if (backListenBtn) backListenBtn.addEventListener('click', function (event) { event.stopPropagation(); listen(backListenBtn, 'back'); });
   if (showBtn)   showBtn.addEventListener('click', toggleWord);
   if (nextBtn)   nextBtn.addEventListener('click', nextCard);
   if (cardShell) cardShell.addEventListener('click', flipCard);
