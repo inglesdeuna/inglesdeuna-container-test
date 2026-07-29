@@ -561,6 +561,18 @@ body{font-family:'Nunito',sans-serif;background:#F0EFF8;}
 
 /* ── Table ── */
 table{width:100%;border-collapse:collapse;font-size:12.5px;font-family:'Nunito',sans-serif;}
+.active-links-table{
+  width:calc(100% - 24px);
+  margin:0 12px 12px;
+}
+.active-link-actions{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  padding:15px 19px;
+}
+.active-link-actions form{display:inline-flex;}
 th{
   text-align:left;padding:9px 19px;background:#FAFAFE;
   color:#9B8FCC;font-size:10px;font-weight:800;
@@ -697,6 +709,14 @@ tr:hover td{background:#FAFAFE;}
   .eval-sidebar{display:none;}
   .stats-row{grid-template-columns:1fr 1fr;}
   .form-row,.form-row-3{grid-template-columns:1fr;}
+  .active-links-table{
+    display:block;
+    overflow-x:auto;
+    margin:0 8px 8px;
+    width:calc(100% - 16px);
+  }
+  .active-links-table th,.active-links-table td{padding-left:14px;padding-right:14px;}
+  .active-link-actions{min-width:250px;padding:14px;}
 }
 
 /* ── Workflow hero cards ── */
@@ -1254,7 +1274,7 @@ tr:hover td{background:#FAFAFE;}
           </div>
           <?php endif; ?>
         </div>
-        <table>
+        <table class="active-links-table">
           <thead><tr><th>Token</th><th>Tipo</th><th>Estudiante</th><th>Expira</th><th>Usos</th><th>Compartir</th></tr></thead>
           <tbody>
           <?php foreach ($examLinks as $lnk): ?>
@@ -1290,7 +1310,7 @@ tr:hover td{background:#FAFAFE;}
               <?php endif; ?>
             </td>
             <td><?= (int)$lnk['submissions'] ?> / <?= (int)$lnk['max_uses'] ?></td>
-            <td style="white-space:nowrap;display:flex;flex-wrap:wrap;gap:4px;align-items:center;">
+            <td class="active-link-actions">
               <button class="btn btn-secondary btn-sm" onclick="copyLink('<?= h($linkUrl) ?>')">Copiar</button>
               <?php
                 $waPhone = $lnk['student_phone'] ? preg_replace('/\D/','', $lnk['student_phone']) : '';
@@ -1979,7 +1999,5 @@ else switchAssignType('group');
 </script>
 </body>
 </html>
-
-
 
 
