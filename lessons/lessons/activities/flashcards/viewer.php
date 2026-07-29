@@ -41,7 +41,9 @@ $jsCards = array_values(array_map(function ($card) {
     return [
         'image'    => (string) ($card['image']        ?? ''),
         'back_image' => (string) ($card['back_image'] ?? ''),
-        'text'     => (string) ($card['english_text'] ?? $card['text'] ?? ''),
+        'text'     => (string) ($card['front_text'] ?? $card['english_text'] ?? $card['text'] ?? ''),
+        'back_text' => (string) ($card['back_text'] ?? $card['meaning'] ?? ''),
+        'meaning'  => (string) ($card['meaning'] ?? ''),
         'audio'    => (string) ($card['audio']        ?? ''),
         'back_audio' => (string) ($card['back_audio'] ?? ''),
         'voice_id' => (string) ($card['voice_id']     ?? ''),
@@ -197,6 +199,20 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     line-height: 1.2;
     display: none; /* shown by JS after Listen or flip */
 }
+.fc-side-listen {
+    display: none;
+    margin: 0 auto 4px;
+    border: 0;
+    border-radius: 999px;
+    padding: 8px 15px;
+    background: var(--purple);
+    color: #fff;
+    font: 800 13px 'Nunito', sans-serif;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(127,119,221,.18);
+}
+.fc-side-listen.visible { display: block; }
+.fc-side-listen:disabled { opacity: .55; cursor: wait; }
 
 /* Buttons */
 .fc-actions {
@@ -297,10 +313,13 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
                 </div>
 
                 <div class="fc-word" id="fc-word"></div>
+                <button type="button" class="fc-side-listen" id="fc-front-listen"
+                        aria-label="Play front audio">🔊 Front</button>
+                <button type="button" class="fc-side-listen" id="fc-back-listen"
+                        aria-label="Play back audio">🔊 Back</button>
             </div>
 
             <div class="fc-actions">
-                <button class="fc-btn fc-btn-purple" id="fc-listen">🔊 Listen</button>
                 <button class="fc-btn fc-btn-orange" id="fc-next">Next →</button>
             </div>
 
