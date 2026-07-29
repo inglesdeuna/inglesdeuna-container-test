@@ -80,13 +80,6 @@ ob_start();
                         rel="noopener"
                     >&#128065; Open PDF</a>
 
-                    <a
-                        id="download-pdf-btn"
-                        class="flipbook-btn flipbook-btn--primary"
-                        href="<?php echo htmlspecialchars($pdfDownloadUrl, ENT_QUOTES, 'UTF-8'); ?>"
-                        download="downloadable.pdf"
-                    >&#8659; Download PDF</a>
-
                     <button type="button" id="full-screen-btn" class="flipbook-btn flipbook-btn--dark">
                         Full Screen
                     </button>
