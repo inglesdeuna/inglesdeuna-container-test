@@ -645,6 +645,7 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
         if ($pdfUrl !== '') {
             $worksheets[] = [
                 'id'        => (string) ($act['id'] ?? ''),
+                'unit_id'   => (string) ($act['unit_id'] ?? ''),
                 'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
                 'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
                 'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
@@ -656,7 +657,15 @@ $activities = array_values(array_filter($activities, function ($act) use (&$work
 }));
 // -------------------------------------------------------------------------
 
-$topWorksheetDownloadUrl = !empty($worksheets) ? (string) ($worksheets[0]['download_url'] ?? '') : '';
+$topWorksheetDownloadUrl = '';
+foreach ($worksheets as $worksheet) {
+    if ((string) ($worksheet['unit_id'] ?? '') !== $selectedUnitId) {
+        continue;
+    }
+
+    $topWorksheetDownloadUrl = (string) ($worksheet['download_url'] ?? '');
+    break;
+}
 
 $mix = activity_mix($activities);
 
