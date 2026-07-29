@@ -636,35 +636,88 @@ $unitIds = array_values(array_filter(array_map(
 
 $activities = load_activities_for_units($pdo, $unitIds);
 
-// --- Separate worksheet (flipbook) activities from the sequential flow ---
+// --- Worksheet (flipbook) activities ---
+// Historically flipbooks were stripped out of $activities entirely so they could
+// never become $current (the activity selected via Previous/Next). That is the
+// exact reason the old "Download" button could never react to the selected
+// activity: it had no selected-flipbook state to react to in the first place.
+//
+// For Phase 1 / Phase 2 (english scope) flipbooks now stay inside $activities so
+// they get their own step, just like any other activity — this lets $current
+// become a flipbook when the teacher navigates to it. Technical courses keep the
+// previous behavior (flipbooks are pulled out into the sidebar "Worksheets" list
+// only) to avoid changing step counts/scoring for those courses.
 $worksheets = [];
-$activities = array_values(array_filter($activities, function ($act) use (&$worksheets) {
-    if (strtolower(trim((string) ($act['type'] ?? ''))) === 'flipbooks') {
+if ($scope === 'english') {
+    foreach ($activities as $act) {
+        if (strtolower(trim((string) ($act['type'] ?? ''))) !== 'flipbooks') {
+            continue;
+        }
+
         $actData = json_decode((string) ($act['data'] ?? ''), true);
         $pdfUrl  = isset($actData['pdf_url']) ? trim((string) $actData['pdf_url']) : '';
-        if ($pdfUrl !== '') {
-            $worksheets[] = [
-                'id'        => (string) ($act['id'] ?? ''),
-                'unit_id'   => (string) ($act['unit_id'] ?? ''),
-                'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
-                'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
-                'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
-            ];
+        if ($pdfUrl === '') {
+            continue;
         }
-        return false;
+
+        $worksheets[] = [
+            'id'        => (string) ($act['id'] ?? ''),
+            'unit_id'   => (string) ($act['unit_id'] ?? ''),
+            'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
+            'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+            'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
+        ];
     }
-    return true;
-}));
+} else {
+    $activities = array_values(array_filter($activities, function ($act) use (&$worksheets) {
+        if (strtolower(trim((string) ($act['type'] ?? ''))) === 'flipbooks') {
+            $actData = json_decode((string) ($act['data'] ?? ''), true);
+            $pdfUrl  = isset($actData['pdf_url']) ? trim((string) $actData['pdf_url']) : '';
+            if ($pdfUrl !== '') {
+                $worksheets[] = [
+                    'id'        => (string) ($act['id'] ?? ''),
+                    'unit_id'   => (string) ($act['unit_id'] ?? ''),
+                    'title'     => trim((string) ($actData['title'] ?? '')) ?: 'Worksheet',
+                    'serve_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')),
+                    'download_url' => '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode((string) ($act['id'] ?? '')) . '&dl=1',
+                ];
+            }
+            return false;
+        }
+        return true;
+    }));
+}
 // -------------------------------------------------------------------------
 
-$topWorksheetDownloadUrl = '';
-foreach ($worksheets as $worksheet) {
-    if ((string) ($worksheet['unit_id'] ?? '') !== $selectedUnitId) {
-        continue;
+/**
+ * Returns the forced-download serve_pdf.php URL for a flipbook activity, but
+ * only when it is actually a flipbook with a downloadable file attached. This
+ * is the single source of truth for the green "Download" button — it always
+ * reads directly from the activity being asked about (never from a list of
+ * other worksheets), so it can never leak a file from a different activity.
+ */
+function flipbook_download_url_for_activity(?array $activity): string
+{
+    if (!$activity) {
+        return '';
     }
 
-    $topWorksheetDownloadUrl = (string) ($worksheet['download_url'] ?? '');
-    break;
+    if (strtolower(trim((string) ($activity['type'] ?? ''))) !== 'flipbooks') {
+        return '';
+    }
+
+    $actData = json_decode((string) ($activity['data'] ?? ''), true);
+    $pdfUrl  = is_array($actData) && isset($actData['pdf_url']) ? trim((string) $actData['pdf_url']) : '';
+    if ($pdfUrl === '') {
+        return '';
+    }
+
+    $activityId = (string) ($activity['id'] ?? '');
+    if ($activityId === '') {
+        return '';
+    }
+
+    return '/lessons/lessons/activities/flipbooks/serve_pdf.php?id=' . rawurlencode($activityId) . '&dl=1';
 }
 
 $mix = activity_mix($activities);
@@ -819,9 +872,17 @@ if ($current) {
     $currentTypeLabel = $activityTypeLabels[$currentType] ?? ucwords(str_replace('_', ' ', $type));
 }
 
-// Pre-compute viewer URLs for every step so the fullscreen JS can navigate without a page reload
+// Green "Download" button: only for Phase 1 / Phase 2 (english scope), only when
+// the CURRENTLY SELECTED activity ($current) is itself a flipbook with a
+// downloadable file. Never derived from $worksheets or $selectedUnitId.
+$currentFlipbookDownloadUrl = ($scope === 'english') ? flipbook_download_url_for_activity($current) : '';
+
+// Pre-compute viewer URLs (and, for english scope, flipbook download URLs) for
+// every step so the fullscreen JS can navigate — and toggle the Download
+// button — without a page reload.
 $_fsReturnUrl = '../../academic/teacher_course.php?' . http_build_query(['assignment' => $assignmentId, 'unit' => $selectedUnitId]);
 $allViewerHrefs = [];
+$allFlipbookDownloadUrls = [];
 foreach ($activities as $_act) {
     $_type = (string) ($_act['type'] ?? '');
     $_path = get_activity_base_path($_type);
@@ -839,6 +900,8 @@ foreach ($activities as $_act) {
     } else {
         $allViewerHrefs[] = null;
     }
+
+    $allFlipbookDownloadUrls[] = ($scope === 'english') ? flipbook_download_url_for_activity($_act) : '';
 }
 
 $teacherName    = trim((string) ($_SESSION['teacher_name'] ?? 'Teacher'));
@@ -1554,16 +1617,13 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     </div>
     <?php endif; ?>
 
-     <?php if ($selectedUnitId !== '' || $topWorksheetDownloadUrl !== ''): ?>
+     <?php if ($selectedUnitId !== ''): ?>
 
-      <?php if ($topWorksheetDownloadUrl !== ''): ?>
-      <a class="side-btn"
-        style="background:linear-gradient(180deg,#84cc16,#65a30d);"
-        href="<?php echo h($topWorksheetDownloadUrl); ?>"
+      <a id="flipbookDownloadBtn" class="side-btn"
+        style="background:linear-gradient(180deg,#22c55e,#16a34a);<?php echo $currentFlipbookDownloadUrl === '' ? 'display:none;' : ''; ?>"
+        href="<?php echo h($currentFlipbookDownloadUrl); ?>"
         download="worksheet.pdf">⬇ Download</a>
-      <?php endif; ?>
 
-      <?php if ($selectedUnitId !== ''): ?>
       <div class="side-doc-actions">
         <a class="side-btn"
           style="background:linear-gradient(180deg,#F97316,#ea6a08);"
@@ -1576,7 +1636,6 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
           target="_blank"
           rel="noopener noreferrer">🔑 Answer Key</a>
       </div>
-      <?php endif; ?>
 
      <?php endif; ?>
 
@@ -1754,6 +1813,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     if (!shell || !btn || !iframe) return;
 
     const SRCS   = <?php echo json_encode(array_values($allViewerHrefs)); ?>;
+    const FLIPBOOK_DL = <?php echo json_encode(array_values($allFlipbookDownloadUrls)); ?>;
     let   step   = <?php echo (int) $step; ?>;
     const total  = <?php echo (int) $total; ?>;
     const BASE   = 'teacher_course.php?assignment=<?php echo urlencode($assignmentId); ?>&unit=<?php echo urlencode($selectedUnitId); ?>&mode=<?php echo urlencode($mode); ?>&step=';
@@ -1763,6 +1823,19 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
     const nextBtn = document.getElementById('nextBtn');
     const counter = document.querySelector('.step-counter');
     const badge   = document.querySelector('.act-badge');
+    const flipbookDlBtn = document.getElementById('flipbookDownloadBtn');
+
+    function syncFlipbookDownload(forStep) {
+        if (!flipbookDlBtn) return;
+        const url = FLIPBOOK_DL[forStep] || '';
+        if (url) {
+            flipbookDlBtn.href = url;
+            flipbookDlBtn.style.display = '';
+        } else {
+            flipbookDlBtn.removeAttribute('href');
+            flipbookDlBtn.style.display = 'none';
+        }
+    }
 
     const SVG_ENTER = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>';
     const SVG_EXIT  = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>';
@@ -1824,6 +1897,7 @@ body{font-family:Arial,sans-serif;background:var(--bg);color:var(--text);overflo
             if (isFs()) try { iframe.contentWindow?.postMessage({ type: 'fs-enter' }, '*'); } catch (_) {}
         }, { once: true });
         syncNav();
+        syncFlipbookDownload(step);
     }
 
     function onPrevClick(e) {
