@@ -529,11 +529,13 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
 <div class="fb-page">
     <div class="fb-app">
 
+        <?php if (empty($fbQuizMode)): ?>
         <div class="fb-hero">
             <div class="fb-kicker">Activity</div>
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
             <p><?php echo htmlspecialchars($activity['instructions'], ENT_QUOTES, 'UTF-8'); ?></p>
         </div>
+        <?php endif; ?>
 
         <div class="fb-stage-shell">
 
