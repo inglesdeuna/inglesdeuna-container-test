@@ -44,31 +44,31 @@ $assignmentId = trim((string) ($_GET['assignment'] ?? ''));
 $unitId = trim((string) ($_GET['unit'] ?? ''));
 $returnTo = trim((string) ($_GET['return_to'] ?? ''));
 
-$backHref = 'teacher_course.php?' . http_build_query([
+$backHref = '/lessons/lessons/academic/teacher_course.php?' . http_build_query([
     'assignment' => $assignmentId,
     'unit' => $unitId,
     'step' => '9999',
 ]);
-$dashboardHref = 'dashboard.php?' . http_build_query([
+$dashboardHref = '/lessons/lessons/academic/dashboard.php?' . http_build_query([
     'assignment' => $assignmentId,
     'unit' => $unitId,
 ]) . '#unidades-curso';
-$quizEditorHref = '../activities/quiz/editor.php?' . http_build_query([
+$quizEditorHref = '/lessons/lessons/activities/quiz/editor.php?' . http_build_query([
     'unit' => $unitId,
     'assignment' => $assignmentId,
 ]);
 $quizReturn = $returnTo !== '' ? $returnTo : $backHref;
-$teacherQuizReturn = 'teacher_quiz.php?' . http_build_query([
+$teacherQuizReturn = '/lessons/lessons/academic/teacher_quiz.php?' . http_build_query([
     'assignment' => $assignmentId,
     'unit' => $unitId,
     'return_to' => $quizReturn,
 ]);
-$quizViewerHref = '../activities/quiz/teacher_viewer.php?' . http_build_query([
+$quizViewerHref = '/lessons/lessons/activities/quiz/teacher_viewer.php?' . http_build_query([
     'unit' => $unitId,
     'assignment' => $assignmentId,
     'return_to' => $teacherQuizReturn,
 ]);
-$quizPrintHref = '../activities/quiz/teacher_print.php?' . http_build_query([
+$quizPrintHref = '/lessons/lessons/activities/quiz/teacher_print.php?' . http_build_query([
     'unit' => $unitId,
     'assignment' => $assignmentId,
     'return_to' => $teacherQuizReturn,
