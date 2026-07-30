@@ -6,7 +6,7 @@ require_once __DIR__ . '/_quiz_lib.php';
 $unitId=isset($_GET['unit'])?intval($_GET['unit']):0;$returnTo=isset($_GET['return_to'])?trim((string)$_GET['return_to']):'';$assignment=qz_resolve_assignment_id($_GET['assignment']??0,$returnTo);$mode=$_GET['mode']??'intro';$qIndex=isset($_GET['q'])?intval($_GET['q']):0;if(!$unitId)die('Missing unit id.');$pdo=get_pdo();$st=$pdo->prepare('SELECT * FROM activities WHERE unit_id=:u ORDER BY id ASC');$st->execute(['u'=>$unitId]);$activities=$st->fetchAll(PDO::FETCH_ASSOC);$all=[];foreach($activities as$act)foreach(qz_normalize_activity($act)as$q)$all[]=$q;if(!$all)die('<div style="font-family:Arial;padding:30px;color:#7c3aed"><h2>No scoreable quiz activities found for this unit.</h2></div>');
 $qzStudentId=trim((string)($_SESSION['student_id']??''));$qzHasDb=$qzStudentId!=='';if($qzHasDb)qz_ensure_quiz_state_table($pdo);$qzDbState=$qzHasDb?qz_load_db_state($pdo,$qzStudentId,$unitId,$assignment):null;error_log("UNIT: ".$unitId);error_log("ASSIGNMENT: ".$assignment);error_log("STUDENT: ".$qzStudentId);error_log("ATTEMPT FOUND: ".json_encode($qzDbState,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES));
 $attKey='qz_attempt_'.$unitId.'_'.$assignment;if(!isset($_SESSION[$attKey])){if($qzDbState!==null)$_SESSION[$attKey]=qz_bool($qzDbState['is_completed'])?(int)$qzDbState['attempt_number']+1:max(1,(int)$qzDbState['attempt_number']);else $_SESSION[$attKey]=1;}$att=(int)$_SESSION[$attKey];$setKey='qz_set_'.$unitId.'_'.$assignment.'_'.$att;$ansKey='qz_answers_'.$unitId.'_'.$assignment.'_'.$att;
-if(isset($_GET['reset'])){$qzCanReset=true;if($qzHasDb){$qzResetAttempts=qz_load_all_completed_attempts($pdo,$qzStudentId,$unitId,$assignment);$qzHasAttempt2=false;foreach($qzResetAttempts as$qzResetAttempt){if((int)($qzResetAttempt['attempt_number']??0)>=2){$qzHasAttempt2=true;break;}}$qzResetMetrics=qz_load_unit_metrics($pdo,$qzStudentId,$unitId,$assignment);$qzResetQuiz=max(0,min(100,(float)($qzResetMetrics['quiz_score_percent']??0)));$qzResetUnit=max(0,min(100,(float)($qzResetMetrics['completion_percent']??0)));$qzResetCombined=($qzResetUnit*0.6)+($qzResetQuiz*0.4);$qzCanReset=($qzResetQuiz<=64||$qzResetCombined<=64)&&!$qzHasAttempt2;}if($qzCanReset){$_SESSION[$attKey]=$att+1;unset($_SESSION[$setKey],$_SESSION[$ansKey]);if($qzHasDb)qz_clear_teacher_unlock($pdo,$qzStudentId,$unitId,$assignment);qz_redirect('intro',$unitId,$assignment,null,['return_to'=>$returnTo]);}qz_redirect('result',$unitId,$assignment,null,['return_to'=>$returnTo]);}
+if(isset($_GET['reset'])){$qzCanReset=true;if($qzHasDb){$qzResetAttempts=qz_load_all_completed_attempts($pdo,$qzStudentId,$unitId,$assignment);$qzHasAttempt2=false;foreach($qzResetAttempts as$qzResetAttempt){if((int)($qzResetAttempt['attempt_number']??0)>=2){$qzHasAttempt2=true;break;}}$qzResetMetrics=qz_load_unit_metrics($pdo,$qzStudentId,$unitId,$assignment);$qzResetQuiz=max(0,min(100,(float)($qzResetMetrics['quiz_score_percent']??0)));$qzResetUnit=max(0,min(100,(float)($qzResetMetrics['completion_percent']??0)));$qzResetCombined=($qzResetUnit*0.6)+($qzResetQuiz*0.4);$qzCanReset=($qzResetQuiz<=64||$qzResetCombined<=64)&&!$qzHasAttempt2;}if($qzCanReset){$_SESSION[$attKey]=2;$qzRetrySetKey='qz_set_'.$unitId.'_'.$assignment.'_2';$qzRetryAnswersKey='qz_answers_'.$unitId.'_'.$assignment.'_2';unset($_SESSION[$qzRetrySetKey],$_SESSION[$qzRetryAnswersKey]);if($qzHasDb)qz_clear_teacher_unlock($pdo,$qzStudentId,$unitId,$assignment);qz_redirect('intro',$unitId,$assignment,null,['return_to'=>$returnTo]);}qz_redirect('result',$unitId,$assignment,null,['return_to'=>$returnTo]);}
 $qzLocked=false;$qzCompletedCount=0;$qzHasTeacherUnlock=false;$qzCanRetry=true;$qzHasCompletedAttempt=false;$qzHasFirstAttemptCompleted=false;$qzLatestCompletedAttempt=0;
 $qzDbStateForAtt=($qzDbState!==null&&(int)$qzDbState['attempt_number']===$att&&!qz_bool($qzDbState['is_completed']))?$qzDbState:null;
 if(!isset($_SESSION[$setKey])){if($qzDbStateForAtt!==null){$rs=json_decode((string)($qzDbStateForAtt['quiz_set_json']??'[]'),true);if(is_array($rs)&&!empty($rs))$_SESSION[$setKey]=$rs;}if(!isset($_SESSION[$setKey]))$_SESSION[$setKey]=qz_build($all,$unitId,$assignment,$att);}
@@ -30,6 +30,9 @@ $qzHasFirstAttemptCompleted=$qzHasFirstAttemptCompleted||$qzHasCompletedAttempt|
 $qzCombinedScore=round(($unit_score*0.6)+($quiz_score*0.4),1);
 $qzCanRetryByScore=$quiz_score<=64||$qzCombinedScore<=64;
 $qzCanRetry=($attempt_number<$max_attempts)&&$attempt2_score===null&&$qzCanRetryByScore;
+$qzFeedbackQuiz=$quiz;$qzFeedbackAnswers=$answers;
+if($mode==='result'&&count($qzFeedbackAnswers)<count($qzFeedbackQuiz)&&$qzDbState!==null&&qz_bool($qzDbState['is_completed'])){$qzStoredQuiz=json_decode((string)($qzDbState['quiz_set_json']??'[]'),true);$qzStoredAnswers=json_decode((string)($qzDbState['answers_json']??'{}'),true);if(is_array($qzStoredQuiz)&&!empty($qzStoredQuiz)&&is_array($qzStoredAnswers)){$qzFeedbackQuiz=$qzStoredQuiz;$qzFeedbackAnswers=$qzStoredAnswers;}}
+$qzTypeFeedback=qz_quiz_feedback_by_type($qzFeedbackQuiz,$qzFeedbackAnswers);$qzStudyLabels=qz_quiz_feedback_labels($qzTypeFeedback);
 $lastAnswered=count($answers)>0?max(array_keys($answers)):-1;$currentQuizIndex=max(0,min($total-1,$lastAnswered+1));$rtParam='&return_to='.urlencode($returnHref);$resultHref='?mode=result&unit='.$unitId.'&assignment='.$assignment.$rtParam;$reviewHref='?mode=review&unit='.$unitId.'&assignment='.$assignment.$rtParam;$quizHref='?mode=quiz&q='.$currentQuizIndex.'&unit='.$unitId.'&assignment='.$assignment.$rtParam;
 $quizStartHref='?mode=quiz&q=0&unit='.$unitId.'&assignment='.$assignment.$rtParam;$retakeHref='?mode=intro&reset=1&unit='.$unitId.'&assignment='.$assignment.$rtParam;$qzShowTakeQuizState=in_array($mode,['result','review'],true)&&!$qzHasFirstAttemptCompleted;$qzTabsLocked=!$qzHasFirstAttemptCompleted;$resultTabHref=$qzTabsLocked?$quizStartHref:$resultHref;$reviewTabHref=$qzTabsLocked?$quizStartHref:$reviewHref;
 if($mode==='quiz'&&$qzLocked)$mode='intro';
@@ -272,6 +275,23 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
         <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">⏱ <?= qz_h($elapsed_time) ?></span>
       </div>
     </div>
+    <?php if(!empty($qzTypeFeedback)): ?>
+    <div style="background:#fff;border-radius:24px;border:1px solid #FCDDBF;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
+      <div style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:20px;font-weight:700;margin:0 0 5px;">Debes estudiar más</div>
+      <div style="font-size:14px;font-weight:800;color:#534AB7;margin-bottom:14px;"><?= qz_h($qzStudyLabels) ?></div>
+      <div style="font-size:12px;font-weight:700;color:#9B8FCC;margin-bottom:12px;">Este feedback se basa únicamente en las respuestas incorrectas o parcialmente correctas de este intento.</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;">
+        <?php foreach($qzTypeFeedback as$qzFeedbackRow): ?>
+        <div style="background:#FFF9F5;border:1px solid #FCDDBF;border-radius:14px;padding:12px 14px;">
+          <div style="font-size:14px;font-weight:900;color:#271B5D;"><?= qz_h((string)$qzFeedbackRow['label']) ?></div>
+          <div style="font-size:12px;font-weight:800;color:#D85A30;margin-top:4px;"><?= (int)$qzFeedbackRow['errors'] ?> de <?= (int)$qzFeedbackRow['questions'] ?> preguntas para repasar</div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php else: ?>
+    <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:16px;padding:16px 20px;font-size:14px;font-weight:900;color:#166534;">✓ Excelente. No tienes actividades del quiz pendientes por repasar.</div>
+    <?php endif; ?>
     <div style="background:#fff;border-radius:24px;border:1px solid #EDE9FA;padding:24px;box-shadow:0 4px 32px rgba(127,119,221,.10);">
       <div style="font-family:'Fredoka',sans-serif;color:#7F77DD;font-size:18px;font-weight:600;margin:0 0 14px;">◈ Skill breakdown</div>
       <div style="display:flex;flex-direction:column;gap:12px;">
@@ -329,9 +349,17 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
       <?php $completed=count(array_filter($phase_units,fn($u)=>array_key_exists('score',$u)&&$u['score']!==null));$total_u=count($phase_units); ?>
       <div style="margin-top:14px;background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:12px;font-size:13px;font-weight:700;color:#166534;">✓ <?= $completed ?> / <?= $total_u ?> units completed</div>
     </div>
-    <div style="display:flex;gap:10px;">
-      <button onclick="window.location.href='<?= qz_h($reviewHref) ?>'" style="flex:1;background:transparent;color:#7F77DD;border:1.5px solid #EDE9FA;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Review answers</button>
-      <button onclick="window.location.href='../../academic/student_dashboard.php'" style="flex:1;background:#F97316;color:#fff;border:none;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Back to dashboard →</button>
+    <?php if($qzCanRetry): ?>
+    <div style="background:linear-gradient(135deg,#FFF0E6,#EDE9FA);border:1px solid #FCDDBF;border-radius:16px;padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+      <div><div style="font-family:'Fredoka',sans-serif;color:#F97316;font-size:17px;font-weight:700;">Tienes un segundo intento</div><div style="font-size:12px;font-weight:700;color:#9B8FCC;margin-top:2px;">Repasa el feedback anterior y vuelve a intentarlo.</div></div>
+      <button onclick="window.location.href='<?= qz_h($retakeHref) ?>'" style="background:#F97316;color:#fff;border:none;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Segundo intento</button>
+    </div>
+    <?php elseif($attempt_number===1&&$attempt2_score===null): ?>
+    <div style="background:#F0FDF4;border:1px solid #9FE1CB;border-radius:12px;padding:11px 14px;font-size:12px;font-weight:800;color:#166534;">✓ El segundo intento está bloqueado porque alcanzaste 65% o más.</div>
+    <?php endif; ?>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="window.location.href='<?= qz_h($reviewHref) ?>'" style="flex:1;min-width:180px;background:transparent;color:#7F77DD;border:1.5px solid #EDE9FA;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Review answers</button>
+      <button onclick="window.location.href='../../academic/student_dashboard.php'" style="flex:1;min-width:180px;background:#7F77DD;color:#fff;border:none;font-family:'Nunito',sans-serif;font-weight:900;font-size:14px;padding:11px 22px;border-radius:8px;cursor:pointer;">Back to dashboard →</button>
     </div>
   </div>
 </div>
