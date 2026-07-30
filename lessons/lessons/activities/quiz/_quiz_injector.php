@@ -10,6 +10,7 @@ if(!is_array($quizNow)||!isset($quizNow[$qIndexNow])||!is_array($quizNow[$qIndex
 $qNow=$quizNow[$qIndexNow];
 $qType=(string)($qNow['type']??'');
 if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
+if($qType==='unscramble'){require __DIR__.'/_quiz_unscramble_injector.php';return;}
 if($qType!=='fill')return;
 $question=trim((string)($qNow['question']??''));
 $correctRaw=trim((string)($qNow['correct']??''));
