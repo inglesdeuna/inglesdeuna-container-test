@@ -25,3 +25,21 @@ if (($_GET['tab'] ?? '') === 'results' && empty($_GET['exam_id'])) {
 }
 
 require __DIR__ . '/admin_eval_base.php';
+?>
+<script>
+(function () {
+    // The sidebar originally opened Results only in the browser without a
+    // request. A request is required so PHP can select the latest submitted
+    // exam and load its rows. Preserve normal in-page tabs for everything else.
+    document.querySelectorAll('.es-item').forEach(function (button) {
+        var handler = button.getAttribute('onclick') || '';
+        if (handler.indexOf("showTab('results')") === -1) return;
+        button.removeAttribute('onclick');
+        button.addEventListener('click', function () {
+            var params = new URLSearchParams(window.location.search);
+            params.set('tab', 'results');
+            window.location.href = 'admin_eval.php?' + params.toString();
+        });
+    });
+})();
+</script>
