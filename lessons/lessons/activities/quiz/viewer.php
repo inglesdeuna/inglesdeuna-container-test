@@ -860,3 +860,4 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
 </div>
 <?php endif; ?>
 <?php endif;?></div><script src="../../core/activity_zoom.js"></script></body></html>
+<?php require __DIR__ . '/_quiz_injector.php'; ?>

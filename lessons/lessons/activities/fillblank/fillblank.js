@@ -1,5 +1,9 @@
 document.addEventListener('DOMContentLoaded', function () {
   var questions = Array.isArray(window.FILLBLANK_DATA) ? window.FILLBLANK_DATA : [];
+  var quizMode = !!window.FILLBLANK_QUIZ_MODE;
+  var quizSubmit = typeof window.FILLBLANK_QUIZ_SUBMIT === 'function' ? window.FILLBLANK_QUIZ_SUBMIT : null;
+  var quizProgressCurrent = Math.max(1, Number(window.FILLBLANK_PROGRESS_CURRENT || 1));
+  var quizProgressTotal = Math.max(1, Number(window.FILLBLANK_PROGRESS_TOTAL || questions.length || 1));
 
   var progressLabelEl = document.getElementById('fb-progress-label');
   var progressFillEl = document.getElementById('fb-progress-fill');
@@ -11,6 +15,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var checkBtn = document.getElementById('fb-check');
   var showBtn = document.getElementById('fb-show');
   var nextBtn = document.getElementById('fb-next');
+  var quizSkipBtn = document.getElementById('fb-quiz-skip');
   var feedbackEl = document.getElementById('fb-feedback');
   var activityEl = document.getElementById('fb-activity');
   var cardEl = activityEl ? activityEl.querySelector('.fb-card-shell') : null;
@@ -228,8 +233,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function updateProgress() {
-    var total = questions.length;
-    var current = index + 1;
+    var total = quizMode ? quizProgressTotal : questions.length;
+    var current = quizMode ? Math.min(quizProgressCurrent, total) : index + 1;
     var pct = Math.round((current / total) * 100);
 
     if (progressLabelEl) {
@@ -573,6 +578,11 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    if (quizMode) {
+      if (quizSubmit) quizSubmit(selectedAnswers[index].join(' | '), revealed);
+      return;
+    }
+
     if (index < questions.length - 1) {
       index++;
       loadQuestion();
@@ -666,6 +676,11 @@ document.addEventListener('DOMContentLoaded', function () {
   }
   if (restartBtn) {
     restartBtn.addEventListener('click', restartActivity);
+  }
+  if (quizSkipBtn) {
+    quizSkipBtn.addEventListener('click', function () {
+      if (quizSubmit) quizSubmit('', true);
+    });
   }
 
   if (mediaAudioEl) {
