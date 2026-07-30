@@ -1,9 +1,5 @@
 <?php
-/**
- * eval_viewer.php — Vista del estudiante para presentar examen.
- * Acceso por token SIN usuario ni contraseña.
- * URL: eval_viewer.php?t={token}
- */
+declare(strict_types=1);
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../config/init_db.php';
@@ -12,398 +8,177 @@ require_once __DIR__ . '/../quiz/_quiz_lib.php';
 
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
-
-$token     = trim($_GET['t'] ?? '');
-$step      = $_GET['step'] ?? 'welcome';
-$resultId  = (int) ($_GET['rid'] ?? 0);
-
-// ─── Preview mode (admin/teacher only, no token needed) ──────────────────────
-$isPreview = isset($_GET['preview']) && $_GET['preview'] === '1';
-if ($isPreview) {
-    session_start();
-    $isAdmin   = !empty($_SESSION['admin_logged']);
-    $isTeacher = !empty($_SESSION['academic_logged']);
-    if (!$isAdmin && !$isTeacher) {
-        http_response_code(403);
-        die('Acceso denegado. Solo administradores pueden previsualizar.');
+function ev_h($value): string { return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8'); }
+function ev_redirect(array $params): void { header('Location: eval_viewer.php?' . http_build_query($params)); exit; }
+function ev_is_image($value): bool {
+    $value = trim((string)$value);
+    if ($value === '') return false;
+    if (str_starts_with($value, 'data:image/')) return true;
+    $path = (string)(parse_url($value, PHP_URL_PATH) ?? '');
+    return (bool)preg_match('/\.(png|jpe?g|gif|webp|svg)$/i', $path);
+}
+function ev_media($value, string $alt = '', string $class = 'quiz-media'): string {
+    $value = trim((string)$value);
+    if ($value === '') return '';
+    return ev_is_image($value)
+        ? '<img class="' . ev_h($class) . '" src="' . ev_h($value) . '" alt="' . ev_h($alt) . '" loading="eager">'
+        : ev_h($value);
+}
+function ev_unit_questions(PDO $pdo, string $unitId, string $assignmentKey, int $attempt): array {
+    $stmt = $pdo->prepare('SELECT id,type,unit_id,data FROM activities WHERE unit_id::text=:unit ORDER BY id ASC');
+    $stmt->execute(['unit' => $unitId]);
+    $all = [];
+    foreach (($stmt->fetchAll(PDO::FETCH_ASSOC) ?: []) as $activity) {
+        foreach (qz_normalize_activity($activity) as $question) {
+            if (($question['type'] ?? '') !== 'pronunciation') $all[] = $question;
+        }
     }
-    $previewExamId = (int) ($_GET['exam_id'] ?? 0);
-    if ($previewExamId <= 0) die('exam_id requerido para preview.');
-    $stmt = $pdo->prepare(
-        "SELECT e.id AS exam_id, e.title AS exam_title, e.time_limit_min,
-                1 AS max_attempts, '' AS instructions, e.cefr_level AS exam_cefr,
-                e.status AS exam_status, e.modalities, e.unit_id AS exam_unit_id,
-                'group' AS link_type, '' AS student_name, '' AS student_doc,
-                '' AS student_phone, '' AS student_email,
-                9999 AS max_uses, 0 AS uses_count, NULL AS expires_at
-         FROM eval_exams e WHERE e.id=? LIMIT 1"
-    );
-    $stmt->execute([$previewExamId]);
-    $link = $stmt->fetch(PDO::FETCH_ASSOC);
-    if (!$link) die('Examen no encontrado.');
-    $link['id'] = null; // preview: no real eval_links row
-    $token = 'PREVIEW_' . $previewExamId;
+    return qz_build($all, $unitId, $assignmentKey, $attempt);
+}
+function ev_result_totals(array $quiz, array $answers): array {
+    $stats = qz_answers_totals($quiz, $answers);
+    $possible = max(0, (int)($stats['possible'] ?? 0));
+    $earned = max(0.0, min((float)$possible, (float)($stats['earned'] ?? 0)));
+    return [
+        'correct' => (int)($stats['correct_questions'] ?? 0),
+        'total' => count($quiz),
+        'possible' => $possible,
+        'earned' => $earned,
+        'percent' => $possible > 0 ? (int)round(($earned / $possible) * 100) : 0,
+    ];
 }
 
-// ─── Validar token ────────────────────────────────────────────────────────────
-$link = $link ?? null;
-if (!$isPreview && $token !== '') {
-    $stmt = $pdo->prepare(
-        "SELECT l.*, e.title AS exam_title, e.time_limit_min, e.max_attempts,
-                e.instructions, e.cefr_level AS exam_cefr, e.status AS exam_status,
-                e.modalities, e.unit_id AS exam_unit_id
-         FROM eval_links l
-         JOIN eval_exams e ON e.id = l.exam_id
-         WHERE l.token = ?
-           AND (l.expires_at IS NULL OR l.expires_at > NOW())
-           AND (
-             l.uses_count < l.max_uses
-             OR EXISTS (
-               SELECT 1 FROM eval_results r
-               WHERE r.link_id = l.id AND r.id = ? AND r.status IN ('started', 'submitted')
-             )
-           )
-         LIMIT 1"
-    );
-    $stmt->execute([$token, $resultId]);
-    $link = $stmt->fetch(PDO::FETCH_ASSOC);
+$token = trim((string)($_GET['t'] ?? ''));
+$step = trim((string)($_GET['step'] ?? 'welcome'));
+$resultId = max(0, (int)($_GET['rid'] ?? 0));
+$qIndex = max(0, (int)($_GET['q'] ?? 0));
+$isPreview = isset($_GET['preview']) && $_GET['preview'] === '1';
+$link = null;
+
+if ($isPreview) {
+    if (empty($_SESSION['admin_logged']) && empty($_SESSION['academic_logged'])) {
+        http_response_code(403); exit('Acceso denegado.');
+    }
+    $examId = max(0, (int)($_GET['exam_id'] ?? 0));
+    $stmt = $pdo->prepare("SELECT e.id AS exam_id,e.title AS exam_title,e.time_limit_min,e.max_attempts,e.instructions,e.cefr_level AS exam_cefr,e.status AS exam_status,e.modalities,e.unit_id AS exam_unit_id,'group' AS link_type,'' AS student_name,'' AS student_doc,'' AS student_phone,'' AS student_email,9999 AS max_uses,0 AS uses_count,NULL AS expires_at FROM eval_exams e WHERE e.id=? LIMIT 1");
+    $stmt->execute([$examId]);
+    $link = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if (!$link) exit('Examen no encontrado.');
+    $link['id'] = null;
+    $token = 'PREVIEW_' . $examId;
+} else {
+    if ($token !== '') {
+        $stmt = $pdo->prepare("SELECT l.*,e.title AS exam_title,e.time_limit_min,e.max_attempts,e.instructions,e.cefr_level AS exam_cefr,e.status AS exam_status,e.modalities,e.unit_id AS exam_unit_id FROM eval_links l JOIN eval_exams e ON e.id=l.exam_id WHERE l.token=? AND (l.expires_at IS NULL OR l.expires_at>NOW()) AND (l.uses_count<l.max_uses OR EXISTS (SELECT 1 FROM eval_results r WHERE r.link_id=l.id AND r.id=? AND r.status IN ('started','submitted'))) LIMIT 1");
+        $stmt->execute([$token, $resultId]);
+        $link = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
 }
 
-if (!$link && !$isPreview) {
+if (!$link) {
     http_response_code(404);
-    ?><!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Link inválido</title>
-    <style>body{font-family:Arial,sans-serif;text-align:center;padding:60px;background:#fef3cd;color:#664d03;}
-    h1{font-size:28px;}p{font-size:16px;}</style></head><body>
-    <h1>⚠️ Link inválido o expirado</h1>
-    <p>Este link de evaluación no es válido, ya expiró o alcanzó el límite de usos.</p>
-    <p>Contacta a tu institución para obtener un nuevo link.</p>
-    </body></html><?php
-    exit;
+    exit('<!doctype html><html><body style="font-family:Arial;text-align:center;padding:60px;background:#fff8e8"><h1>Link inválido o expirado</h1><p>Solicita un nuevo enlace a la institución.</p></body></html>');
 }
 
-$examId     = (int) $link['exam_id'];
-$isIndividual = ($link['link_type'] === 'individual');
-
-// ─── POST: Iniciar examen ─────────────────────────────────────────────────────
+$examId = (int)$link['exam_id'];
+$isUnitExam = trim((string)($link['exam_unit_id'] ?? '')) !== '';
 $errorMsg = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['start_exam'])) {
-    $sName  = trim($_POST['student_name'] ?? $link['student_name'] ?? '');
-    $sDoc   = trim($_POST['student_doc']  ?? $link['student_doc']  ?? '');
-    $sPhone = trim($_POST['student_phone'] ?? $link['student_phone'] ?? '');
-    $sEmail = trim($_POST['student_email'] ?? $link['student_email'] ?? '');
 
-    if ($sName === '') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['start_exam'])) {
+    $studentName = trim((string)($_POST['student_name'] ?? $link['student_name'] ?? ''));
+    $studentDoc = trim((string)($_POST['student_doc'] ?? $link['student_doc'] ?? ''));
+    $studentPhone = trim((string)($_POST['student_phone'] ?? $link['student_phone'] ?? ''));
+    $studentEmail = trim((string)($_POST['student_email'] ?? $link['student_email'] ?? ''));
+    if ($studentName === '') {
         $errorMsg = 'Por favor ingresa tu nombre.';
     } else {
-        $histStmt = $pdo->prepare(
-            "SELECT skill_scores, answers_json FROM eval_results
-             WHERE exam_id=? AND student_doc=? AND status='submitted' ORDER BY submitted_at DESC"
-        );
-        $histStmt->execute([$examId, $sDoc]);
-        $history = $histStmt->fetchAll(PDO::FETCH_ASSOC);
-
-        $maxAttempts = (int) ($link['max_attempts'] ?? 1);
-        if (count($history) >= $maxAttempts) {
-            $errorMsg = 'Ya alcanzaste el número máximo de intentos para este examen.';
+        $hist = $pdo->prepare("SELECT id FROM eval_results WHERE exam_id=? AND student_doc=? AND status='submitted'");
+        $hist->execute([$examId, $studentDoc]);
+        $attempt = count($hist->fetchAll(PDO::FETCH_ASSOC)) + 1;
+        if ($attempt > (int)($link['max_attempts'] ?? 1)) {
+            $errorMsg = 'Ya alcanzaste el número máximo de intentos.';
         } else {
-            $attempt = count($history) + 1;
-            $examUnitIds = [];
-            if (!empty($link['exam_unit_id'])) {
-                $examUnitIds = [(string) $link['exam_unit_id']];
+            if ($isUnitExam) {
+                $questions = ev_unit_questions($pdo, (string)$link['exam_unit_id'], (string)($link['id'] ?? $examId), $attempt);
+            } else {
+                $config = ['exam_id'=>$examId,'unit_ids'=>[],'assignment_id'=>(string)($link['id'] ?? $examId),'total_questions'=>20,'quotas'=>DEFAULT_QUOTAS,'skills'=>array_keys(DEFAULT_QUOTAS)];
+                $questions = select_exam_questions($pdo, $config, $studentDoc ?: $studentName, $attempt, []);
             }
-            $examConfig  = [
-                'exam_id'         => $examId,
-                'unit_ids'        => $examUnitIds,
-                'assignment_id'   => (string) ($link['id'] ?? $examId),
-                'total_questions' => 20,
-                'quotas'          => DEFAULT_QUOTAS,
-                'skills'          => array_keys(DEFAULT_QUOTAS),
-            ];
-
-            $questions   = select_exam_questions($pdo, $examConfig, $sDoc ?: $sName, $attempt, $history);
-            $selJson     = serialize_exam_selection($questions);
-
-            $insStmt = $pdo->prepare(
-                "INSERT INTO eval_results
-                    (exam_id, link_id, student_name, student_doc, student_phone, student_email,
-                     modality, selection_json, status, started_at)
-                 VALUES (?,?,?,?,?,?,'online',?,'started',CURRENT_TIMESTAMP) RETURNING id"
-            );
-            $insStmt->execute([
-                $examId,
-                $isPreview ? null : (int)$link['id'],
-                $sName,
-                $sDoc,
-                $sPhone ?: null,
-                $sEmail ?: null,
-                $selJson,
-            ]);
-            $row = $insStmt->fetch(PDO::FETCH_ASSOC);
-            $newResultId = (int) $row['id'];
-
-            if (!$isPreview && !empty($link['id'])) {
-                $pdo->prepare("UPDATE eval_links SET uses_count=uses_count+1 WHERE id=?")
-                    ->execute([$link['id']]);
-            }
-
-            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=quiz&rid=' . $newResultId . '&q=0' . ($isPreview ? '&preview=1&exam_id=' . $examId : ''));
-            exit;
+            $selection = serialize_exam_selection($questions);
+            $stmt = $pdo->prepare("INSERT INTO eval_results (exam_id,link_id,student_name,student_doc,student_phone,student_email,modality,selection_json,status,started_at) VALUES (?,?,?,?,?,?,'online',?,'started',CURRENT_TIMESTAMP) RETURNING id");
+            $stmt->execute([$examId,$isPreview?null:(int)$link['id'],$studentName,$studentDoc,$studentPhone?:null,$studentEmail?:null,$selection]);
+            $newResultId = (int)$stmt->fetchColumn();
+            if (!$isPreview && !empty($link['id'])) $pdo->prepare('UPDATE eval_links SET uses_count=uses_count+1 WHERE id=?')->execute([$link['id']]);
+            ev_redirect(['t'=>$token,'step'=>'quiz','rid'=>$newResultId,'q'=>0] + ($isPreview ? ['preview'=>1,'exam_id'=>$examId] : []));
         }
     }
 }
 
-// ─── POST: Enviar respuestas ──────────────────────────────────────────────────
-// ─── POST: Navigate question by question (quiz/viewer style) ─────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eval_answer']) && $resultId > 0) {
-    $qIndex   = (int) ($_POST['q_index'] ?? 0);
-    $total    = (int) ($_POST['q_total'] ?? 0);
-    $sessKey  = 'eval_answers_' . $resultId;
-    if (!isset($_SESSION[$sessKey])) $_SESSION[$sessKey] = [];
+$quiz = [];
+$resultRow = null;
+if ($resultId > 0) {
+    $stmt = $pdo->prepare('SELECT * FROM eval_results WHERE id=? AND exam_id=? LIMIT 1');
+    $stmt->execute([$resultId,$examId]);
+    $resultRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    if ($resultRow) $quiz = load_exam_questions_from_selection($pdo, (string)($resultRow['selection_json'] ?? ''));
+}
 
-    $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
-    $resStmt->execute([$resultId]);
-    $qResult = $resStmt->fetch(PDO::FETCH_ASSOC);
+$sessionKey = 'eval_answers_' . $resultId;
+if (!isset($_SESSION[$sessionKey]) || !is_array($_SESSION[$sessionKey])) $_SESSION[$sessionKey] = [];
+$answers =& $_SESSION[$sessionKey];
 
-    if ($qResult) {
-        $questions = load_exam_questions_from_selection($pdo, $qResult['selection_json'] ?? '');
-        $q         = $questions[$qIndex] ?? null;
-
-        if ($q) {
-            $qType = $q['type'] ?? 'multiple_choice';
-            if (in_array($qType, ['match', 'drag_drop', 'drag_drop_kids', 'unscramble'], true)) {
-                $rawAns = isset($_POST['answer']) && is_array($_POST['answer'])
-                    ? $_POST['answer']
-                    : (isset($_POST['answer']) ? $_POST['answer'] : null);
-            } else {
-                $rawAns = trim((string) ($_POST['answer'] ?? ''));
-            }
-
-            if (isset($_POST['skip'])) {
-                $rawAns = null;
-            }
-
-            $_SESSION[$sessKey][$qIndex] = $rawAns;
-        }
-
-        $next = $qIndex + 1;
-        if ($next >= $total) {
-            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=submit&rid=' . $resultId . ($isPreview ? '&preview=1&exam_id=' . $examId : ''));
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['eval_answer']) && $resultRow && $resultRow['status'] === 'started') {
+    $qIndex = max(0, min((int)($_POST['q_index'] ?? 0), max(0, count($quiz)-1)));
+    $question = $quiz[$qIndex] ?? null;
+    if ($question) {
+        if (isset($_POST['skip'])) {
+            $given = null;
+        } elseif (in_array(($question['type'] ?? ''), ['match','drag_drop','drag_drop_kids','unscramble'], true)) {
+            $given = isset($_POST['answer']) && is_array($_POST['answer']) ? $_POST['answer'] : [];
         } else {
-            header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=quiz&rid=' . $resultId . '&q=' . $next . ($isPreview ? '&preview=1&exam_id=' . $examId : ''));
+            $given = trim((string)($_POST['answer'] ?? ''));
         }
-        exit;
+        $score = qz_answer_score($question, $given);
+        $answers[$qIndex] = ['answer'=>$given,'correct'=>(bool)$score['correct'],'earned'=>(float)$score['earned'],'possible'=>(int)$score['possible'],'skipped'=>isset($_POST['skip'])];
     }
+    if (count($answers) >= count($quiz)) {
+        ev_redirect(['t'=>$token,'step'=>'submit','rid'=>$resultId] + ($isPreview ? ['preview'=>1,'exam_id'=>$examId] : []));
+    }
+    ev_redirect(['t'=>$token,'step'=>'quiz','rid'=>$resultId,'q'=>min($qIndex+1,max(0,count($quiz)-1))] + ($isPreview ? ['preview'=>1,'exam_id'=>$examId] : []));
 }
 
-// ─── GET: Auto-submit when all questions answered ─────────────────────────────
-if ($step === 'submit' && $resultId > 0) {
-    $sessKey   = 'eval_answers_' . $resultId;
-    $sessAns   = $_SESSION[$sessKey] ?? [];
-    $resStmt   = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
-    $resStmt->execute([$resultId]);
-    $subResult = $resStmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($subResult) {
-        $_POST['submit_exam'] = '1';
-        $_POST['answers']     = $sessAns;
-        unset($_SESSION[$sessKey]);
+if ($step === 'submit' && $resultRow && $resultRow['status'] === 'started') {
+    $totals = ev_result_totals($quiz, $answers);
+    $log = [];
+    foreach ($quiz as $i => $question) {
+        $answer = $answers[$i] ?? ['answer'=>null,'correct'=>false,'earned'=>0,'possible'=>qz_answer_score($question,null)['possible']];
+        $log[] = ['q'=>$i,'type'=>$question['type']??'','given'=>is_array($answer['answer'])?json_encode($answer['answer']):(string)($answer['answer']??''),'correct'=>qz_review_correct_text($question),'is_correct'=>(bool)$answer['correct'],'pts_earned'=>(float)$answer['earned'],'pts_max'=>(int)$answer['possible']];
     }
+    $pdo->prepare("UPDATE eval_results SET score=?,max_score=?,pct=?,answers_json=?,status='submitted',submitted_at=CURRENT_TIMESTAMP WHERE id=?")->execute([$totals['earned'],$totals['possible'],$totals['percent'],json_encode($log),$resultId]);
+    unset($_SESSION[$sessionKey]);
+    ev_redirect(['t'=>$token,'step'=>'result','rid'=>$resultId] + ($isPreview ? ['preview'=>1,'exam_id'=>$examId] : []));
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_exam']) && $resultId > 0) {
-    $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? AND status='started' LIMIT 1");
-    $resStmt->execute([$resultId]);
-    $result = $resStmt->fetch(PDO::FETCH_ASSOC);
-
-    if ($result && $result['exam_id'] == $examId) {
-        $questions = load_exam_questions_from_selection($pdo, $result['selection_json'] ?? '');
-        $answers   = (array) ($_POST['answers'] ?? []);
-
-        $totalScore  = 0.0;
-        $maxScore    = 0.0;
-        $skillScores = [];
-        $answersLog  = [];
-
-        foreach ($questions as $i => $q) {
-            $qType   = $q['type'] ?? 'multiple_choice';
-            $pts     = (float) ($q['points'] ?? 1);
-            $skill   = $q['skill'] ?? 'grammar';
-            $rawAns  = $answers[$i] ?? null;
-
-            if (in_array($qType, ['match', 'drag_drop', 'drag_drop_kids'], true)) {
-                $given = is_array($rawAns) ? $rawAns : (is_string($rawAns) ? json_decode($rawAns, true) ?? $rawAns : null);
-            } else {
-                $given = is_string($rawAns) ? trim($rawAns) : (string)($rawAns ?? '');
-            }
-
-            $scoreResult = qz_answer_score($q, $given);
-            $earned      = min($pts, ($scoreResult['earned'] / max(1, $scoreResult['possible'])) * $pts);
-            $isCorrect   = $scoreResult['correct'];
-            $givenStr    = is_array($given) ? json_encode($given) : (string)($given ?? '');
-            $correctStr  = is_array($q['correct'] ?? null) ? json_encode($q['correct']) : (string)($q['correct'] ?? '');
-
-            $skillScores[$skill] = $skillScores[$skill] ?? ['score' => 0, 'total' => 0];
-            $skillScores[$skill]['score'] += $earned;
-            $skillScores[$skill]['total'] += $pts;
-
-            $totalScore += $earned;
-            $maxScore   += $pts;
-
-            $answersLog[] = ['q'=>$i,'type'=>$qType,'skill'=>$skill,'given'=>$givenStr,'correct'=>$correctStr,'is_correct'=>$isCorrect,'pts_earned'=>$earned,'pts_max'=>$pts];
-        }
-
-        $pct = $maxScore > 0 ? round($totalScore / $maxScore * 100, 2) : 0;
-        $cefrStmt = $pdo->prepare("SELECT cefr_level FROM eval_cefr_ranges WHERE exam_id=? AND ? BETWEEN min_pct AND max_pct ORDER BY min_pct LIMIT 1");
-        $cefrStmt->execute([$examId, $pct]);
-        $cefrRow = $cefrStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$cefrRow) {
-            $cefrStmt2 = $pdo->prepare("SELECT cefr_level FROM eval_cefr_ranges WHERE is_global=TRUE AND ? BETWEEN min_pct AND max_pct ORDER BY min_pct LIMIT 1");
-            $cefrStmt2->execute([$pct]);
-            $cefrRow = $cefrStmt2->fetch(PDO::FETCH_ASSOC);
-        }
-        $cefr = $cefrRow ? $cefrRow['cefr_level'] : 'A1';
-
-        $pdo->prepare("UPDATE eval_results SET score=?, max_score=?, pct=?, cefr_suggested=?, answers_json=?, skill_scores=?, status='submitted', submitted_at=CURRENT_TIMESTAMP WHERE id=?")
-            ->execute([$totalScore, $maxScore, $pct, $cefr, json_encode($answersLog), json_encode($skillScores), $resultId]);
-
-        header('Location: eval_viewer.php?t=' . urlencode($token) . '&step=result&rid=' . $resultId . ($isPreview ? '&preview=1&exam_id=' . $examId : ''));
-        exit;
-    }
+if ($step === 'result' && $resultRow) {
+    $stmt = $pdo->prepare('SELECT * FROM eval_results WHERE id=? LIMIT 1');
+    $stmt->execute([$resultId]);
+    $resultRow = $stmt->fetch(PDO::FETCH_ASSOC) ?: $resultRow;
 }
 
-// ─── Cargar datos para exam / result ─────────────────────────────────────────
-$questions  = [];
-$result     = null;
-$skillScores = [];
-
-if (in_array($step, ['exam', 'quiz'], true) && $resultId > 0) {
-    $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? LIMIT 1");
-    $resStmt->execute([$resultId]);
-    $result = $resStmt->fetch(PDO::FETCH_ASSOC);
-    if ($result && $result['exam_id'] == $examId) {
-        $questions = load_exam_questions_from_selection($pdo, $result['selection_json'] ?? '');
-    }
-}
-
-if ($step === 'result' && $resultId > 0) {
-    $resStmt = $pdo->prepare("SELECT * FROM eval_results WHERE id=? LIMIT 1");
-    $resStmt->execute([$resultId]);
-    $result = $resStmt->fetch(PDO::FETCH_ASSOC);
-    if ($result) {
-        $skillScores = is_string($result['skill_scores']) ? json_decode($result['skill_scores'], true) : ($result['skill_scores'] ?? []);
-    }
-}
-
-$cefrColors = ['A1'=>'#6c757d','A2'=>'#17a2b8','B1'=>'#28a745','B2'=>'#007bff','C1'=>'#6f42c1','C2'=>'#dc3545'];
-$cefrLabels = ['A1'=>'Principiante','A2'=>'Básico','B1'=>'Intermedio','B2'=>'Intermedio Alto','C1'=>'Avanzado','C2'=>'Maestría'];
-$skillLabels = ['grammar'=>'Grammar','vocabulary'=>'Vocabulary','listening'=>'Listening','reading'=>'Reading','writing'=>'Writing','speaking'=>'Speaking'];
-$timeLimitMin = (int) ($link['time_limit_min'] ?? 50);
+$currentQuestion = $quiz[$qIndex] ?? null;
+$timeLimit = (int)($link['time_limit_min'] ?? 50);
 ?>
-<?php
-$evalHref = static function (string $nextStep, ?int $nextQuestion = null) use ($token, $resultId, $isPreview, $examId): string {
-    $params = ['t' => $token, 'step' => $nextStep];
-    if ($resultId > 0) $params['rid'] = $resultId;
-    if ($nextQuestion !== null) $params['q'] = $nextQuestion;
-    if ($isPreview) {
-        $params['preview'] = '1';
-        $params['exam_id'] = $examId;
-    }
-    return 'eval_viewer.php?' . http_build_query($params);
-};
-$resultAnswers = [];
-if ($result && !empty($result['answers_json'])) {
-    $resultAnswers = is_string($result['answers_json'])
-        ? (json_decode($result['answers_json'], true) ?: [])
-        : (array) $result['answers_json'];
-}
-$resultPct = (float) ($result['pct'] ?? 0);
-$resultCorrect = count(array_filter($resultAnswers, static fn ($answer) => !empty($answer['is_correct'])));
-$resultTotal = count($resultAnswers);
-?>
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= h($link['exam_title']) ?> — ONES Evaluation</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-<link rel="stylesheet" href="../../core/activity_zoom.css">
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800;900&display=swap');
-:root{--pu:#8070dd;--or:#ff7315;--ink:#14113a;--mut:#8f86c5;--line:#e9e3fb;--bg:#f8f7ff}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Nunito,sans-serif;color:var(--ink)}.page{max-width:1020px;margin:auto;padding:34px 24px 56px}.top,.card{background:#fff;border:1px solid var(--line);border-radius:22px}.top{padding:18px 28px;display:flex;justify-content:space-between;align-items:center;max-width:820px;margin:0 auto 26px}.brand{font-weight:900;color:var(--pu);font-size:20px}.sub{font-size:15px;color:var(--mut)}.btn-back,.tab,.btn{display:inline-flex;align-items:center;justify-content:center;text-decoration:none;font-family:Nunito,sans-serif;font-weight:900;cursor:pointer;transition:.15s}.btn-back{gap:6px;padding:9px 16px;border-radius:10px;background:#f0ecff;color:var(--pu);font-size:13px;border:1px solid var(--line)}.btn-back:hover,.tab:hover{transform:translateY(-1px)}.tabs{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}.tab{border:1px solid var(--line);background:#fff;color:var(--pu);border-radius:12px;padding:11px 22px;font-size:13px;box-shadow:0 7px 18px rgba(127,112,221,.13);min-width:112px}.tab.on{background:var(--pu);color:#fff;border-color:var(--pu)}.screen-title{text-align:center;color:#c0b8e8;font-size:13px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}.card{max-width:720px;margin:auto;padding:36px;box-shadow:0 8px 24px rgba(127,119,221,.09)}.kicker,.tag{display:inline-flex;align-items:center;gap:8px;background:#fff0e6;color:var(--or);border:1px solid #fcd7b9;border-radius:999px;padding:7px 16px;font-weight:900;font-size:13px;text-transform:uppercase}.title{font:700 40px Fredoka,sans-serif;color:var(--or);margin:14px 0 6px}.lead{color:var(--pu);font-size:18px;line-height:1.45}.chips{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0}.chip{border:1px solid var(--line);border-radius:999px;color:var(--pu);padding:9px 14px;font-size:14px;font-weight:900;background:#fbfaff}.hr{height:1px;background:var(--line);margin:24px 0}.included{color:#a99ee0;font-size:13px;font-weight:900}.form-group{margin-bottom:16px}.form-group label{display:block;color:var(--mut);font-size:13px;font-weight:800;margin-bottom:6px}.form-group input,.text-answer{width:100%;border:1px solid var(--line);border-radius:13px;padding:14px;font:600 15px Nunito;color:var(--ink)}.form-group input:focus,.text-answer:focus{outline:3px solid rgba(127,119,221,.12);border-color:var(--pu)}.btn{border:0;border-radius:13px;padding:14px 20px;gap:8px;font-size:15px}.btn-primary,.btn-purple{background:var(--pu);color:#fff}.btn-primary:hover,.btn-purple:hover{background:#6559cc}.btn-light{background:#fff;color:var(--pu);border:1px solid var(--line)}.w100{width:100%}.progress-head{display:flex;justify-content:space-between;color:var(--pu);font-size:14px;font-weight:900}.track{height:9px;background:#eeeafa;border-radius:999px;overflow:hidden;margin:10px 0 24px}.bar{height:100%;background:linear-gradient(90deg,var(--or),var(--pu))}.tag{background:#f0ecff;color:var(--pu);padding:8px 13px;margin-bottom:16px}.question{font-weight:900;line-height:1.4;margin-bottom:22px;font-size:24px}.audio-player{width:100%;margin:0 0 16px;border-radius:12px}.question-image{display:block;width:100%;max-height:280px;object-fit:contain;border-radius:14px;border:1px solid var(--line);background:#fff;margin:0 0 18px}.options-list{display:flex;flex-direction:column;gap:12px}.option{border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center;font-weight:800;font-size:17px;cursor:pointer}.option input{display:none}.option:hover,.option:has(input:checked){border-color:var(--pu);background:#f8f6ff}.letter{background:#eeeafa;color:var(--pu);border-radius:999px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}.option:has(input:checked) .letter{background:var(--pu);color:#fff}.actions{display:flex;gap:12px;margin-top:18px}.result-hero{background:linear-gradient(135deg,#eee9ff,#fff0e6);border-radius:18px;text-align:center;padding:36px 22px;margin-bottom:22px}.pct{font:700 58px Fredoka,sans-serif;color:var(--or);margin:18px 0 4px}.result-chip{display:inline-flex;border-radius:999px;padding:7px 12px;font-size:14px;font-weight:900;margin:5px;background:#fff;border:1px solid var(--line);color:var(--pu)}.skill-row{display:flex;align-items:center;gap:12px;margin:12px 0}.skill-name{width:120px;font-weight:800;font-size:14px}.skill-bar-wrap{flex:1;background:#eeeafa;border-radius:999px;height:12px;overflow:hidden}.skill-bar{height:100%;background:linear-gradient(90deg,var(--or),var(--pu))}.skill-pct{width:50px;text-align:right;font-weight:900;color:var(--pu)}.error{background:#fff1f1;color:#991b1b;border:1px solid #fecaca;border-radius:12px;padding:10px 14px;font-weight:800;margin-bottom:16px}
-@media(max-width:760px){.page{padding:22px 14px 42px}.top{max-width:100%;padding:14px 18px}.card{padding:24px}.title{font-size:34px}.question{font-size:20px}.actions{flex-direction:column}.actions .btn{width:100%}.tab{min-width:0;flex:1;padding:10px 12px}.skill-name{width:90px}}
-</style>
-</head>
-<body>
-<div class="page" data-az-zoom>
-  <div class="top">
-    <div style="display:flex;align-items:center;gap:10px">
-      <svg width="42" height="42" viewBox="0 0 36 36" fill="none" aria-hidden="true"><rect width="36" height="36" rx="9" fill="#FFF0E6"/><circle cx="17" cy="15" r="8.5" fill="#F97316"/><polygon points="12,22 7,30 21,26" fill="#F97316"/><circle cx="17" cy="15" r="4.5" fill="#FFF0E6"/><circle cx="24" cy="9" r="3.5" fill="#7B6EE6"/><circle cx="24" cy="9" r="1.75" fill="#fff"/></svg>
-      <div><div class="brand">ONES</div><div class="sub">ONLINE ENGLISH SOLUTION · EVALUATION</div></div>
-    </div>
-    <a class="btn-back" href="<?= h($evalHref('welcome')) ?>">← Back</a>
-  </div>
-  <nav class="tabs" aria-label="Evaluation navigation">
-    <a class="tab <?= $step === 'welcome' ? 'on' : '' ?>" href="<?= h($evalHref('welcome')) ?>">Intro</a>
-    <a class="tab <?= $step === 'quiz' ? 'on' : '' ?>" href="<?= h($evalHref('quiz', (int)($_GET['q'] ?? 0))) ?>">Quiz</a>
-    <a class="tab <?= $step === 'result' ? 'on' : '' ?>" href="<?= h($evalHref('result')) ?>">Result</a>
-  </nav>
-<?php if ($step === 'welcome'): ?>
-  <div class="screen-title">Evaluation introduction</div>
-  <div class="card">
-    <span class="kicker">EVALUATION</span>
-    <div class="title"><?= h($link['exam_title']) ?></div>
-    <div class="lead">Complete your details to begin the evaluation.</div>
-    <div class="chips"><span class="chip"><i class="ti ti-clock"></i> <?= $timeLimitMin ?> minutes</span><span class="chip">Secure submission</span><span class="chip">Results at the end</span></div>
-    <div class="hr"></div>
-    <div class="included">STUDENT DETAILS</div>
-    <?php if ($errorMsg): ?><div class="error" role="alert"><?= h($errorMsg) ?></div><?php endif; ?>
-    <form method="POST">
-      <input type="hidden" name="start_exam" value="1">
-      <div class="form-group"><label for="student-name">Full name *</label><input id="student-name" type="text" name="student_name" required value="<?= h($link['student_name'] ?? '') ?>"></div>
-      <div class="form-group"><label for="student-doc">Document / ID</label><input id="student-doc" type="text" name="student_doc" value="<?= h($link['student_doc'] ?? '') ?>"></div>
-      <div class="form-group"><label for="student-phone">Phone</label><input id="student-phone" type="text" name="student_phone" value="<?= h($link['student_phone'] ?? '') ?>"></div>
-      <div class="form-group"><label for="student-email">Email</label><input id="student-email" type="email" name="student_email" value="<?= h($link['student_email'] ?? '') ?>"></div>
-      <button type="submit" class="btn btn-purple w100">Start evaluation</button>
-    </form>
-  </div>
-<?php elseif ($step === 'quiz'): $qIndex=(int)($_GET['q'] ?? 0); $total=count($questions); $q=$questions[$qIndex] ?? null; ?>
-  <?php if (!$q): ?><div class="card"><span class="kicker">EMPTY STATE</span><div class="title">No questions found</div><div class="lead">No questions were found for this evaluation. Please contact your institution.</div></div><?php else: ?>
-  <div class="screen-title">Question <?= $qIndex + 1 ?> of <?= $total ?></div>
-  <div class="card">
-    <div class="progress-head"><span>PROGRESS</span><span><?= $qIndex + 1 ?> / <?= $total ?></span></div>
-    <div class="track" aria-label="Evaluation progress"><div class="bar" style="width:<?= round((($qIndex + 1) / max(1, $total)) * 100) ?>%"></div></div>
-    <div class="tag"><i class="ti ti-<?= $q['type'] === 'multiple_choice' ? 'checks' : 'question-mark' ?>"></i><?= h($q['type'] ?? 'Question') ?> · <?= h($q['skill'] ?? '') ?></div>
-    <div class="question"><?= h($q['question'] ?? $q['text'] ?? '') ?></div>
-    <?php if (!empty($q['audio'])): ?><audio class="audio-player" controls preload="metadata" src="<?= h($q['audio']) ?>" aria-label="Question audio"></audio><?php endif; ?>
-    <?php if (!empty($q['image'])): ?><img class="question-image" src="<?= h($q['image']) ?>" alt="Question illustration" loading="lazy"><?php endif; ?>
-    <form method="POST" id="eval-question-form">
-      <input type="hidden" name="eval_answer" value="1"><input type="hidden" name="q_index" value="<?= $qIndex ?>"><input type="hidden" name="q_total" value="<?= $total ?>">
-      <?php if (!empty($q['options'])): ?><div class="options-list"><?php foreach ($q['options'] as $i => $opt): $optionValue = $q['type'] === 'multiple_choice' ? (string)$i : (string)$opt; ?><label class="option"><input type="radio" name="answer" value="<?= h($optionValue) ?>" onchange="this.form.submit()"><span class="letter"><?= chr(65 + $i) ?></span><span><?= h((string)$opt) ?></span></label><?php endforeach; ?></div><?php else: ?><textarea class="text-answer" name="answer" rows="4" placeholder="Type your answer…" aria-label="Your answer"></textarea><?php endif; ?>
-      <div class="actions"><?php if (empty($q['options'])): ?><button class="btn btn-purple" type="submit">Next</button><?php endif; ?><button class="btn btn-light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div>
-    </form>
-  </div>
-  <?php endif; ?>
-<?php elseif ($step === 'result'): ?>
-  <div class="screen-title">Evaluation complete</div>
-  <div class="result-hero">
-    <span class="kicker">EVALUATION RESULT</span>
-    <div class="title"><?= h($link['exam_title']) ?></div>
-    <div class="pct"><?= h((string)round($resultPct)) ?>%</div>
-    <div class="result-chip">✓ <?= $resultCorrect ?> / <?= $resultTotal ?> correct</div><div class="result-chip">CEFR <?= h($result['cefr_suggested'] ?? 'A1') ?></div>
-  </div>
-  <div class="card">
-    <div class="tag"><i class="ti ti-chart-bar"></i> Skill breakdown</div>
-    <?php foreach ($skillLabels as $skillKey => $skillLabel): $skill = $skillScores[$skillKey] ?? null; $skillPct = $skill && (float)($skill['total'] ?? 0) > 0 ? round((float)$skill['score'] / (float)$skill['total'] * 100) : null; if ($skillPct === null) continue; ?>
-      <div class="skill-row"><span class="skill-name"><?= h($skillLabel) ?></span><span class="skill-bar-wrap"><span class="skill-bar" style="display:block;width:<?= $skillPct ?>%"></span></span><span class="skill-pct"><?= $skillPct ?>%</span></div>
-    <?php endforeach; ?>
-  </div>
-  <div class="card actions"><a class="btn btn-light" href="<?= h($evalHref('result')) ?>">View result</a><a class="btn btn-purple" href="<?= h($evalHref('welcome')) ?>">Finish</a></div>
-<?php endif; ?>
-</div>
-<script>document.querySelectorAll('.option').forEach(function(option){option.addEventListener('keydown',function(event){if(event.key==='Enter'||event.key===' '){event.preventDefault();var input=option.querySelector('input');if(input){input.checked=true;input.form.submit();}}});});</script>
-<script src="../../core/activity_zoom.js"></script>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title><?=ev_h($link['exam_title'])?> — ONES</title><style>
+:root{--purple:#7F77DD;--purple-dark:#534AB7;--purple-soft:#EEEDFE;--orange:#F97316;--line:#EDE9FA;--ink:#14113A;--muted:#8178B6;--bg:#F8F7FF}*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Nunito,Arial,sans-serif;color:var(--ink)}.page{max-width:820px;margin:auto;padding:28px 18px 50px}.top,.card{background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 8px 28px rgba(127,119,221,.10)}.top{padding:16px 20px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between}.brand{font-weight:900;color:var(--purple)}.card{padding:28px}.kicker{display:inline-block;background:#FFF0E6;color:#C2580A;border-radius:999px;padding:6px 13px;font-size:12px;font-weight:900}.title{font-size:34px;color:var(--orange);margin:12px 0}.lead{color:var(--muted);font-weight:700;line-height:1.5}.chips{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0}.chip{background:#F0EEF8;color:var(--purple);border-radius:999px;padding:7px 11px;font-size:12px;font-weight:900}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:12px 18px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer;text-decoration:none}.btn.orange{background:var(--orange)}.btn.light{background:#fff;color:var(--purple);border:1px solid var(--line)}.w100{width:100%}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.actions>*{flex:1;min-width:150px}.progress{height:9px;background:#EEEAF9;border-radius:999px;overflow:hidden;margin:10px 0 22px}.progress>div{height:100%;background:linear-gradient(90deg,var(--orange),var(--purple))}.question{font-size:23px;font-weight:900;line-height:1.4;margin:12px 0}.question-media{display:flex;justify-content:center;margin:12px 0 18px}.quiz-media{display:block;max-width:100%;max-height:240px;object-fit:contain;border-radius:16px}.option{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;margin:10px 0;font-weight:800;cursor:pointer}.option:has(input:checked){border-color:var(--purple);background:#F8F7FF}.option-image{display:block;max-width:100%;max-height:180px;object-fit:contain;margin:auto}.input,.select{width:100%;padding:14px;border:1px solid var(--line);border-radius:12px;font:700 16px Nunito,Arial;margin:8px 0}.match-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;margin:8px 0}.listen-box{display:flex;align-items:center;gap:12px;background:#F8F7FF;border:1px solid var(--line);border-radius:16px;padding:14px;margin:12px 0}.listen-btn{border:0;border-radius:12px;padding:12px 18px;background:var(--purple);color:#fff;font-weight:900;cursor:pointer}.dd-shell{border:1px solid #F0EEF8;border-radius:28px;padding:20px;box-shadow:0 8px 30px rgba(127,119,221,.10)}.dd-instruction{font-size:18px;font-weight:800;line-height:2.15;text-align:center;color:var(--purple-dark);background:var(--purple-soft);border-radius:16px;padding:18px;margin-bottom:16px}.dd-slot{display:inline-flex;align-items:center;justify-content:center;min-width:96px;height:38px;padding:0 10px;margin:0 3px;border:2px dashed #d8d3f5;border-radius:10px;background:#fff;color:var(--muted);font-weight:900}.dd-slot.filled{border-style:solid;background:var(--purple-soft);color:var(--purple-dark)}.dd-bank{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;min-height:58px}.dd-chip{padding:12px 22px;border-radius:14px;background:var(--purple-soft);border:2px solid #AFA9EC;color:var(--purple-dark);font-size:17px;font-weight:900;cursor:grab}.dd-chip.selected{background:var(--purple);color:#fff}.dd-chip.used{display:none}.dd-hidden{display:none}.result{font-size:58px;font-weight:900;color:var(--orange);text-align:center}.error{background:#fff1f1;color:#991b1b;border:1px solid #fecaca;border-radius:12px;padding:10px 14px;font-weight:800;margin-bottom:16px}@media(max-width:650px){.match-row{grid-template-columns:1fr}.actions{flex-direction:column}.actions>*{width:100%}}
+</style></head><body><div class="page"><div class="top"><div class="brand">ONES · Unit Exam</div><div><?=ev_h($link['exam_title'])?></div></div>
+<?php if($step==='welcome'):?><section class="card"><span class="kicker">UNIT EXAM</span><h1 class="title"><?=ev_h($link['exam_title'])?></h1><p class="lead">Complete your information to begin.</p><div class="chips"><span class="chip"><?=$timeLimit?> minutes</span><span class="chip">Same unit activities</span><span class="chip">Results at the end</span></div><?php if($errorMsg):?><div class="error"><?=ev_h($errorMsg)?></div><?php endif;?><form method="post"><input type="hidden" name="start_exam" value="1"><input class="input" name="student_name" required placeholder="Full name" value="<?=ev_h($link['student_name']??'')?>"><input class="input" name="student_doc" placeholder="Document / ID" value="<?=ev_h($link['student_doc']??'')?>"><input class="input" name="student_phone" placeholder="Phone" value="<?=ev_h($link['student_phone']??'')?>"><input class="input" type="email" name="student_email" placeholder="Email" value="<?=ev_h($link['student_email']??'')?>"><button class="btn orange w100" type="submit">Start exam</button></form></section>
+<?php elseif($step==='quiz'&&$currentQuestion):?><section class="card"><span class="kicker">QUESTION <?=$qIndex+1?> OF <?=count($quiz)?></span><div class="progress"><div style="width:<?=(int)round((($qIndex+1)/max(1,count($quiz)))*100)?>%"></div></div><div class="question"><?=ev_h($currentQuestion['question']??$currentQuestion['text']??'Answer the question.')?></div><?php if(!empty($currentQuestion['image'])):?><div class="question-media"><?=ev_media($currentQuestion['image'],'Question image')?></div><?php endif;?><form method="post"><input type="hidden" name="eval_answer" value="1"><input type="hidden" name="q_index" value="<?=$qIndex?>">
+<?php if(($currentQuestion['type']??'')==='multiple_choice'):foreach(($currentQuestion['options']??[])as$i=>$option):$isImg=ev_is_image($option);?><label class="option"><input type="radio" name="answer" value="<?=$i?>" required><span><?=chr(65+$i)?>.</span><span><?=$isImg?ev_media($option,'Option '.chr(65+$i),'option-image'):ev_h($option)?></span></label><?php endforeach;
+elseif(($currentQuestion['type']??'')==='match'):$rights=array_column($currentQuestion['pairs']??[],'right');foreach(($currentQuestion['pairs']??[])as$i=>$pair):?><div class="match-row"><strong><?=ev_is_image($pair['left']??'')?ev_media($pair['left'],'Match item','option-image'):ev_h($pair['left']??'')?></strong><select class="select" name="answer[<?=$i?>]" required><option value="">Choose</option><?php foreach($rights as$right):?><option value="<?=ev_h($right)?>"><?=ev_h($right)?></option><?php endforeach;?></select></div><?php endforeach;
+elseif(($currentQuestion['type']??'')==='drag_drop'):$words=array_values((array)($currentQuestion['correct_words']??[]));$instruction=(string)($currentQuestion['instruction']??implode(' ',array_fill(0,count($words),'___')));$parts=preg_split('/(___+)/',$instruction,-1,PREG_SPLIT_DELIM_CAPTURE);?><div class="dd-shell" data-dd><div class="dd-instruction"><?php $si=0;foreach($parts as$part):if(preg_match('/^___+$/',$part)):?><span class="dd-slot" data-slot="<?=$si++?>">___</span><?php else:?><?=ev_h($part)?><?php endif;endforeach;?></div><div class="dd-bank"><?php $shuffled=$words;shuffle($shuffled);foreach($shuffled as$ci=>$word):?><button type="button" class="dd-chip" draggable="true" data-word="<?=ev_h($word)?>" data-chip="<?=$ci?>"><?=ev_h($word)?></button><?php endforeach;?></div><?php foreach($words as$i=>$word):?><input class="dd-hidden" name="answer[<?=$i?>]" data-answer="<?=$i?>" required><?php endforeach;?></div>
+<?php elseif(($currentQuestion['type']??'')==='dictation'):?><div class="listen-box"><button class="listen-btn" type="button" data-audio="<?=ev_h($currentQuestion['audio']??'')?>" data-text="<?=ev_h($currentQuestion['correct']??'')?>">🔊 Listen</button><span>Listen, then type exactly what you hear.</span></div><input class="input" name="answer" required placeholder="Type what you hear">
+<?php elseif(($currentQuestion['type']??'')==='fill'):?><input class="input" name="answer" required placeholder="Type the missing word or phrase">
+<?php else:?><textarea class="input" name="answer" rows="3" required placeholder="Type your answer"></textarea><?php endif;?><div class="actions"><button class="btn orange" type="submit">Next</button><button class="btn light" type="submit" name="skip" value="1" formnovalidate>Skip</button></div></form></section>
+<?php elseif($step==='result'&&$resultRow):?><section class="card"><span class="kicker">EXAM COMPLETE</span><div class="result"><?=(int)round((float)($resultRow['pct']??0))?>%</div><h1 class="title" style="text-align:center"><?=ev_h($link['exam_title'])?></h1><div class="chips" style="justify-content:center"><span class="chip">Score <?=ev_h($resultRow['score']??0)?> / <?=ev_h($resultRow['max_score']??0)?></span></div></section>
+<?php else:?><section class="card"><h1 class="title">Exam unavailable</h1><p class="lead">Return to the original link and start again.</p></section><?php endif;?></div><script>
+(function(){var activeAudio=null;document.querySelectorAll('.listen-btn').forEach(function(button){button.addEventListener('click',function(){var url=(button.dataset.audio||'').trim(),text=(button.dataset.text||'').trim();if(activeAudio){activeAudio.pause();activeAudio=null;}if('speechSynthesis'in window)window.speechSynthesis.cancel();if(url){activeAudio=new Audio(url);activeAudio.play().catch(function(){if(text&&'speechSynthesis'in window){var u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);}});}else if(text&&'speechSynthesis'in window){var u=new SpeechSynthesisUtterance(text);u.lang='en-US';u.rate=.85;window.speechSynthesis.speak(u);}});});document.querySelectorAll('[data-dd]').forEach(function(root){var selected=null,chips=[].slice.call(root.querySelectorAll('.dd-chip')),slots=[].slice.call(root.querySelectorAll('.dd-slot'));function sync(){slots.forEach(function(slot,i){var input=root.querySelector('[data-answer="'+i+'"]');if(input)input.value=slot.dataset.value||'';});}function clear(slot){var id=slot.dataset.chip;if(id!==''){var chip=root.querySelector('[data-chip="'+id+'"]');if(chip)chip.classList.remove('used');}slot.dataset.value='';slot.dataset.chip='';slot.textContent='___';slot.classList.remove('filled');sync();}function place(chip,slot){if(slot.dataset.value)clear(slot);slot.dataset.value=chip.dataset.word;slot.dataset.chip=chip.dataset.chip;slot.textContent=chip.dataset.word;slot.classList.add('filled');chip.classList.add('used');chips.forEach(function(c){c.classList.remove('selected');});selected=null;sync();}chips.forEach(function(chip){chip.addEventListener('dragstart',function(e){e.dataTransfer.setData('text/plain',chip.dataset.chip);});chip.addEventListener('click',function(){chips.forEach(function(c){c.classList.remove('selected');});selected=chip;chip.classList.add('selected');});});slots.forEach(function(slot){slot.dataset.value='';slot.dataset.chip='';slot.addEventListener('dragover',function(e){e.preventDefault();});slot.addEventListener('drop',function(e){e.preventDefault();var chip=root.querySelector('[data-chip="'+e.dataTransfer.getData('text/plain')+'"]');if(chip)place(chip,slot);});slot.addEventListener('click',function(){if(selected)place(selected,slot);else if(slot.dataset.value)clear(slot);});});sync();});})();
+</script></body></html>
