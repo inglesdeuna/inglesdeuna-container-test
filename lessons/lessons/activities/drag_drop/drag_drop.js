@@ -1,6 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
   var AF = window.ActivityFeedback;
   var questions = Array.isArray(window.DRAGDROP_DATA) ? window.DRAGDROP_DATA : [];
+  var quizMode = !!window.DRAGDROP_QUIZ_MODE;
+  var quizSubmit = typeof window.DRAGDROP_QUIZ_SUBMIT === 'function' ? window.DRAGDROP_QUIZ_SUBMIT : null;
+  var quizProgressCurrent = Math.max(1, Number(window.DRAGDROP_PROGRESS_CURRENT) || 1);
+  var quizProgressTotal = Math.max(quizProgressCurrent, Number(window.DRAGDROP_PROGRESS_TOTAL) || questions.length || 1);
 
   var progressLabelEl = document.getElementById('dd-progress-label');
   var progressFillEl = document.getElementById('dd-progress-fill');
@@ -15,6 +19,7 @@ document.addEventListener('DOMContentLoaded', function () {
   var checkBtn = document.getElementById('dd-check');
   var showBtn = document.getElementById('dd-show');
   var nextBtn = document.getElementById('dd-next');
+  var quizSkipBtn = document.getElementById('dd-quiz-skip');
   var feedbackEl = document.getElementById('dd-feedback');
   var activityEl = document.getElementById('dd-activity');
   var cardShellEl = document.getElementById('dd-card-shell');
@@ -100,8 +105,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function updateProgress() {
-    var total = questions.length;
-    var current = index + 1;
+    var total = quizMode ? quizProgressTotal : questions.length;
+    var current = quizMode ? quizProgressCurrent : index + 1;
     var pct = Math.round((current / total) * 100);
 
     if (progressLabelEl) progressLabelEl.textContent = current + ' / ' + total;
@@ -184,7 +189,7 @@ document.addEventListener('DOMContentLoaded', function () {
     ttsAbortController = new AbortController();
     var signal = ttsAbortController.signal;
 
-    fetch('tts.php', {
+    fetch(String(window.DRAGDROP_TTS_URL || 'tts.php'), {
       method: 'POST',
       body: fd,
       credentials: 'same-origin',
@@ -675,6 +680,16 @@ document.addEventListener('DOMContentLoaded', function () {
   function nextQuestion() {
     stopSpeech();
 
+    if (quizMode) {
+      var q = questions[index] || {};
+      var slots = Array.isArray(q.slots) ? q.slots : [];
+      var values = slots.map(function (_, slotIndex) {
+        return String(slotContents[slotIndex] || '');
+      });
+      if (quizSubmit) quizSubmit(values, false);
+      return;
+    }
+
     if (index < questions.length - 1) {
       index++;
       loadQuestion();
@@ -730,8 +745,8 @@ document.addEventListener('DOMContentLoaded', function () {
       showBtn.disabled = false;
     }
     if (nextBtn) {
-      nextBtn.disabled = true;
-      nextBtn.textContent = index < questions.length - 1 ? 'Next' : 'Finish';
+      nextBtn.disabled = !quizMode;
+      nextBtn.textContent = quizMode ? 'Next' : (index < questions.length - 1 ? 'Next' : 'Finish');
     }
   }
 
@@ -750,6 +765,10 @@ document.addEventListener('DOMContentLoaded', function () {
   if (checkBtn) checkBtn.addEventListener('click', checkAnswers);
   if (showBtn) showBtn.addEventListener('click', showAnswers);
   if (nextBtn) nextBtn.addEventListener('click', nextQuestion);
+  if (quizSkipBtn) quizSkipBtn.addEventListener('click', function () {
+    stopSpeech();
+    if (quizSubmit) quizSubmit([], true);
+  });
   if (restartBtn) restartBtn.addEventListener('click', restartActivity);
 
   loadQuestion();

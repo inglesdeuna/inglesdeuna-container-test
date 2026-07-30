@@ -8,7 +8,9 @@ $quizNow=$GLOBALS['quiz']??null;
 $qIndexNow=(int)($GLOBALS['qIndex']??($_GET['q']??0));
 if(!is_array($quizNow)||!isset($quizNow[$qIndexNow])||!is_array($quizNow[$qIndexNow]))return;
 $qNow=$quizNow[$qIndexNow];
-if((string)($qNow['type']??'')!=='fill')return;
+$qType=(string)($qNow['type']??'');
+if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
+if($qType!=='fill')return;
 $question=trim((string)($qNow['question']??''));
 $correctRaw=trim((string)($qNow['correct']??''));
 $answers=array_values(array_filter(array_map('trim',preg_split('/\s*[|,]\s*/',$correctRaw)),static fn($value)=>$value!==''));
