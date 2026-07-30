@@ -20,7 +20,14 @@ function load_unit_performance_db(?PDO $pdo, string $teacherId, string $assignme
   }
 
   try {
-    $stmt = $pdo->prepare("\n          SELECT completion_percent, quiz_errors, quiz_total\n          FROM teacher_unit_results\n          WHERE teacher_id = :teacher_id\n            AND assignment_id = :assignment_id\n            AND unit_id = :unit_id\n          LIMIT 1\n        ");
+    $stmt = $pdo->prepare("
+          SELECT completion_percent, quiz_errors, quiz_total
+          FROM teacher_unit_results
+          WHERE teacher_id = :teacher_id
+            AND assignment_id = :assignment_id
+            AND unit_id = :unit_id
+          LIMIT 1
+        ");
     $stmt->execute([
       'teacher_id' => $teacherId,
       'assignment_id' => $assignmentId,
@@ -41,10 +48,12 @@ $backHref = 'teacher_course.php?assignment=' . urlencode($assignmentId) . '&unit
 $dashboardHref = 'dashboard.php?assignment=' . urlencode($assignmentId) . '&unit=' . urlencode($unitId) . '#unidades-curso';
 $quizEditorHref = '../activities/quiz/editor.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId);
 $quizReturn = $returnTo !== '' ? $returnTo : $backHref;
-$quizViewerHref = '../activities/quiz/viewer.php?unit=' . urlencode($unitId) . '&assignment=' . urlencode($assignmentId) . '&return_to=' . urlencode($quizReturn);
+$quizPrintHref = '../activities/quiz/teacher_print.php?unit=' . urlencode($unitId)
+    . '&assignment=' . urlencode($assignmentId)
+    . '&return_to=' . urlencode('teacher_quiz.php?assignment=' . $assignmentId . '&unit=' . $unitId . '&return_to=' . $quizReturn);
 
 $courseName = trim((string) ($_SESSION['teacher_current_course_name'] ?? 'Curso actual'));
-$unitName = trim((string) ($_SESSION['teacher_current_unit_name'] ?? ($unitId !== '' ? ('Unidad ' . $unitId) : 'Unidad actual')));
+$unitName = trim((string) ($_SESSION['teacher_current_unit_name'] ?? ($unitId !== '' ? ('Unidad ' . $unitId) : 'Unidad actual'));
 
 $teacherId = trim((string) ($_SESSION['teacher_id'] ?? ''));
 $completionPercent = 0;
@@ -193,6 +202,9 @@ body{
   box-shadow:var(--shadow-sm);
   background:linear-gradient(180deg,#3d73ee,#2563eb);
 }
+.btn.print{
+  background:linear-gradient(180deg,#f59e0b,#d97706);
+}
 .btn.secondary{
   background:linear-gradient(180deg,#7b8b9e,#66758b);
 }
@@ -230,11 +242,11 @@ body{
         <span class="badge warn">Errores: <?php echo $quizErrors; ?>/<?php echo $quizTotal; ?></span>
       <?php } ?>
     </div>
-    <p class="text">Este quiz final registra errores y porcentaje para mostrar el resultado al finalizar la unidad. Puedes crear preguntas y luego resolver el quiz para actualizar el cierre.</p>
+    <p class="text">Este quiz final registra errores y porcentaje para mostrar el resultado al finalizar la unidad. Puedes crear preguntas o imprimir únicamente el quiz de esta unidad.</p>
 
     <div class="actions">
       <a class="btn" href="<?php echo h($quizEditorHref); ?>">Abrir editor de quiz</a>
-      <a class="btn" href="<?php echo h($quizViewerHref); ?>">Previsualizar quiz</a>
+      <a class="btn print" href="<?php echo h($quizPrintHref); ?>">🖨 Imprimir quiz / Exportar PDF</a>
       <a class="btn secondary" href="<?php echo h($dashboardHref); ?>">Volver al panel docente</a>
     </div>
   </section>
