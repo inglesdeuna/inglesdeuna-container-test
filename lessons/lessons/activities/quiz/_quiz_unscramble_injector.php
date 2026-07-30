@@ -15,13 +15,6 @@ $returnTo='';
 $usQuizMode=true;
 $prefix='qzus_'.preg_replace('/[^a-zA-Z0-9_-]/','',(string)($GLOBALS['unitId']??'0')).'_'.$qIndexNow;
 ?>
-<div id="<?=$prefix?>_holder" class="qzus-holder" hidden>
-<?php require __DIR__.'/../unscramble/_unscramble_view.php';?>
-<form method="post" id="<?=$prefix?>_submit" style="display:none">
-    <input type="hidden" name="answer" id="<?=$prefix?>_answer">
-    <input type="hidden" name="skip" id="<?=$prefix?>_skip" value="1" disabled>
-</form>
-</div>
 <script>
 window.UNSCRAMBLE_QUIZ_MODE=true;
 window.UNSCRAMBLE_TTS_URL='../unscramble/tts.php';
@@ -30,6 +23,15 @@ window.UNSCRAMBLE_QUIZ_SUBMIT=function(answer,skipped){
     if(!form||!a||!s||form.dataset.submitted==='1')return;
     form.dataset.submitted='1';a.value=String(answer||'');s.disabled=!skipped;form.submit();
 };
+</script>
+<div id="<?=$prefix?>_holder" class="qzus-holder" hidden>
+<?php require __DIR__.'/../unscramble/_unscramble_view.php';?>
+<form method="post" id="<?=$prefix?>_submit" style="display:none">
+    <input type="hidden" name="answer" id="<?=$prefix?>_answer">
+    <input type="hidden" name="skip" id="<?=$prefix?>_skip" value="1" disabled>
+</form>
+</div>
+<script>
 (function(){
     var h=document.getElementById('<?=$prefix?>_holder');if(!h)return;
     var old=null,t=Array.prototype.slice.call(document.querySelectorAll('.screen-title')).find(function(e){return /pregunta|question/i.test(e.textContent||'');});
