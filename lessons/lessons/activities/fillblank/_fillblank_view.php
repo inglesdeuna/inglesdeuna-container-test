@@ -569,8 +569,10 @@ body { margin: 0 !important; padding: 0 !important; background: var(--fb-bg) !im
                 </div>
 
                 <div class="fb-actions">
-                    <button class="fb-btn fb-btn-check" id="fb-check">Check</button>
-                    <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
+                    <?php if (empty($fbQuizMode)): ?>
+                        <button class="fb-btn fb-btn-check" id="fb-check">Check</button>
+                        <button class="fb-btn fb-btn-show" id="fb-show">Show Answer</button>
+                    <?php endif; ?>
                     <button class="fb-btn fb-btn-next" id="fb-next">Next</button>
                     <?php if (!empty($fbQuizMode)): ?>
                         <button class="fb-btn fb-btn-show" id="fb-quiz-skip">Skip</button>

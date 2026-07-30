@@ -491,7 +491,7 @@ document.addEventListener('DOMContentLoaded', function () {
       showBtn.disabled = false;
     }
     if (nextBtn) {
-      nextBtn.disabled = true;
+      nextBtn.disabled = !quizMode;
       nextBtn.textContent = 'Next \u2192';
     }
 
