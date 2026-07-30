@@ -1,5 +1,10 @@
 document.addEventListener('DOMContentLoaded', function () {
   const questions = Array.isArray(window.MULTIPLE_CHOICE_DATA) ? window.MULTIPLE_CHOICE_DATA : [];
+  const quizMode = !!window.MULTIPLE_CHOICE_QUIZ_MODE;
+  const quizSubmit = typeof window.MULTIPLE_CHOICE_QUIZ_SUBMIT === 'function' ? window.MULTIPLE_CHOICE_QUIZ_SUBMIT : null;
+  const quizProgressCurrent = Math.max(1, Number(window.MULTIPLE_CHOICE_PROGRESS_CURRENT) || 1);
+  const quizProgressTotal = Math.max(quizProgressCurrent, Number(window.MULTIPLE_CHOICE_PROGRESS_TOTAL) || questions.length || 1);
+  const ttsUrl = String(window.MULTIPLE_CHOICE_TTS_URL || 'tts.php');
 
   const activityMode = typeof window.MULTIPLE_CHOICE_MODE === 'string' ? window.MULTIPLE_CHOICE_MODE : 'standard';
   const passageText = typeof window.MULTIPLE_CHOICE_PASSAGE === 'string' ? window.MULTIPLE_CHOICE_PASSAGE : '';
@@ -35,6 +40,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const listenBtn = document.getElementById('mc-listen');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
+  const quizSkipBtn = document.getElementById('mc-quiz-skip');
   const cardEl = document.querySelector('.mc-card');
   const controlsEl = document.querySelector('.mc-controls');
   const completedEl = document.getElementById('mc-completed');
@@ -209,8 +215,8 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function updateProgress() {
-    const total = questions.length;
-    const current = index + 1;
+    const total = quizMode ? quizProgressTotal : questions.length;
+    const current = quizMode ? quizProgressCurrent : index + 1;
     const percent = total > 0 ? Math.round((current / total) * 100) : 0;
 
     if (progressLabelEl) {
@@ -251,20 +257,22 @@ document.addEventListener('DOMContentLoaded', function () {
         button.classList.add('selected');
       }
 
-      if ((revealed || score === -1) && optIndex === correct) {
-        button.classList.add('correct');
-      }
-
-      if (score === 1 && selected === optIndex) {
-        button.classList.add('correct');
-      }
-
-      if (score === 0) {
-        if (selected === optIndex) {
-          button.classList.add('wrong');
-        }
-        if (optIndex === correct) {
+      if (!quizMode) {
+        if ((revealed || score === -1) && optIndex === correct) {
           button.classList.add('correct');
+        }
+  
+        if (score === 1 && selected === optIndex) {
+          button.classList.add('correct');
+        }
+  
+        if (score === 0) {
+          if (selected === optIndex) {
+            button.classList.add('wrong');
+          }
+          if (optIndex === correct) {
+            button.classList.add('correct');
+          }
         }
       }
 
@@ -304,21 +312,34 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       button.addEventListener('click', function () {
-        if (finished || answeredCurrent) {
+        if (finished || (!quizMode && answeredCurrent)) {
           return;
         }
 
         validateSelection(optIndex);
       });
 
-      button.disabled = finished || answeredCurrent;
+      button.disabled = finished || (!quizMode && answeredCurrent);
 
       optionsEl.appendChild(button);
     });
   }
 
   function validateSelection(optIndex) {
-    if (finished || answeredCurrent) {
+    if (finished || (!quizMode && answeredCurrent)) {
+      return;
+    }
+
+    if (quizMode) {
+      selected = optIndex;
+      revealed = false;
+      answeredCurrent = true;
+      renderOptions();
+      if (feedbackEl) {
+        feedbackEl.textContent = '';
+        feedbackEl.className = 'mc-feedback';
+      }
+      if (nextBtn) nextBtn.disabled = false;
       return;
     }
 
@@ -408,7 +429,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     if (nextBtn) {
-      nextBtn.textContent = index < questions.length - 1 ? 'Next →' : 'Finish';
+      nextBtn.textContent = quizMode ? 'Next' : (index < questions.length - 1 ? 'Next →' : 'Finish');
       nextBtn.disabled = true;
     }
   }
@@ -483,6 +504,19 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
+    if (quizMode) {
+      if (selected === null) {
+        if (feedbackEl) {
+          feedbackEl.textContent = 'Select an option first.';
+          feedbackEl.className = 'mc-feedback bad';
+        }
+        return;
+      }
+      stopSpeech();
+      if (quizSubmit) quizSubmit(selected, false);
+      return;
+    }
+
     if (!answeredCurrent) {
       if (feedbackEl) {
         feedbackEl.textContent = 'Select an option or tap Show Answer first.';
@@ -518,6 +552,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (nextBtn) {
     nextBtn.addEventListener('click', nextQuestion);
+  }
+
+  if (quizSkipBtn) {
+    quizSkipBtn.addEventListener('click', function () {
+      stopSpeech();
+      if (quizSubmit) quizSubmit('', true);
+    });
   }
 
   if (restartBtn) {
@@ -565,7 +606,7 @@ document.addEventListener('DOMContentLoaded', function () {
     formData.append('text', text);
     formData.append('voice_id', voiceId);
 
-    fetch('tts.php', {
+    fetch(ttsUrl, {
       method: 'POST',
       body: formData,
       signal: signal,
@@ -619,7 +660,7 @@ document.addEventListener('DOMContentLoaded', function () {
       formData.append('text', passageText);
       formData.append('voice_id', passageVoiceId);
 
-      fetch('tts.php', {
+      fetch(ttsUrl, {
         method: 'POST',
         body: formData,
         signal: signal,
