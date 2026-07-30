@@ -28,9 +28,7 @@ require __DIR__ . '/admin_eval_base.php';
 ?>
 <script>
 (function () {
-    // The sidebar originally opened Results only in the browser without a
-    // request. A request is required so PHP can select the latest submitted
-    // exam and load its rows. Preserve normal in-page tabs for everything else.
+    // Results requires a new request so PHP can select the latest submitted exam.
     document.querySelectorAll('.es-item').forEach(function (button) {
         var handler = button.getAttribute('onclick') || '';
         if (handler.indexOf("showTab('results')") === -1) return;
@@ -41,5 +39,44 @@ require __DIR__ . '/admin_eval_base.php';
             window.location.href = 'admin_eval.php?' + params.toString();
         });
     });
+
+    // Individual links only need: student name, school, and grade/level.
+    // Keep the existing database columns for compatibility:
+    // student_doc = school, student_phone = grade/level.
+    var individual = document.getElementById('assign-form-individual');
+    if (!individual) return;
+
+    var nameInput = individual.querySelector('input[name="student_name"]');
+    var schoolInput = individual.querySelector('input[name="student_doc"]');
+    var levelInput = individual.querySelector('input[name="student_phone"]');
+    var emailInput = individual.querySelector('input[name="student_email"]');
+    var programInput = individual.querySelector('input[name="student_program"]');
+
+    function setField(input, label, placeholder, value) {
+        if (!input) return;
+        var group = input.closest('.form-group');
+        var labelEl = group ? group.querySelector('label') : null;
+        if (labelEl) labelEl.textContent = label;
+        input.placeholder = placeholder;
+        input.required = true;
+        if (value && !input.value) input.value = value;
+    }
+
+    setField(nameInput, 'Nombre del estudiante', 'Nombre completo', '');
+    setField(schoolInput, 'Colegio', 'Nombre del colegio', "LET'S INSTITUTE");
+    setField(levelInput, 'Grado o nivel', 'Ej: Segundo grado, A1, Básico 2', '');
+
+    [emailInput, programInput].forEach(function (input) {
+        var group = input ? input.closest('.form-group') : null;
+        if (group) group.remove();
+    });
+
+    var headerNote = individual.querySelector('.card-head span');
+    if (headerNote) headerNote.textContent = 'Nombre, colegio y grado o nivel';
+
+    var threeColumnRow = individual.querySelector('.form-row-3');
+    if (threeColumnRow) {
+        threeColumnRow.style.gridTemplateColumns = 'repeat(2, minmax(0, 1fr))';
+    }
 })();
 </script>
