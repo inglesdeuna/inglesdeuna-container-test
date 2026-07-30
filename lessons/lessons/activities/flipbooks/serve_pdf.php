@@ -3,7 +3,9 @@ declare(strict_types=1);
 
 /**
  * serve_pdf.php
- * Serves Flipbook PDFs from persistent storage and recovers legacy DB copies.
+ * Serves Flipbook PDFs from database, local legacy storage, or remote storage.
+ * Remote PDFs are proxied in the same request so browser downloads do not fail
+ * after a redirect.
  */
 
 require_once __DIR__ . '/../../config/db.php';
@@ -87,10 +89,10 @@ function output_pdf_binary($binary, string $downloadName, bool $forceDownload): 
     exit;
 }
 
-function load_legacy_pdf_data(PDO $pdo, string $activityId)
+function load_pdf_data(PDO $pdo, string $activityId)
 {
     try {
-        $stmt = $pdo->prepare("SELECT pdf_data FROM activities WHERE id = :id LIMIT 1");
+        $stmt = $pdo->prepare('SELECT pdf_data FROM activities WHERE id = :id LIMIT 1');
         $stmt->bindValue(':id', $activityId);
         $stmt->execute();
         $stmt->bindColumn('pdf_data', $lob, PDO::PARAM_LOB);
@@ -104,7 +106,7 @@ function load_legacy_pdf_data(PDO $pdo, string $activityId)
     return null;
 }
 
-$activityId    = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
+$activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 $forceDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
 if ($activityId === '') {
@@ -113,7 +115,7 @@ if ($activityId === '') {
 }
 
 try {
-    $stmt = $pdo->prepare("SELECT data FROM activities WHERE id = :id LIMIT 1");
+    $stmt = $pdo->prepare('SELECT id, unit_id, data FROM activities WHERE id = :id LIMIT 1');
     $stmt->execute(['id' => $activityId]);
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
 } catch (Throwable $e) {
@@ -126,27 +128,66 @@ if (!$row) {
     exit('Actividad no encontrada.');
 }
 
-$data = json_decode($row['data'] ?? '', true);
+/*
+ * Old Flipbook rows can remain in a unit after a new PDF is uploaded. The
+ * sidebar may still point to the old row, so resolve the newest Flipbook in
+ * the same unit that has an actual PDF reference.
+ */
+$resolvedActivityId = (string) ($row['id'] ?? $activityId);
+$unitId = trim((string) ($row['unit_id'] ?? ''));
+
+if ($unitId !== '') {
+    try {
+        $latestStmt = $pdo->prepare("SELECT id, unit_id, data
+            FROM activities
+            WHERE unit_id = :unit_id
+              AND LOWER(TRIM(type)) = 'flipbooks'
+              AND COALESCE(NULLIF(TRIM(data->>'pdf_url'), ''), '') <> ''
+            ORDER BY created_at DESC NULLS LAST, id DESC
+            LIMIT 1");
+        $latestStmt->execute(['unit_id' => $unitId]);
+        $latestRow = $latestStmt->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($latestRow)) {
+            $row = $latestRow;
+            $resolvedActivityId = (string) ($latestRow['id'] ?? $resolvedActivityId);
+        }
+    } catch (Throwable $e) {
+        // Keep the originally requested activity if the schema differs.
+    }
+}
+
+$data = json_decode((string) ($row['data'] ?? ''), true);
 if (!is_array($data)) {
     $data = [];
 }
 
 $pdfUrl = isset($data['pdf_url']) ? trim((string) $data['pdf_url']) : '';
 $downloadName = safe_pdf_filename(
-    (isset($data['pdf_filename']) && $data['pdf_filename'] !== '') ? (string) $data['pdf_filename'] : $pdfUrl
+    isset($data['pdf_filename']) && trim((string) $data['pdf_filename']) !== ''
+        ? (string) $data['pdf_filename']
+        : $pdfUrl
 );
 
-// Current persistent database format.
+if ($pdfUrl === '') {
+    $storedPdf = load_pdf_data($pdo, $resolvedActivityId);
+    if ($storedPdf !== null && $storedPdf !== false) {
+        output_pdf_binary($storedPdf, $downloadName, $forceDownload);
+    }
+
+    http_response_code(404);
+    exit('No hay PDF guardado para esta actividad.');
+}
+
 if (str_starts_with($pdfUrl, 'db-pdf://')) {
-    $legacyPdf = load_legacy_pdf_data($pdo, $activityId);
-    if ($legacyPdf === null || $legacyPdf === false) {
+    $storedPdf = load_pdf_data($pdo, $resolvedActivityId);
+    if ($storedPdf === null || $storedPdf === false) {
         http_response_code(404);
         exit('No se encontró el PDF almacenado.');
     }
-    output_pdf_binary($legacyPdf, $downloadName, $forceDownload);
+    output_pdf_binary($storedPdf, $downloadName, $forceDownload);
 }
 
-// Legacy base64 format.
 if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     $base64 = substr($pdfUrl, strlen('data:application/pdf;base64,'));
     $binary = base64_decode($base64, true);
@@ -159,8 +200,7 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     output_pdf_binary($binary, $downloadName, $forceDownload);
 }
 
-// Local files only survive until Render redeploys.
-$localPdfPath = $pdfUrl !== '' ? resolve_local_pdf_path($pdfUrl) : null;
+$localPdfPath = resolve_local_pdf_path($pdfUrl);
 if ($localPdfPath !== null) {
     header('Content-Type: application/pdf');
     header('Content-Length: ' . filesize($localPdfPath));
@@ -170,20 +210,27 @@ if ($localPdfPath !== null) {
     exit;
 }
 
-// Remote persistent storage.
+/*
+ * Do not redirect remote downloads. Chrome can mark an <a download> request
+ * as unavailable when serve_pdf.php responds with a 302. Run the proxy in the
+ * same request and let it return the PDF bytes directly.
+ */
 if (preg_match('/^https?:\/\//i', $pdfUrl)) {
-    $proxyUrl = '/lessons/lessons/activities/flipbooks/pdf_proxy.php?url=' . rawurlencode($pdfUrl)
-        . ($forceDownload ? '&dl=1' : '');
-    header('Location: ' . $proxyUrl, true, 302);
+    $_GET['url'] = $pdfUrl;
+    if ($forceDownload) {
+        $_GET['dl'] = '1';
+    } else {
+        unset($_GET['dl']);
+    }
+
+    require __DIR__ . '/pdf_proxy.php';
     exit;
 }
 
-// Critical recovery path: older records may still contain pdf_data even though
-// pdf_url points to a Render-local file that disappeared during deployment.
-$legacyPdf = load_legacy_pdf_data($pdo, $activityId);
-if ($legacyPdf !== null && $legacyPdf !== false) {
-    output_pdf_binary($legacyPdf, $downloadName, $forceDownload);
+$storedPdf = load_pdf_data($pdo, $resolvedActivityId);
+if ($storedPdf !== null && $storedPdf !== false) {
+    output_pdf_binary($storedPdf, $downloadName, $forceDownload);
 }
 
 http_response_code(404);
-exit('El PDF fue guardado en el almacenamiento temporal de Render y se perdió durante un despliegue. Vuelve a subirlo una sola vez desde Edit activity.');
+exit('Archivo PDF no encontrado. Vuelve a subir el PDF desde el editor.');
