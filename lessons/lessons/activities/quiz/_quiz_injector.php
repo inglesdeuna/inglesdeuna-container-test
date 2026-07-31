@@ -13,7 +13,7 @@ if($qType==='pronunciation'){require __DIR__.'/_quiz_pronunciation_injector.php'
 if($qType==='dictation'){require __DIR__.'/_quiz_dictation_injector.php';return;}
 if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
 if($qType==='unscramble'){require __DIR__.'/_quiz_unscramble_injector.php';return;}
-if($qType==='multiple_choice'&&(string)($qNow['source_activity_type']??'')==='multiple_choice'){require __DIR__.'/_quiz_multiple_choice_injector.php';return;}
+if($qType==='multiple_choice'){require __DIR__.'/_quiz_multiple_choice_injector.php';return;}
 if($qType!=='fill')return;
 $question=trim((string)($qNow['question']??''));
 $correctRaw=trim((string)($qNow['correct']??''));
