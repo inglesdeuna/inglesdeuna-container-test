@@ -24,6 +24,7 @@ require_once __DIR__ . '/../quiz/_quiz_lib.php'; // verified path
 if (!isset($pdo) || !($pdo instanceof PDO)) die('DB unavailable.');
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
+function print_match_media($value,string $alt=''):string{$value=trim((string)$value);$path=(string)(parse_url($value,PHP_URL_PATH)??'');$isImage=str_starts_with($value,'data:image/')||(bool)preg_match('/\\.(png|jpe?g|gif|webp|svg)$/i',$path);return $isImage?'<img src="'.h($value).'" alt="'.h($alt).'" style="display:block;max-width:100%;max-height:62px;object-fit:contain;margin:auto">':h($value);}
 
 /* ── Load exam ─────────────────────────────────────────────── */
 $stmt = $pdo->prepare(
@@ -106,6 +107,7 @@ if (!empty($evalRows)) {
             'points'        => (float)($rq['points'] ?? 1),
             'answers'       => $opts,
             'correct_flags' => $flags,
+            'pairs'         => is_array($rq['pairs'] ?? null) ? array_values($rq['pairs']) : [],
         ];
     }
 }
@@ -679,16 +681,12 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
           </div>
           <?php endforeach; ?>
 
-      <?php elseif ($type === 'matching'): ?>
+      <?php elseif ($type === 'matching' || $type === 'match'): ?>
         <?php
-        // Answers alternate: left1, right1, left2, right2...
-        // Or stored as left[] and right[] — handle both
-        $lefts  = [];
-        $rights = [];
-        for ($ai = 0; $ai < count($answers); $ai += 2) {
-            $lefts[]  = $answers[$ai]        ?? '';
-            $rights[] = $answers[$ai + 1]    ?? '';
-        }
+        // Unit Matching Lines keeps normalized pairs; manual eval matching alternates answers.
+        $lefts=[];$rights=[];$printPairs=is_array($q['pairs']??null)?$q['pairs']:[];
+        if(!empty($printPairs)){foreach($printPairs as$pair){$lefts[]=$pair['left']??'';$rights[]=$pair['right']??'';}}
+        else{for($ai=0;$ai<count($answers);$ai+=2){$lefts[]=$answers[$ai]??'';$rights[]=$answers[$ai+1]??'';}}
         $shuffledRights = $rights;
         if (!$isKey) shuffle($shuffledRights);
         ?>
@@ -705,7 +703,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
                       $matchLetter = $LTRS[$matchIdx !== false ? $matchIdx : $li] ?? ($li+1); ?>
                 <span class="match-ans"><?= $matchLetter ?></span>
               <?php endif; ?>
-              <span><?= h($lt) ?></span>
+              <span><?= print_match_media($lt,'Column A item') ?></span>
             </div>
             <?php endforeach; ?>
           </div>
@@ -714,7 +712,7 @@ body { font-family: 'Nunito', 'Segoe UI', Arial, sans-serif;
             <?php foreach ($shuffledRights as $ri => $rt): ?>
             <div class="match-row">
               <span class="match-lt"><?= $LTRS[$ri] ?? chr(65+$ri) ?>.</span>
-              <span><?= h($rt) ?></span>
+              <span><?= print_match_media($rt,'Column B item') ?></span>
             </div>
             <?php endforeach; ?>
           </div>
