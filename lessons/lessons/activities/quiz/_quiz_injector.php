@@ -1,6 +1,6 @@
 <?php
 // Loaded explicitly by both unit-quiz viewers. Fill questions reuse the
-// canonical Fill in the Blank markup and JavaScript from activities/fillblank.
+// canonical unit activity views and quiz-only submission controls.
 $script=basename((string)($_SERVER['SCRIPT_NAME']??''));
 $modeNow=(string)($GLOBALS['mode']??($_GET['mode']??''));
 if(!in_array($script,['viewer.php','teacher_viewer.php'],true)||$modeNow!=='quiz')return;
@@ -9,7 +9,7 @@ $qIndexNow=(int)($GLOBALS['qIndex']??($_GET['q']??0));
 if(!is_array($quizNow)||!isset($quizNow[$qIndexNow])||!is_array($quizNow[$qIndexNow]))return;
 $qNow=$quizNow[$qIndexNow];
 $qType=(string)($qNow['type']??'');
-if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
+if($qType==='dictation'){require __DIR__.'/_quiz_dictation_injector.php';return;}\nif($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
 if($qType==='unscramble'){require __DIR__.'/_quiz_unscramble_injector.php';return;}
 if($qType==='multiple_choice'&&(string)($qNow['source_activity_type']??'')==='multiple_choice'){require __DIR__.'/_quiz_multiple_choice_injector.php';return;}
 if($qType!=='fill')return;
