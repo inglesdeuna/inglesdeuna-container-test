@@ -11,6 +11,7 @@ $qNow=$quizNow[$qIndexNow];
 $qType=(string)($qNow['type']??'');
 if($qType==='pronunciation'){require __DIR__.'/_quiz_pronunciation_injector.php';return;}
 if($qType==='dictation'){require __DIR__.'/_quiz_dictation_injector.php';return;}
+if($qType==='drag_drop_kids'){require __DIR__.'/_quiz_drag_drop_kids_injector.php';return;}
 if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
 if($qType==='unscramble_kids'){require __DIR__.'/_quiz_unscramble_kids_injector.php';return;}
 if($qType==='unscramble'){require __DIR__.'/_quiz_unscramble_injector.php';return;}
