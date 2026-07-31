@@ -492,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     if (nextBtn) {
       nextBtn.disabled = !quizMode;
-      nextBtn.textContent = 'Next \u2192';
+      nextBtn.textContent = quizMode && quizProgressCurrent >= quizProgressTotal ? 'See result →' : 'Next →';
     }
 
     updateProgress();
