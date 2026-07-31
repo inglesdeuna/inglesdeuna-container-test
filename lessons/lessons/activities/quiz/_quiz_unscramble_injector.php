@@ -17,7 +17,7 @@ $prefix='qzus_'.preg_replace('/[^a-zA-Z0-9_-]/','',(string)($GLOBALS['unitId']??
 ?>
 <script>
 window.UNSCRAMBLE_QUIZ_MODE=true;
-window.UNSCRAMBLE_TTS_URL='../unscramble/tts.php';
+window.UNSCRAMBLE_TTS_URL='/lessons/lessons/activities/unscramble/tts.php';
 window.UNSCRAMBLE_QUIZ_SUBMIT=function(answer,skipped){
     var form=document.getElementById('<?=$prefix?>_submit'),a=document.getElementById('<?=$prefix?>_answer'),s=document.getElementById('<?=$prefix?>_skip');
     if(!form||!a||!s||form.dataset.submitted==='1')return;
