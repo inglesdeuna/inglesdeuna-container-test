@@ -36,7 +36,7 @@ window.DRAGDROP_DATA=<?=json_encode($questions,JSON_UNESCAPED_UNICODE|JSON_UNESC
 window.DRAGDROP_TITLE=<?=json_encode($viewerTitle,JSON_UNESCAPED_UNICODE)?>;
 window.DRAGDROP_RETURN_TO='';window.DRAGDROP_ACTIVITY_ID=<?=json_encode($activityId,JSON_UNESCAPED_UNICODE)?>;
 window.DRAGDROP_QUIZ_MODE=true;window.DRAGDROP_PROGRESS_CURRENT=<?=$quizPosition?>;window.DRAGDROP_PROGRESS_TOTAL=<?=$quizCount?>;
-window.DRAGDROP_TTS_URL='../drag_drop/tts.php';
+window.DRAGDROP_TTS_URL='/lessons/lessons/activities/drag_drop/tts.php';
 window.DRAGDROP_QUIZ_SUBMIT=function(values,skipped){
     var form=document.getElementById('<?=$prefix?>_submit'),s=document.getElementById('<?=$prefix?>_skip');
     if(!form||!s||form.dataset.submitted==='1')return;

@@ -90,7 +90,7 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
     if(audioUrl){playAudio(audioUrl,false);return;}
     listen.disabled=true;listen.textContent='...';
     var data=new FormData();data.append('text',text);data.append('voice_id',voiceId);
-    fetch('../dictation/tts.php',{method:'POST',body:data,credentials:'same-origin'}).then(function(response){if(!response.ok)throw new Error('TTS '+response.status);return response.blob();}).then(function(blob){listen.disabled=false;playAudio(URL.createObjectURL(blob),true);}).catch(function(){listen.disabled=false;setListenLabel();if(window.speechSynthesis&&text){var utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=.85;window.speechSynthesis.speak(utterance);}});
+    fetch('/lessons/lessons/activities/dictation/tts.php',{method:'POST',body:data,credentials:'same-origin'}).then(function(response){if(!response.ok)throw new Error('TTS '+response.status);return response.blob();}).then(function(blob){listen.disabled=false;playAudio(URL.createObjectURL(blob),true);}).catch(function(){listen.disabled=false;setListenLabel();if(window.speechSynthesis&&text){var utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=.85;window.speechSynthesis.speak(utterance);}});
   }
   function submit(value,skipped){
     if(!form||form.dataset.submitted==='1')return;

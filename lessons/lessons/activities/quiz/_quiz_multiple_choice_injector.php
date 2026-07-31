@@ -40,7 +40,7 @@ window.MULTIPLE_CHOICE_PASSAGE_VOICE_ID=<?=json_encode($passageVoiceId)?>;
 window.MULTIPLE_CHOICE_SHOW_PASSAGE_TEXT=<?=$showPassageText?'true':'false'?>;
 window.MULTIPLE_CHOICE_QUIZ_MODE=true;
 window.MULTIPLE_CHOICE_PROGRESS_CURRENT=<?=$quizPosition?>;window.MULTIPLE_CHOICE_PROGRESS_TOTAL=<?=$quizCount?>;
-window.MULTIPLE_CHOICE_TTS_URL='../multiple_choice/tts.php';
+window.MULTIPLE_CHOICE_TTS_URL='/lessons/lessons/activities/multiple_choice/tts.php';
 window.MULTIPLE_CHOICE_QUIZ_SUBMIT=function(answer,skipped){
     var form=document.getElementById('<?=$prefix?>_submit'),a=document.getElementById('<?=$prefix?>_answer'),s=document.getElementById('<?=$prefix?>_skip');
     if(!form||!a||!s||form.dataset.submitted==='1')return;
