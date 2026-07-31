@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 function ev_h($v):string{return htmlspecialchars((string)$v,ENT_QUOTES,'UTF-8');}
 function ev_redirect(array $p):void{header('Location: eval_viewer.php?'.http_build_query($p));exit;}
 function ev_identity_filter(string $name,string $school,string $level):array{return['sql'=>"LOWER(student_name)=LOWER(?) AND LOWER(COALESCE(student_doc,''))=LOWER(?) AND LOWER(COALESCE(student_phone,''))=LOWER(?)",'params'=>[$name,$school,$level]];}
-function ev_unit_questions(PDO $pdo,string $unitId,string $assignmentKey,int $attempt):array{$st=$pdo->prepare('SELECT id,type,unit_id,data FROM activities WHERE unit_id::text=:unit ORDER BY id ASC');$st->execute(['unit'=>$unitId]);$all=[];foreach(($st->fetchAll(PDO::FETCH_ASSOC)?:[])as$a){foreach(qz_normalize_activity($a)as$q){if(($q['type']??'')!=='pronunciation')$all[]=$q;}}return qz_build($all,$unitId,$assignmentKey,$attempt);}
+function ev_unit_questions(PDO $pdo,string $unitId,string $assignmentKey,int $attempt):array{$st=$pdo->prepare('SELECT id,type,unit_id,data FROM activities WHERE unit_id::text=:unit ORDER BY id ASC');$st->execute(['unit'=>$unitId]);$all=[];foreach(($st->fetchAll(PDO::FETCH_ASSOC)?:[])as$a){foreach(qz_normalize_activity($a)as$q)$all[]=$q;}return qz_build($all,$unitId,$assignmentKey,$attempt);}
 function ev_result_totals(array $quiz,array $answers):array{$s=qz_answers_totals($quiz,$answers);$possible=max(0,(int)($s['possible']??0));$earned=max(0.0,min((float)$possible,(float)($s['earned']??0)));return['possible'=>$possible,'earned'=>$earned,'percent'=>$possible>0?(int)round(($earned/$possible)*100):0];}
 $token=trim((string)($_GET['t']??''));$step=trim((string)($_GET['step']??'welcome'));$resultId=max(0,(int)($_GET['rid']??0));$qIndex=max(0,(int)($_GET['q']??0));$isPreview=isset($_GET['preview'])&&$_GET['preview']==='1';$link=null;
 if($isPreview){if(empty($_SESSION['admin_logged'])&&empty($_SESSION['academic_logged'])){http_response_code(403);exit('Acceso denegado.');}$examId=max(0,(int)($_GET['exam_id']??0));$st=$pdo->prepare("SELECT e.id AS exam_id,e.title AS exam_title,e.time_limit_min,e.max_attempts,e.instructions,e.cefr_level AS exam_cefr,e.status AS exam_status,e.modalities,e.unit_id AS exam_unit_id,'group' AS link_type,'' AS student_name,'' AS student_doc,'' AS student_phone,'' AS student_email,9999 AS max_uses,0 AS uses_count,NULL AS expires_at FROM eval_exams e WHERE e.id=? LIMIT 1");$st->execute([$examId]);$link=$st->fetch(PDO::FETCH_ASSOC)?:null;if(!$link)exit('Examen no encontrado.');$link['id']=null;$token='PREVIEW_'.$examId;}elseif($token!==''){$st=$pdo->prepare("SELECT l.*,e.title AS exam_title,e.time_limit_min,e.max_attempts,e.instructions,e.cefr_level AS exam_cefr,e.status AS exam_status,e.modalities,e.unit_id AS exam_unit_id FROM eval_links l JOIN eval_exams e ON e.id=l.exam_id WHERE l.token=? AND (l.expires_at IS NULL OR l.expires_at>NOW()) LIMIT 1");$st->execute([$token]);$link=$st->fetch(PDO::FETCH_ASSOC)?:null;}
@@ -26,3 +26,29 @@ $currentQuestion=$quiz[$qIndex]??null;$timeLimit=(int)($link['time_limit_min']??
 <?php if($step==='welcome'):?><section class="card"><span class="kicker">UNIT EXAM</span><h1 class="title"><?=ev_h($link['exam_title'])?></h1><p class="lead">Enter your information to begin.</p><div class="chips"><span class="chip"><?=$timeLimit?> minutes</span><span class="chip"><?=(int)($link['max_attempts']??1)?> attempt(s)</span></div><?php if($errorMsg):?><div class="error"><?=ev_h($errorMsg)?></div><?php endif;?><form method="post"><input type="hidden" name="start_exam" value="1"><input class="input" name="student_name" required placeholder="Full name" value="<?=ev_h($prefillName)?>"><input class="input" name="student_school" required placeholder="School" value="<?=ev_h($prefillSchool)?>"><input class="input" name="student_level" required placeholder="Grade or level" value="<?=ev_h($prefillLevel)?>"><button class="btn orange w100" type="submit">Start exam</button></form></section>
 <?php elseif($step==='quiz'&&$currentQuestion):?><section class="card"><span class="kicker">QUESTION <?=$qIndex+1?> OF <?=count($quiz)?></span><div class="progress"><div style="width:<?=(int)round((($qIndex+1)/max(1,count($quiz)))*100)?>%"></div></div><?=qzr_render($currentQuestion,['prefix'=>'eval_'.$resultId.'_'.$qIndex,'hidden'=>['eval_answer'=>1,'q_index'=>$qIndex],'submit_label'=>'Next','skip_label'=>'Skip'])?></section>
 <?php elseif($step==='result'&&$resultRow):?><section class="card"><span class="kicker">EXAM COMPLETE</span><div class="result"><?=(int)round((float)($resultRow['pct']??0))?>%</div><h1 class="title" style="text-align:center"><?=ev_h($link['exam_title'])?></h1><div class="chips" style="justify-content:center"><span class="chip">Score <?=ev_h($resultRow['score']??0)?> / <?=ev_h($resultRow['max_score']??0)?></span><span class="chip">Attempt <?=$attemptsUsed?> / <?=(int)($link['max_attempts']??1)?></span></div><div class="actions"><?php if($canRetake):?><a class="btn orange" href="eval_viewer.php?<?=ev_h(http_build_query(['t'=>$token,'step'=>'welcome']))?>">Take again</a><?php endif;?><button class="btn light" type="button" onclick="window.close();history.length>1&&history.back();">Close</button></div></section><?php else:?><section class="card"><h1 class="title">Exam unavailable</h1></section><?php endif;?></div></body></html>
+<?php
+// Unit exams use the exact same activity views as the unit quiz. The exam
+// controller still owns identity, attempts, persistence, timing, and results.
+if($isUnitExam&&$step==='quiz'&&$currentQuestion){
+    $GLOBALS['mode']='quiz';
+    $GLOBALS['qzEvalInjectorContext']=true;
+    require __DIR__.'/../quiz/_quiz_injector.php';
+?>
+<script>
+(function(){
+    var qIndex=<?=json_encode($qIndex)?>;
+    document.querySelectorAll('[id^="qz"][id$="_holder"] form').forEach(function(form){
+        if(!form.querySelector('input[name="eval_answer"]')){
+            var marker=document.createElement('input');
+            marker.type='hidden';marker.name='eval_answer';marker.value='1';
+            form.appendChild(marker);
+        }
+        if(!form.querySelector('input[name="q_index"]')){
+            var indexInput=document.createElement('input');
+            indexInput.type='hidden';indexInput.name='q_index';indexInput.value=String(qIndex);
+            form.appendChild(indexInput);
+        }
+    });
+})();
+</script>
+<?php } ?>

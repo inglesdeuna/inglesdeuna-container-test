@@ -3,7 +3,7 @@
 // canonical unit activity views and quiz-only submission controls.
 $script=basename((string)($_SERVER['SCRIPT_NAME']??''));
 $modeNow=(string)($GLOBALS['mode']??($_GET['mode']??''));
-if(!in_array($script,['viewer.php','teacher_viewer.php'],true)||$modeNow!=='quiz')return;
+if(!in_array($script,['viewer.php','teacher_viewer.php','eval_viewer.php'],true)||$modeNow!=='quiz')return;
 $quizNow=$GLOBALS['quiz']??null;
 $qIndexNow=(int)($GLOBALS['qIndex']??($_GET['q']??0));
 if(!is_array($quizNow)||!isset($quizNow[$qIndexNow])||!is_array($quizNow[$qIndexNow]))return;
@@ -13,7 +13,7 @@ if($qType==='pronunciation'){require __DIR__.'/_quiz_pronunciation_injector.php'
 if($qType==='dictation'){require __DIR__.'/_quiz_dictation_injector.php';return;}
 if($qType==='drag_drop'){require __DIR__.'/_quiz_dragdrop_injector.php';return;}
 if($qType==='unscramble'){require __DIR__.'/_quiz_unscramble_injector.php';return;}
-if($qType==='multiple_choice'&&(string)($qNow['source_activity_type']??'')==='multiple_choice'){require __DIR__.'/_quiz_multiple_choice_injector.php';return;}
+if($qType==='multiple_choice'){require __DIR__.'/_quiz_multiple_choice_injector.php';return;}
 if($qType!=='fill')return;
 $question=trim((string)($qNow['question']??''));
 $correctRaw=trim((string)($qNow['correct']??''));
@@ -47,7 +47,7 @@ window.FILLBLANK_MEDIA_TYPE=<?=json_encode($fbMediaType)?>;window.FILLBLANK_MEDI
 window.FILLBLANK_TTS_AUDIO_URL=<?=json_encode($fbTtsAudioUrl,JSON_UNESCAPED_SLASHES)?>;window.FILLBLANK_TTS_TEXT=<?=json_encode($fbTtsText,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
 window.FILLBLANK_VOICE_ID=<?=json_encode($fbVoiceId)?>;window.FILLBLANK_TTS_URL='../fillblank/tts.php';
 window.FILLBLANK_QUIZ_MODE=true;window.FILLBLANK_PROGRESS_CURRENT=<?=$quizPosition?>;window.FILLBLANK_PROGRESS_TOTAL=<?=$quizCount?>;
-window.FILLBLANK_QUIZ_SUBMIT=function(answer,skipped){var form=document.getElementById('<?=$prefix?>_submit'),a=document.getElementById('<?=$prefix?>_answer'),s=document.getElementById('<?=$prefix?>_skip');if(!form||!a||!s||form.dataset.submitted==='1')return;form.dataset.submitted='1';a.value=String(answer||'');s.disabled=!skipped;var fallback=function(){try{form.submit();}catch(error){form.dataset.submitted='0';}};if(!window.fetch||!window.FormData){fallback();return;}fetch(window.location.href,{method:'POST',body:new FormData(form),credentials:'same-origin',cache:'no-store',redirect:'follow'}).then(function(response){if(!response.ok)throw new Error('Quiz submit failed: '+response.status);var target=response.url||window.location.href;if(<?=$quizPosition?>>=<?=$quizCount?>&&!/[?&]mode=result(?:&|$)/.test(target)){var resultUrl=new URL(window.location.href);resultUrl.searchParams.set('mode','result');resultUrl.searchParams.delete('q');target=resultUrl.toString();}window.location.assign(target);}).catch(function(){form.dataset.submitted='0';fallback();});};
+window.FILLBLANK_QUIZ_SUBMIT=function(answer,skipped){var form=document.getElementById('<?=$prefix?>_submit'),a=document.getElementById('<?=$prefix?>_answer'),s=document.getElementById('<?=$prefix?>_skip');if(!form||!a||!s||form.dataset.submitted==='1')return;form.dataset.submitted='1';a.value=String(answer||'');s.disabled=!skipped;var fallback=function(){try{form.submit();}catch(error){form.dataset.submitted='0';}};if(!window.fetch||!window.FormData){fallback();return;}fetch(window.location.href,{method:'POST',body:new FormData(form),credentials:'same-origin',cache:'no-store',redirect:'follow'}).then(function(response){if(!response.ok)throw new Error('Quiz submit failed: '+response.status);var target=response.url||window.location.href;if(<?=empty($GLOBALS['qzEvalInjectorContext'])?'true':'false'?>&&<?=$quizPosition?>>=<?=$quizCount?>&&!/[?&]mode=result(?:&|$)/.test(target)){var resultUrl=new URL(window.location.href);resultUrl.searchParams.set('mode','result');resultUrl.searchParams.delete('q');target=resultUrl.toString();}window.location.assign(target);}).catch(function(){form.dataset.submitted='0';fallback();});};
 (function(){var h=document.getElementById('<?=$prefix?>_holder');if(!h)return;var old=null,t=Array.prototype.slice.call(document.querySelectorAll('.screen-title')).find(function(e){return /pregunta|question/i.test(e.textContent||'');});if(t&&t.nextElementSibling&&t.nextElementSibling.classList.contains('card'))old=t.nextElementSibling;if(!old)old=Array.prototype.slice.call(document.querySelectorAll('.card')).find(function(c){return c.querySelector('form');})||null;if(!old)return;old.parentNode.insertBefore(h,old);old.style.display='none';h.hidden=false;})();
 </script>
 <script src="../fillblank/fillblank.js?v=<?=filemtime(__DIR__.'/../fillblank/fillblank.js')?>"></script>
