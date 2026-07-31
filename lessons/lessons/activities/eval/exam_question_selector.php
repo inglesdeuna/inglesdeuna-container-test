@@ -10,6 +10,7 @@ const SKILL_MAP = [
     'fillblank'             => 'grammar',
     'fill_in_blank'         => 'grammar',
     'unscramble'            => 'grammar',
+    'unscramble_kids'       => 'vocabulary',
     'order_sentences'       => 'grammar',
     'build_sentence'        => 'grammar',
     'match'                 => 'grammar',
