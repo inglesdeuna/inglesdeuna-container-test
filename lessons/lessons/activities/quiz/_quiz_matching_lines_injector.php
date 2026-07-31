@@ -7,8 +7,8 @@ if(count($pairs)<2)return;
 if(!function_exists('qzml_media')){
     function qzml_media($value,$text,$alt):string{
         $value=trim((string)$value);$text=trim((string)$text);
-        if($value!==''&&qzr_is_image($value))return '<img class="qzml-media" src="'.qzr_h($value).'" alt="'.qzr_h($alt).'">';
-        return '<span class="qzml-text">'.qzr_h($text!==''?$text:$value).'</span>';
+        $path=(string)(parse_url($value,PHP_URL_PATH)??'');$isImage=str_starts_with($value,'data:image/')||(bool)preg_match('/\\.(png|jpe?g|gif|webp|svg)$/i',$path);if($value!==''&&$isImage)return '<img class="qzml-media" src="'.qz_h($value).'" alt="'.qz_h($alt).'">';
+        return '<span class="qzml-text">'.qz_h($text!==''?$text:$value).'</span>';
     }
 }
 $rightItems=[];
