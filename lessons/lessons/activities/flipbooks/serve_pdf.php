@@ -75,18 +75,48 @@ function output_pdf_binary($binary, string $downloadName, bool $forceDownload): 
         return;
     }
 
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
-    header('Cache-Control: private, max-age=3600');
-
     if (is_resource($binary)) {
-        fpassthru($binary);
+        $content = stream_get_contents($binary);
         fclose($binary);
+        if ($content === false) {
+            return;
+        }
     } else {
         $content = (string) $binary;
-        header('Content-Length: ' . strlen($content));
-        echo $content;
     }
+
+    // Depending on the PDO_PGSQL version, a BYTEA value can be returned as
+    // browser-ready bytes or as PostgreSQL's hexadecimal representation
+    // (\\x25504446...). Normalize the latter before validating the PDF.
+    if (
+        str_starts_with($content, '\\x')
+        && strlen($content) > 2
+        && ctype_xdigit(substr($content, 2))
+    ) {
+        $decoded = hex2bin(substr($content, 2));
+        if ($decoded === false) {
+            return;
+        }
+        $content = $decoded;
+    }
+
+    $pdfHeaderOffset = strpos(substr($content, 0, 1024), '%PDF-');
+    if ($pdfHeaderOffset === false) {
+        error_log('flipbook: stored pdf_data does not contain a valid PDF signature');
+        return;
+    }
+
+    if ($pdfHeaderOffset > 0) {
+        $content = substr($content, $pdfHeaderOffset);
+    }
+
+    header('Content-Type: application/pdf');
+    header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="' . $downloadName . '"');
+    header('Content-Length: ' . strlen($content));
+    header('Accept-Ranges: bytes');
+    header('Cache-Control: private, max-age=3600');
+    header('X-Content-Type-Options: nosniff');
+    echo $content;
     exit;
 }
 
