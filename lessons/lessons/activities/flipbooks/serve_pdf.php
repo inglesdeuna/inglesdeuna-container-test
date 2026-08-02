@@ -90,6 +90,17 @@ function output_pdf_binary($binary, string $downloadName, bool $forceDownload): 
     exit;
 }
 
+function log_pdf_failure(string $activityId, string $pdfUrl, string $reason, ?string $resolvedPath = null): void
+{
+    error_log(sprintf(
+        'flipbook: PDF serve failure (activity_id=%s, storage_url=%s, resolved_path=%s, reason=%s)',
+        $activityId,
+        $pdfUrl !== '' ? $pdfUrl : '(empty)',
+        $resolvedPath !== null && $resolvedPath !== '' ? $resolvedPath : '(none)',
+        $reason
+    ));
+}
+
 function load_pdf_data(PDO $pdo, string $activityId)
 {
     try {
@@ -101,6 +112,11 @@ function load_pdf_data(PDO $pdo, string $activityId)
             return $lob;
         }
     } catch (Throwable $e) {
+        error_log(sprintf(
+            'flipbook: database PDF read failed (activity_id=%s, reason=%s)',
+            $activityId,
+            $e->getMessage()
+        ));
         return null;
     }
 
@@ -129,38 +145,12 @@ if (!$row) {
     exit('Actividad no encontrada.');
 }
 
-/*
- * Old Flipbook rows can remain in a unit after a new PDF is uploaded. The
- * sidebar may still point to the old row, so resolve the newest Flipbook in
- * the same unit that has an actual PDF reference.
- */
 $resolvedActivityId = (string) ($row['id'] ?? $activityId);
-$unitId = trim((string) ($row['unit_id'] ?? ''));
-
-if ($unitId !== '') {
-    try {
-        $latestStmt = $pdo->prepare("SELECT id, unit_id, data
-            FROM activities
-            WHERE unit_id = :unit_id
-              AND LOWER(TRIM(type)) = 'flipbooks'
-              AND COALESCE(NULLIF(TRIM(data->>'pdf_url'), ''), '') <> ''
-            ORDER BY created_at DESC NULLS LAST, id DESC
-            LIMIT 1");
-        $latestStmt->execute(['unit_id' => $unitId]);
-        $latestRow = $latestStmt->fetch(PDO::FETCH_ASSOC);
-
-        if (is_array($latestRow)) {
-            $row = $latestRow;
-            $resolvedActivityId = (string) ($latestRow['id'] ?? $resolvedActivityId);
-        }
-    } catch (Throwable $e) {
-        // Keep the originally requested activity if the schema differs.
-    }
-}
 
 $data = json_decode((string) ($row['data'] ?? ''), true);
 if (!is_array($data)) {
     $data = [];
+    log_pdf_failure($resolvedActivityId, '', 'invalid activity data JSON');
 }
 
 $pdfUrl = isset($data['pdf_url']) ? trim((string) $data['pdf_url']) : '';
@@ -172,19 +162,21 @@ $downloadName = safe_pdf_filename(
 
 if ($pdfUrl === '') {
     $storedPdf = load_pdf_data($pdo, $resolvedActivityId);
-    if ($storedPdf !== null && $storedPdf !== false) {
+    if ($storedPdf !== null && $storedPdf !== false && $storedPdf !== '') {
         output_pdf_binary($storedPdf, $downloadName, $forceDownload);
     }
 
+    log_pdf_failure($resolvedActivityId, $pdfUrl, 'missing pdf_url and no non-empty pdf_data');
     http_response_code(404);
-    exit('No hay PDF guardado para esta actividad.');
+    exit('No hay PDF guardado para esta actividad. Un administrador puede subir un PDF de reemplazo desde el editor.');
 }
 
 if (str_starts_with($pdfUrl, 'db-pdf://')) {
     $storedPdf = load_pdf_data($pdo, $resolvedActivityId);
-    if ($storedPdf === null || $storedPdf === false) {
+    if ($storedPdf === null || $storedPdf === false || $storedPdf === '') {
+        log_pdf_failure($resolvedActivityId, $pdfUrl, 'db-pdf reference has no non-empty pdf_data');
         http_response_code(404);
-        exit('No se encontró el PDF almacenado.');
+        exit('No se encontró el PDF almacenado. Un administrador puede subir un PDF de reemplazo desde el editor.');
     }
     output_pdf_binary($storedPdf, $downloadName, $forceDownload);
 }
@@ -194,6 +186,7 @@ if (str_starts_with($pdfUrl, 'data:application/pdf;base64,')) {
     $binary = base64_decode($base64, true);
 
     if ($binary === false) {
+        log_pdf_failure($resolvedActivityId, $pdfUrl, 'invalid base64 PDF data');
         http_response_code(500);
         exit('Error al decodificar el PDF.');
     }
@@ -229,9 +222,15 @@ if (preg_match('/^https?:\/\//i', $pdfUrl)) {
 }
 
 $storedPdf = load_pdf_data($pdo, $resolvedActivityId);
-if ($storedPdf !== null && $storedPdf !== false) {
+if ($storedPdf !== null && $storedPdf !== false && $storedPdf !== '') {
     output_pdf_binary($storedPdf, $downloadName, $forceDownload);
 }
 
+log_pdf_failure(
+    $resolvedActivityId,
+    $pdfUrl,
+    'unsupported URL or local file missing (filesystem may be ephemeral)',
+    $localPdfPath
+);
 http_response_code(404);
-exit('Archivo PDF no encontrado. Vuelve a subir el PDF desde el editor.');
+exit('Archivo PDF no encontrado. Un administrador puede subir un PDF de reemplazo desde el editor.');

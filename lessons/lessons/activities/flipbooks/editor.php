@@ -94,6 +94,7 @@ ob_start();
                 <div id="file-status" class="alert alert-success mt-3 <?php echo $payload['pdf_url'] !== '' ? '' : 'd-none'; ?>">
                     <strong>Current file:</strong>
                     <span id="file-name-display"><?php echo htmlspecialchars($currentFileName, ENT_QUOTES, 'UTF-8'); ?></span>
+                    <div class="small mt-2">If this file is unavailable, select a replacement PDF and save. You do not need to recreate the activity.</div>
 
                     <?php if ($payload['pdf_url'] !== ''): ?>
                         <div class="mt-2">
