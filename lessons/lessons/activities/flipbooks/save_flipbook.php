@@ -15,10 +15,15 @@ const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
 const FLIPBOOK_DB_PDF_PREFIX = 'db-pdf://';
 // Blobs at or below this size are safe to stream into the pdf_data BYTEA
 // column. The earlier "SQLSTATE[HY000] ... no connection to the server"
-// crashes were seen with 20-30 MB blobs bound as a single string parameter;
-// staying well under that (and streaming via PDO::PARAM_LOB) avoids the issue
-// while still giving typical worksheet PDFs a persistent home.
-const FLIPBOOK_DB_SAFE_MAX_BYTES = 8 * 1024 * 1024;
+// crash was seen when a whole 20-30 MB blob was bound as a single string
+// parameter. store_pdf_in_db() streams the file via PDO::PARAM_LOB instead,
+// which avoids that crash regardless of size, so this threshold is set to
+// the same value as FLIPBOOK_MAX_PDF_BYTES: every PDF accepted by the upload
+// form should be persisted to the database rather than silently falling
+// back to Render's ephemeral local disk (uploads/pdfs), which is wiped on
+// every redeploy/restart and was the root cause of previously-working PDFs
+// turning into "Archivo PDF no encontrado" after some time.
+const FLIPBOOK_DB_SAFE_MAX_BYTES = FLIPBOOK_MAX_PDF_BYTES;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -216,6 +221,52 @@ function migrate_base64_pdf_if_needed(PDO $pdo, string $activityId, string $pdfU
     return $storedUrl;
 }
 
+/**
+ * Legacy rows can point at a PDF that was saved to Render's ephemeral local
+ * disk (uploads/pdfs), either because Cloudinary was unavailable at the time
+ * or the file was too large for the old, lower DB-safe threshold. Every time
+ * the activity is saved (even without a new upload) we opportunistically
+ * migrate that file into persistent storage (Cloudinary or the pdf_data DB
+ * column) while it still exists on disk, so it survives future redeploys.
+ * If the file is already gone (disk wiped by a previous restart), the URL is
+ * left untouched and serve_pdf.php will report it as missing.
+ */
+function migrate_local_pdf_if_needed(PDO $pdo, string $activityId, string $pdfUrl): string
+{
+    $uploadDir = realpath(__DIR__ . '/uploads/pdfs');
+    if ($uploadDir === false) {
+        return $pdfUrl;
+    }
+
+    $path = (string) parse_url($pdfUrl, PHP_URL_PATH);
+    if ($path === '') {
+        return $pdfUrl;
+    }
+
+    $baseName = basename($path);
+    if ($baseName === '' || $baseName === '.' || $baseName === '..') {
+        return $pdfUrl;
+    }
+
+    $candidate = realpath($uploadDir . '/' . $baseName);
+    if ($candidate === false || !is_file($candidate)) {
+        return $pdfUrl;
+    }
+
+    if (!str_starts_with($candidate, $uploadDir . DIRECTORY_SEPARATOR)) {
+        return $pdfUrl;
+    }
+
+    $migratedUrl = persist_pdf($pdo, $activityId, $candidate, $baseName);
+    if ($migratedUrl === null || $migratedUrl === '') {
+        return $pdfUrl;
+    }
+
+    @unlink($candidate);
+
+    return $migratedUrl;
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     respond_error('Método no permitido.', 405);
 }
@@ -257,7 +308,7 @@ try {
         if ($migratedPdfUrl === null || $migratedPdfUrl === '') {
             respond_error('No se pudo procesar el PDF existente. Vuelve a subir el archivo.');
         }
-        $pdfUrl = $migratedPdfUrl;
+        $pdfUrl = migrate_local_pdf_if_needed($pdo, $activityId, $migratedPdfUrl);
     }
 
     $pageTextsRaw = $_POST['page_texts'] ?? '[]';
