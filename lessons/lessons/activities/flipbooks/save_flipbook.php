@@ -335,7 +335,13 @@ try {
     $pdfUrl = isset($currentData['pdf_url']) ? (string) $currentData['pdf_url'] : '';
     $pdfFilename = isset($currentData['pdf_filename']) ? (string) $currentData['pdf_filename'] : '';
 
-    if ($pdfUrl !== '') {
+    $hasReplacementUpload = isset($_FILES['pdf'])
+        && is_array($_FILES['pdf'])
+        && (int) ($_FILES['pdf']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+
+    // A replacement upload is independent of the old storage. Do not let a
+    // stale local/base64 PDF migration prevent the new file from being saved.
+    if ($pdfUrl !== '' && !$hasReplacementUpload) {
         $migratedPdfUrl = migrate_base64_pdf_if_needed($pdo, $activityId, $pdfUrl);
         if ($migratedPdfUrl === null || $migratedPdfUrl === '') {
             respond_error('No se pudo procesar el PDF existente. Vuelve a subir el archivo.');
