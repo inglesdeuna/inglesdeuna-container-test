@@ -11,6 +11,51 @@ require_once __DIR__ . '/../../config/init_db.php';
 require_once __DIR__ . '/exam_question_selector.php';
 
 function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }
+function ev_exam_exists(PDO $pdo, int $examId): bool {
+    if ($examId <= 0) return false;
+    $stmt = $pdo->prepare('SELECT 1 FROM eval_exams WHERE id=? LIMIT 1');
+    $stmt->execute([$examId]);
+    return (bool) $stmt->fetchColumn();
+}
+function ev_build_link_snapshot(PDO $pdo, int $examId): array {
+    $stmt = $pdo->prepare('SELECT * FROM eval_exams WHERE id=? LIMIT 1');
+    $stmt->execute([$examId]);
+    $exam = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$exam) {
+        throw new RuntimeException('Examen no encontrado.');
+    }
+
+    $unitId = trim((string) ($exam['unit_id'] ?? ''));
+    $sourceType = $unitId !== '' ? 'unit' : 'exam';
+    $questionBank = [];
+
+    if ($sourceType === 'unit') {
+        $st = $pdo->prepare('SELECT id,type,unit_id,data FROM activities WHERE unit_id::text = :unit ORDER BY id ASC');
+        $st->execute(['unit' => $unitId]);
+        foreach (($st->fetchAll(PDO::FETCH_ASSOC) ?: []) as $activity) {
+            foreach (qz_normalize_activity($activity) as $question) {
+                $questionBank[] = $question;
+            }
+        }
+    } else {
+        $questionBank = _load_all_questions($pdo, $examId, []);
+    }
+
+    return [
+        'version' => 1,
+        'source_type' => $sourceType,
+        'exam_id' => $examId,
+        'unit_id' => $unitId !== '' ? $unitId : null,
+        'title' => (string) ($exam['title'] ?? ''),
+        'time_limit_min' => (int) ($exam['time_limit_min'] ?? 50),
+        'max_attempts' => (int) ($exam['max_attempts'] ?? 1),
+        'instructions' => (string) ($exam['instructions'] ?? ''),
+        'cefr_level' => (string) ($exam['cefr_level'] ?? ''),
+        'status' => (string) ($exam['status'] ?? 'draft'),
+        'modalities' => json_decode((string) ($exam['modalities'] ?? '["online","printed"]'), true) ?: ['online', 'printed'],
+        'question_bank' => $questionBank,
+    ];
+}
 
 $tab = $_GET['tab'] ?? 'list';
 $msg = '';
@@ -119,26 +164,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $durationHrs  = max(1, (int) ($_POST['duration_hours'] ?? 24));
         $maxUses      = (int) ($_POST['max_uses'] ?? 999);
         $token        = bin2hex(random_bytes(16));
-
-        // Compute expires_at: if available_date is today or past, start from NOW so the
-        // link is not already expired at creation time; if it's a future date, start from midnight.
-        if ($availDate !== '') {
-            $availMidnight = strtotime($availDate . ' 00:00:00');
-            $startTs       = max($availMidnight, time());
-            $expiresTs     = $startTs + ($durationHrs * 3600);
-            $expires       = date('Y-m-d H:i:s', $expiresTs);
+        if (!ev_exam_exists($pdo, $examId)) {
+            $msg = 'Selecciona un examen válido.';
+            $tab = 'links';
         } else {
-            $expires = null;
-        }
+            $snapshot = ev_build_link_snapshot($pdo, $examId);
 
-        $stmt = $pdo->prepare(
-            "INSERT INTO eval_links (exam_id, token, link_type, max_uses, expires_at, created_by)
-             VALUES (?,?,'group',?,?,?) RETURNING id"
-        );
-        $stmt->execute([$examId, $token, $maxUses, $expires,
-            $_SESSION['admin_username'] ?? 'admin']);
-        $msg = 'Link de grupo generado.';
-        $tab = 'links';
+            // Compute expires_at: if available_date is today or past, start from NOW so the
+            // link is not already expired at creation time; if it's a future date, start from midnight.
+            if ($availDate !== '') {
+                $availMidnight = strtotime($availDate . ' 00:00:00');
+                $startTs       = max($availMidnight, time());
+                $expiresTs     = $startTs + ($durationHrs * 3600);
+                $expires       = date('Y-m-d H:i:s', $expiresTs);
+            } else {
+                $expires = null;
+            }
+
+            $stmt = $pdo->prepare(
+                "INSERT INTO eval_links (exam_id, token, link_type, max_uses, expires_at, exam_snapshot_json, created_by)
+                 VALUES (?,?,'group',?,?,?,?) RETURNING id"
+            );
+            $stmt->execute([$examId, $token, $maxUses, $expires, json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                $_SESSION['admin_username'] ?? 'admin']);
+            $msg = 'Link de grupo generado.';
+            $tab = 'links';
+        }
     }
 
     if ($action === 'generate_individual_link') {
@@ -149,16 +200,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $sEmail  = trim($_POST['student_email'] ?? '');
         $sProg   = trim($_POST['student_program'] ?? '');
         $token   = bin2hex(random_bytes(16));
+        if (!ev_exam_exists($pdo, $examId)) {
+            $msg = 'Selecciona un examen válido.';
+            $tab = 'links';
+        } else {
+            $snapshot = ev_build_link_snapshot($pdo, $examId);
 
-        $stmt = $pdo->prepare(
-            "INSERT INTO eval_links (exam_id, token, link_type, student_name, student_doc,
-             student_phone, student_email, student_program, max_uses, created_by)
-             VALUES (?,?,'individual',?,?,?,?,?,1,?) RETURNING id"
-        );
-        $stmt->execute([$examId, $token, $sName, $sDoc, $sPhone, $sEmail, $sProg,
-            $_SESSION['admin_username'] ?? 'admin']);
-        $msg = 'Link individual generado.';
-        $tab = 'links';
+            $stmt = $pdo->prepare(
+                "INSERT INTO eval_links (exam_id, token, link_type, student_name, student_doc,
+                 student_phone, student_email, student_program, max_uses, exam_snapshot_json, created_by)
+                 VALUES (?,?,'individual',?,?,?,?,?,1,?,?) RETURNING id"
+            );
+            $stmt->execute([$examId, $token, $sName, $sDoc, $sPhone, $sEmail, $sProg,
+                json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                $_SESSION['admin_username'] ?? 'admin']);
+            $msg = 'Link individual generado.';
+            $tab = 'links';
+        }
     }
 
     if ($action === 'save_cefr_ranges') {
@@ -1999,5 +2057,4 @@ else switchAssignType('group');
 </script>
 </body>
 </html>
-
 
