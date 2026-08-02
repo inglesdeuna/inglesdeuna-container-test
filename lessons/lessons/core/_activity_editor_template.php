@@ -1,13 +1,15 @@
 <?php
 
-function render_activity_editor($title, $icon, $content) {
+function render_activity_editor($title, $icon, $content, $backUrlOverride = '') {
     $unit = isset($_GET['unit']) ? trim((string) $_GET['unit']) : '';
     $source = isset($_GET['source']) ? trim((string) $_GET['source']) : '';
     $activityId = isset($_GET['id']) ? trim((string) $_GET['id']) : '';
 
     // Standard flow returns to unit viewer. Exam-builder flow returns to the
     // quiz-from-scratch checklist so the user can continue editing selected blocks.
-    $backUrl = '../../academic/unit_view.php?unit=' . urlencode($unit);
+    $backUrl = $backUrlOverride !== ''
+        ? $backUrlOverride
+        : '../../academic/unit_view.php?unit=' . urlencode($unit);
     if ($source === 'eval_builder' && $unit !== '') {
         $examId = 0;
         if (isset($_GET['exam_id'])) {
