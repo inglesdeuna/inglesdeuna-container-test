@@ -398,6 +398,7 @@ try {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
     ");
+    $pdo->exec("ALTER TABLE eval_links ADD COLUMN IF NOT EXISTS exam_snapshot_json JSONB");
 
     /* ===============================
        EVAL_RESULTS
