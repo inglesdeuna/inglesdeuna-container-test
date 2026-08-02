@@ -49,7 +49,13 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     $apiKey = cloudinary_env('CLOUDINARY_API_KEY');
     $apiSecret = cloudinary_env('CLOUDINARY_API_SECRET');
 
-    if ($cloudName === '' || $apiKey === '' || $apiSecret === '') {
+    if (
+        $cloudName === ''
+        || $apiKey === ''
+        || $apiSecret === ''
+        || !function_exists('curl_init')
+        || !class_exists('CURLFile')
+    ) {
         return null;
     }
 
@@ -111,6 +117,7 @@ function store_pdf_in_db(PDO $pdo, string $activityId, string $sourcePath): ?str
         return null;
     }
 
+    $ok = false;
     try {
         $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :data WHERE id = :id");
         $stmt->bindParam(':data', $stream, PDO::PARAM_LOB);
@@ -118,10 +125,26 @@ function store_pdf_in_db(PDO $pdo, string $activityId, string $sourcePath): ?str
         $ok = $stmt->execute();
     } catch (Throwable $e) {
         error_log('flipbook: failed to store PDF in pdf_data column: ' . $e->getMessage());
-        $ok = false;
     } finally {
         if (is_resource($stream)) {
             fclose($stream);
+        }
+    }
+
+    // PDO_PGSQL does not handle stream-bound BYTEA parameters consistently
+    // across driver versions. Retry with the binary contents when that path
+    // fails; the upload limit keeps this bounded to a reasonable size.
+    if (!$ok) {
+        $contents = @file_get_contents($sourcePath);
+        if ($contents !== false && $contents !== '') {
+            try {
+                $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :data WHERE id = :id");
+                $stmt->bindValue(':data', $contents, PDO::PARAM_LOB);
+                $stmt->bindValue(':id', $activityId);
+                $ok = $stmt->execute();
+            } catch (Throwable $e) {
+                error_log('flipbook: binary PDF fallback failed: ' . $e->getMessage());
+            }
         }
     }
 
@@ -373,7 +396,7 @@ try {
 
             $storedPdfUrl = persist_pdf($pdo, $activityId, $tmpPath, (string) $originalName);
             if ($storedPdfUrl === null || $storedPdfUrl === '') {
-                respond_error('No se pudo almacenar el PDF. Verifica Cloudinary o permisos de la carpeta uploads/pdfs.');
+                respond_error('No se pudo almacenar el PDF. Verifica las credenciales de Cloudinary y que la columna pdf_data exista en la base de datos.');
             }
 
             $pdfUrl = $storedPdfUrl;
