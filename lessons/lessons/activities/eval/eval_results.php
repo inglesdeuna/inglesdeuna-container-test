@@ -276,7 +276,7 @@ tr:hover td{background:#f7fcf8;}
       <table id="results-table">
         <thead>
           <tr>
-            <th>Nombre</th><th>Doc</th><th>Modalidad</th><th>Fecha</th>
+            <th>Nombre</th><th>Nivel</th><th>Doc</th><th>Modalidad</th><th>Fecha</th>
             <th>Puntaje</th><th>%</th><th>Nivel MCER</th><th>Status</th>
           </tr>
         </thead>
@@ -289,6 +289,7 @@ tr:hover td{background:#f7fcf8;}
         ?>
         <tr>
           <td><strong><?= h($r['student_name'] ?? '-') ?></strong></td>
+          <td><?= h($r['student_phone'] ?? '-') ?></td>
           <td><?= h($r['student_doc'] ?? '-') ?></td>
           <td>
             <span class="badge badge-<?= $r['modality'] === 'printed' ? 'printed' : 'online' ?>">
@@ -326,7 +327,7 @@ tr:hover td{background:#f7fcf8;}
         </tr>
         <?php endforeach; ?>
         <?php if (empty($results)): ?>
-        <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:28px;">Sin resultados todavía.</td></tr>
+        <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:28px;">Sin resultados todavía.</td></tr>
         <?php endif; ?>
         </tbody>
       </table>
