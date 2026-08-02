@@ -1,158 +1,190 @@
 <?php
+declare(strict_types=1);
+
+/**
+ * Fetches a Cloudinary PDF into memory while preserving only the headers from
+ * the final response. cURL invokes the header callback once per redirect; the
+ * previous proxy mixed those header sets and could send a stale Content-Length
+ * with the final PDF body.
+ *
+ * @return array{body:string|false,http_code:int,curl_error:string,headers:array<string,string>}
+ */
+function fetch_cloudinary_pdf(string $url, string $range): array
+{
+    $responseHeaders = [];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 240);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.5',
+        'User-Agent: FlipbookProxy/2.0',
+        'Accept-Encoding: identity',
+    ]);
+
+    if ($range !== '') {
+        curl_setopt($ch, CURLOPT_RANGE, $range);
+    }
+
+    curl_setopt(
+        $ch,
+        CURLOPT_HEADERFUNCTION,
+        static function ($ch, string $headerLine) use (&$responseHeaders): int {
+            $length = strlen($headerLine);
+            $line = trim($headerLine);
+
+            // A new HTTP status line starts a new header block. Discard headers
+            // from redirects so values such as Content-Length cannot leak into
+            // the final response.
+            if (preg_match('/^HTTP\\/\\S+\\s+\\d{3}/i', $line) === 1) {
+                $responseHeaders = [];
+                return $length;
+            }
+
+            if ($line !== '' && str_contains($line, ':')) {
+                [$name, $value] = explode(':', $line, 2);
+                $responseHeaders[strtolower(trim($name))] = trim($value);
+            }
+
+            return $length;
+        }
+    );
+
+    $body = curl_exec($ch);
+    $curlError = curl_error($ch);
+    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return [
+        'body' => $body,
+        'http_code' => $httpCode,
+        'curl_error' => $curlError,
+        'headers' => $responseHeaders,
+    ];
+}
 
 $url = isset($_GET['url']) ? trim((string) $_GET['url']) : '';
 if ($url === '') {
     http_response_code(400);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Missing url';
-    exit;
+    exit('Missing url');
 }
 
 $parts = parse_url($url);
 if (!is_array($parts) || !isset($parts['scheme'], $parts['host'])) {
     http_response_code(400);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Invalid url';
-    exit;
+    exit('Invalid url');
 }
 
-$scheme     = strtolower((string) $parts['scheme']);
-$host       = strtolower((string) $parts['host']);
+$scheme = strtolower((string) $parts['scheme']);
+$host = strtolower((string) $parts['host']);
 $forceDownload = isset($_GET['dl']) && $_GET['dl'] === '1';
 
-if ($scheme !== 'http' && $scheme !== 'https') {
+if ($scheme !== 'https' && $scheme !== 'http') {
     http_response_code(400);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Invalid scheme';
-    exit;
+    exit('Invalid scheme');
 }
 
-$allowedHosts = array(
-    'res.cloudinary.com',
-);
+$allowed = $host === 'res.cloudinary.com'
+    || str_ends_with($host, '.cloudinary.com');
 
-$allowed = in_array($host, $allowedHosts, true) || substr($host, -strlen('.cloudinary.com')) === '.cloudinary.com';
 if (!$allowed) {
     http_response_code(403);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Host not allowed';
-    exit;
+    exit('Host not allowed');
 }
 
-$clientRange = isset($_SERVER['HTTP_RANGE']) ? trim((string) $_SERVER['HTTP_RANGE']) : '';
-
-$responseHeaders = array();
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-    'Accept: application/pdf,*/*;q=0.8',
-    'User-Agent: FlipbookProxy/1.0',
-));
-if ($clientRange !== '') {
-    curl_setopt($ch, CURLOPT_RANGE, preg_replace('/^bytes=/', '', $clientRange));
+// Forward only a single syntactically valid byte range. Multiple ranges require
+// multipart/byteranges and are intentionally ignored so a complete 200 response
+// is returned instead of a malformed partial PDF.
+$range = '';
+$clientRange = trim((string) ($_SERVER['HTTP_RANGE'] ?? ''));
+if (
+    $clientRange !== ''
+    && preg_match('/^bytes=(\\d*)-(\\d*)$/', $clientRange, $matches) === 1
+    && ($matches[1] !== '' || $matches[2] !== '')
+) {
+    $range = $matches[1] . '-' . $matches[2];
 }
 
-curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $headerLine) use (&$responseHeaders) {
-    $len = strlen($headerLine);
-    $line = trim($headerLine);
+$response = fetch_cloudinary_pdf($url, $range);
 
-    if ($line !== '' && strpos($line, ':') !== false) {
-        list($name, $value) = explode(':', $line, 2);
-        $name = strtolower(trim($name));
-        $value = trim($value);
-        $responseHeaders[$name] = $value;
-    }
+// Recover old rows that stored an image/upload PDF URL. New uploads use raw.
+if (
+    ($response['body'] === false || $response['http_code'] === 401)
+    && str_contains($url, '/image/upload/')
+) {
+    $url = str_replace('/image/upload/', '/raw/upload/', $url);
+    $response = fetch_cloudinary_pdf($url, $range);
+}
 
-    return $len;
-});
+$body = $response['body'];
+$httpCode = $response['http_code'];
+$curlError = $response['curl_error'];
+$responseHeaders = $response['headers'];
 
-$body = curl_exec($ch);
-$curlError = curl_error($ch);
-$httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-curl_close($ch);
-
-if (($body === false || $httpCode >= 400) && $httpCode === 401 && strpos($url, '/image/upload/') !== false) {
-    $retryUrl = str_replace('/image/upload/', '/raw/upload/', $url);
-    $responseHeaders = array();
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $retryUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
-    curl_setopt($ch, CURLOPT_HTTPHEADER, array(
-        'Accept: application/pdf,*/*;q=0.8',
-        'User-Agent: FlipbookProxy/1.0',
+if ($body === false || $httpCode < 200 || $httpCode >= 300) {
+    error_log(sprintf(
+        'flipbook: Cloudinary PDF delivery failed (http=%d, curl_error=%s, url=%s)',
+        $httpCode,
+        $curlError !== '' ? $curlError : 'none',
+        $url
     ));
-    if ($clientRange !== '') {
-        curl_setopt($ch, CURLOPT_RANGE, preg_replace('/^bytes=/', '', $clientRange));
-    }
-    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function ($ch, $headerLine) use (&$responseHeaders) {
-        $len = strlen($headerLine);
-        $line = trim($headerLine);
-
-        if ($line !== '' && strpos($line, ':') !== false) {
-            list($name, $value) = explode(':', $line, 2);
-            $name = strtolower(trim($name));
-            $value = trim($value);
-            $responseHeaders[$name] = $value;
-        }
-
-        return $len;
-    });
-
-    $body = curl_exec($ch);
-    $curlError = curl_error($ch);
-    $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $contentType = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-    curl_close($ch);
-}
-
-if ($body === false || $httpCode >= 400) {
     http_response_code(502);
     header('Content-Type: text/plain; charset=utf-8');
-    echo 'Error fetching PDF: ' . ($curlError !== '' ? $curlError : 'HTTP ' . $httpCode);
-    exit;
+    exit('Error fetching PDF: ' . ($curlError !== '' ? $curlError : 'HTTP ' . $httpCode));
 }
 
-if ($contentType === '') {
-    $contentType = isset($responseHeaders['content-type']) ? (string) $responseHeaders['content-type'] : '';
+$body = (string) $body;
+if ($body === '') {
+    error_log('flipbook: Cloudinary returned an empty PDF body for ' . $url);
+    http_response_code(502);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Cloudinary returned an empty PDF.');
 }
-if ($contentType === '') {
-    $contentType = 'application/pdf';
+
+// A complete response, or a range beginning at byte zero, must contain the PDF
+// signature near the beginning. This prevents Cloudinary error HTML with a 2xx
+// status from being sent to Chrome as application/pdf.
+$startsAtZero = $range === '' || str_starts_with($range, '0-');
+if ($startsAtZero && strpos(substr($body, 0, 1024), '%PDF-') === false) {
+    error_log(sprintf(
+        'flipbook: Cloudinary response is not a PDF (http=%d, bytes=%d, url=%s)',
+        $httpCode,
+        strlen($body),
+        $url
+    ));
+    http_response_code(502);
+    header('Content-Type: text/plain; charset=utf-8');
+    exit('Cloudinary did not return a valid PDF.');
 }
 
 if ($httpCode === 206) {
+    $contentRange = trim((string) ($responseHeaders['content-range'] ?? ''));
+    if ($contentRange === '' || preg_match('/^bytes \\d+-\\d+\\/(?:\\d+|\\*)$/i', $contentRange) !== 1) {
+        error_log('flipbook: invalid partial PDF response from Cloudinary: ' . $contentRange);
+        http_response_code(502);
+        header('Content-Type: text/plain; charset=utf-8');
+        exit('Cloudinary returned an invalid partial PDF response.');
+    }
+
     http_response_code(206);
+    header('Content-Range: ' . $contentRange);
 } else {
     http_response_code(200);
 }
 
-// Always override with application/pdf — Cloudinary raw files often return
-// application/octet-stream which causes browsers to refuse inline display.
 header('Content-Type: application/pdf');
+header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
+header('Content-Length: ' . strlen($body));
+header('Accept-Ranges: bytes');
 header('Cache-Control: public, max-age=600');
 header('X-Content-Type-Options: nosniff');
-header('Content-Disposition: ' . ($forceDownload ? 'attachment' : 'inline') . '; filename="document.pdf"');
-
-if (isset($responseHeaders['accept-ranges'])) {
-    header('Accept-Ranges: ' . $responseHeaders['accept-ranges']);
-} else {
-    header('Accept-Ranges: bytes');
-}
-
-if (isset($responseHeaders['content-range'])) {
-    header('Content-Range: ' . $responseHeaders['content-range']);
-}
-
-if (isset($responseHeaders['content-length'])) {
-    header('Content-Length: ' . $responseHeaders['content-length']);
-}
 
 echo $body;
