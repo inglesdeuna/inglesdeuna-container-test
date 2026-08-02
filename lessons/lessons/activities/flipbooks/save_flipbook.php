@@ -206,37 +206,26 @@ function store_pdf_locally(string $sourcePath, string $originalName): ?string
 
 function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $originalName): ?string
 {
+    // Cloudinary is the only storage accepted for new or replacement uploads.
+    // The former pdf_data fallback could return a successful UPDATE even when
+    // PDO_PGSQL had not produced browser-readable BYTEA data. That created the
+    // exact false-positive state "saved successfully, but the PDF does not
+    // display". Existing db-pdf:// rows remain readable through serve_pdf.php,
+    // but new saves must have a confirmed Cloudinary raw URL.
     $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath, $activityId);
     if ($cloudinaryUrl !== null && $cloudinaryUrl !== '') {
         clear_pdf_in_db($pdo, $activityId);
         return $cloudinaryUrl;
     }
 
-    // Cloudinary is unavailable: prefer the persistent pdf_data BYTEA column
-    // over the local filesystem. Render's disk is ephemeral, so any PDF saved
-    // only to uploads/pdfs is lost the next time the container restarts or
-    // redeploys, which is what made recently uploaded worksheets stop working
-    // ("El archivo no estaba disponible en el sitio") while older ones (already
-    // synced to Cloudinary) kept working. Streaming via PDO::PARAM_LOB avoids
-    // the earlier "SQLSTATE[HY000] ... no connection to the server" crash that
-    // came from binding whole 20-30 MB blobs as a single string parameter, but
-    // stay conservative and only use it for files at/under a safe size.
-    $fileSize = @filesize($sourcePath);
-    if ($fileSize !== false && $fileSize <= FLIPBOOK_DB_SAFE_MAX_BYTES) {
-        $dbUrl = store_pdf_in_db($pdo, $activityId, $sourcePath);
-        if ($dbUrl !== null && $dbUrl !== '') {
-            return $dbUrl;
-        }
-    }
-
-    // Never report success for a file that only exists on Render's ephemeral
-    // filesystem. Legacy local URLs remain readable for recovery, but new
-    // uploads must be durable or the administrator must retry the upload.
     error_log(sprintf(
-        'flipbook: durable PDF storage failed (activity_id=%s, bytes=%s)',
+        'flipbook: Cloudinary PDF persistence failed (activity_id=%s, filename=%s, bytes=%s, reason=%s)',
         $activityId,
-        (string) (@filesize($sourcePath) ?: 0)
+        $originalName,
+        (string) (@filesize($sourcePath) ?: 0),
+        (string) ($GLOBALS['flipbook_cloudinary_error'] ?? 'unknown')
     ));
+
     return null;
 }
 
