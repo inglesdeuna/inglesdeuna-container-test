@@ -324,4 +324,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <?php
 $content = ob_get_clean();
-render_activity_editor('Downloadable', 'fas fa-file-pdf', $content);
+render_activity_editor(
+    'Downloadable',
+    'fas fa-file-pdf',
+    $content,
+    '/lessons/lessons/activities/hub/index.php?unit=' . rawurlencode($unit)
+);
