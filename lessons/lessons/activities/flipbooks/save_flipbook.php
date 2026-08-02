@@ -45,35 +45,41 @@ function respond_error(string $message, int $statusCode = 400): void
 
 function upload_pdf_to_cloudinary_raw(string $filePath, string $activityId): ?string
 {
+    $GLOBALS['flipbook_cloudinary_error'] = '';
+
     $cloudName = cloudinary_env('CLOUDINARY_CLOUD_NAME');
     $apiKey = cloudinary_env('CLOUDINARY_API_KEY');
     $apiSecret = cloudinary_env('CLOUDINARY_API_SECRET');
 
-    if (
-        $cloudName === ''
-        || $apiKey === ''
-        || $apiSecret === ''
-        || !function_exists('curl_init')
-        || !class_exists('CURLFile')
-    ) {
+    if ($cloudName === '' || $apiKey === '' || $apiSecret === '') {
+        $GLOBALS['flipbook_cloudinary_error'] = 'faltan las credenciales de Cloudinary';
+        return null;
+    }
+
+    if (!function_exists('curl_init') || !class_exists('CURLFile')) {
+        $GLOBALS['flipbook_cloudinary_error'] = 'la extensión cURL de PHP no está disponible';
         return null;
     }
 
     $timestamp = time();
-    $signature = sha1("timestamp={$timestamp}{$apiSecret}");
-    $url = "https://api.cloudinary.com/v1_1/{$cloudName}/raw/upload";
     $safeActivityId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $activityId);
     $publicId = 'flipbook_' . ($safeActivityId !== '' ? $safeActivityId : 'activity')
-        . '_' . $timestamp . '_' . bin2hex(random_bytes(4));
+        . '_' . $timestamp . '_' . bin2hex(random_bytes(8)) . '.pdf';
+
+    // Cloudinary signatures must contain every signed upload parameter in
+    // alphabetical order. The previous code sent public_id but signed only
+    // timestamp, so Cloudinary correctly rejected every request as invalid.
+    // Raw assets must also keep their extension in public_id.
+    $signaturePayload = 'public_id=' . $publicId . '&timestamp=' . $timestamp;
+    $signature = sha1($signaturePayload . $apiSecret);
+    $url = "https://api.cloudinary.com/v1_1/{$cloudName}/raw/upload";
 
     $post = [
         'file' => new CURLFile($filePath, 'application/pdf', basename($filePath)),
         'api_key' => $apiKey,
+        'public_id' => $publicId,
         'timestamp' => $timestamp,
         'signature' => $signature,
-        // A unique public ID prevents Cloudinary from rejecting a replacement
-        // when the new file has the same name as the previous PDF.
-        'public_id' => $publicId,
     ];
 
     $ch = curl_init();
@@ -81,14 +87,25 @@ function upload_pdf_to_cloudinary_raw(string $filePath, string $activityId): ?st
     curl_setopt($ch, CURLOPT_POST, 1);
     curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 180);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 240);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Expect:']);
 
     $result = curl_exec($ch);
     $curlError = curl_error($ch);
     $httpCode = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($result === false || $httpCode >= 400) {
+    $decoded = json_decode((string) $result, true);
+    $cloudinaryMessage = is_array($decoded)
+        ? trim((string) ($decoded['error']['message'] ?? ''))
+        : '';
+
+    if ($result === false || $httpCode < 200 || $httpCode >= 300) {
+        $GLOBALS['flipbook_cloudinary_error'] = $cloudinaryMessage !== ''
+            ? $cloudinaryMessage
+            : ($curlError !== '' ? $curlError : 'respuesta HTTP ' . $httpCode);
+
         error_log(sprintf(
             'flipbook: Cloudinary raw PDF upload failed (http=%d, curl_error=%s, response=%s)',
             $httpCode,
@@ -98,12 +115,17 @@ function upload_pdf_to_cloudinary_raw(string $filePath, string $activityId): ?st
         return null;
     }
 
-    $decoded = json_decode((string) $result, true);
-    if (!is_array($decoded)) {
+    $secureUrl = is_array($decoded) ? trim((string) ($decoded['secure_url'] ?? '')) : '';
+    $resourceType = is_array($decoded) ? trim((string) ($decoded['resource_type'] ?? '')) : '';
+    $uploadedBytes = is_array($decoded) ? (int) ($decoded['bytes'] ?? 0) : 0;
+
+    if ($secureUrl === '' || $resourceType !== 'raw' || $uploadedBytes <= 0) {
+        $GLOBALS['flipbook_cloudinary_error'] = 'Cloudinary devolvió una respuesta incompleta para el PDF';
+        error_log('flipbook: invalid Cloudinary raw upload response: ' . substr((string) $result, 0, 500));
         return null;
     }
 
-    return isset($decoded['secure_url']) ? (string) $decoded['secure_url'] : null;
+    return $secureUrl;
 }
 
 function clear_pdf_in_db(PDO $pdo, string $activityId): void
@@ -408,7 +430,15 @@ try {
 
             $storedPdfUrl = persist_pdf($pdo, $activityId, $tmpPath, (string) $originalName);
             if ($storedPdfUrl === null || $storedPdfUrl === '') {
-                respond_error('No se pudo almacenar el PDF. Verifica las credenciales de Cloudinary y que la columna pdf_data exista en la base de datos.');
+                $cloudinaryReason = trim((string) ($GLOBALS['flipbook_cloudinary_error'] ?? ''));
+                $detail = $cloudinaryReason !== ''
+                    ? ' Cloudinary respondió: ' . $cloudinaryReason . '.'
+                    : '';
+                respond_error(
+                    'No se pudo almacenar el PDF de forma permanente.' . $detail
+                    . ' El archivo anterior no fue modificado.',
+                    502
+                );
             }
 
             $pdfUrl = $storedPdfUrl;
