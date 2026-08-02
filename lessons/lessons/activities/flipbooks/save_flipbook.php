@@ -13,6 +13,12 @@ try {
 
 const FLIPBOOK_MAX_PDF_BYTES = 30 * 1024 * 1024;
 const FLIPBOOK_DB_PDF_PREFIX = 'db-pdf://';
+// Blobs at or below this size are safe to stream into the pdf_data BYTEA
+// column. The earlier "SQLSTATE[HY000] ... no connection to the server"
+// crashes were seen with 20-30 MB blobs bound as a single string parameter;
+// staying well under that (and streaming via PDO::PARAM_LOB) avoids the issue
+// while still giving typical worksheet PDFs a persistent home.
+const FLIPBOOK_DB_SAFE_MAX_BYTES = 8 * 1024 * 1024;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -92,6 +98,30 @@ function clear_pdf_in_db(PDO $pdo, string $activityId): void
     }
 }
 
+function store_pdf_in_db(PDO $pdo, string $activityId, string $sourcePath): ?string
+{
+    $stream = @fopen($sourcePath, 'rb');
+    if ($stream === false) {
+        return null;
+    }
+
+    try {
+        $stmt = $pdo->prepare("UPDATE activities SET pdf_data = :data WHERE id = :id");
+        $stmt->bindParam(':data', $stream, PDO::PARAM_LOB);
+        $stmt->bindValue(':id', $activityId);
+        $ok = $stmt->execute();
+    } catch (Throwable $e) {
+        error_log('flipbook: failed to store PDF in pdf_data column: ' . $e->getMessage());
+        $ok = false;
+    } finally {
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+    }
+
+    return $ok ? (FLIPBOOK_DB_PDF_PREFIX . $activityId) : null;
+}
+
 function store_pdf_locally(string $sourcePath, string $originalName): ?string
 {
     $uploadDir = __DIR__ . '/uploads/pdfs';
@@ -125,11 +155,24 @@ function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $o
         return $cloudinaryUrl;
     }
 
-    // Important: do not store new PDFs in Postgres. Sending 20-30 MB PDF blobs
-    // through pdo_pgsql (BYTEA/LOB/hex) is what caused Render Postgres to drop
-    // the connection and surface "SQLSTATE[HY000] General error: 7 no connection
-    // to the server" during Save Activity. Use the filesystem fallback when
-    // Cloudinary is unavailable, and keep only the small URL/filename JSON in DB.
+    // Cloudinary is unavailable: prefer the persistent pdf_data BYTEA column
+    // over the local filesystem. Render's disk is ephemeral, so any PDF saved
+    // only to uploads/pdfs is lost the next time the container restarts or
+    // redeploys, which is what made recently uploaded worksheets stop working
+    // ("El archivo no estaba disponible en el sitio") while older ones (already
+    // synced to Cloudinary) kept working. Streaming via PDO::PARAM_LOB avoids
+    // the earlier "SQLSTATE[HY000] ... no connection to the server" crash that
+    // came from binding whole 20-30 MB blobs as a single string parameter, but
+    // stay conservative and only use it for files at/under a safe size.
+    $fileSize = @filesize($sourcePath);
+    if ($fileSize !== false && $fileSize <= FLIPBOOK_DB_SAFE_MAX_BYTES) {
+        $dbUrl = store_pdf_in_db($pdo, $activityId, $sourcePath);
+        if ($dbUrl !== null && $dbUrl !== '') {
+            return $dbUrl;
+        }
+    }
+
+    // Last-resort fallback: local filesystem (works until the next restart).
     $localUrl = store_pdf_locally($sourcePath, $originalName);
     if ($localUrl !== null && $localUrl !== '') {
         return $localUrl;
