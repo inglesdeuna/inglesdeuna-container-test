@@ -178,12 +178,14 @@ function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $o
         }
     }
 
-    // Last-resort fallback: local filesystem (works until the next restart).
-    $localUrl = store_pdf_locally($sourcePath, $originalName);
-    if ($localUrl !== null && $localUrl !== '') {
-        return $localUrl;
-    }
-
+    // Never report success for a file that only exists on Render's ephemeral
+    // filesystem. Legacy local URLs remain readable for recovery, but new
+    // uploads must be durable or the administrator must retry the upload.
+    error_log(sprintf(
+        'flipbook: durable PDF storage failed (activity_id=%s, bytes=%s)',
+        $activityId,
+        (string) (@filesize($sourcePath) ?: 0)
+    ));
     return null;
 }
 
