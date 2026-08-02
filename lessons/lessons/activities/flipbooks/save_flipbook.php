@@ -43,7 +43,7 @@ function respond_error(string $message, int $statusCode = 400): void
     ], $statusCode);
 }
 
-function upload_pdf_to_cloudinary_raw(string $filePath): ?string
+function upload_pdf_to_cloudinary_raw(string $filePath, string $activityId): ?string
 {
     $cloudName = cloudinary_env('CLOUDINARY_CLOUD_NAME');
     $apiKey = cloudinary_env('CLOUDINARY_API_KEY');
@@ -62,12 +62,18 @@ function upload_pdf_to_cloudinary_raw(string $filePath): ?string
     $timestamp = time();
     $signature = sha1("timestamp={$timestamp}{$apiSecret}");
     $url = "https://api.cloudinary.com/v1_1/{$cloudName}/raw/upload";
+    $safeActivityId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $activityId);
+    $publicId = 'flipbook_' . ($safeActivityId !== '' ? $safeActivityId : 'activity')
+        . '_' . $timestamp . '_' . bin2hex(random_bytes(4));
 
     $post = [
         'file' => new CURLFile($filePath, 'application/pdf', basename($filePath)),
         'api_key' => $apiKey,
         'timestamp' => $timestamp,
         'signature' => $signature,
+        // A unique public ID prevents Cloudinary from rejecting a replacement
+        // when the new file has the same name as the previous PDF.
+        'public_id' => $publicId,
     ];
 
     $ch = curl_init();
@@ -178,7 +184,7 @@ function store_pdf_locally(string $sourcePath, string $originalName): ?string
 
 function persist_pdf(PDO $pdo, string $activityId, string $sourcePath, string $originalName): ?string
 {
-    $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath);
+    $cloudinaryUrl = upload_pdf_to_cloudinary_raw($sourcePath, $activityId);
     if ($cloudinaryUrl !== null && $cloudinaryUrl !== '') {
         clear_pdf_in_db($pdo, $activityId);
         return $cloudinaryUrl;
