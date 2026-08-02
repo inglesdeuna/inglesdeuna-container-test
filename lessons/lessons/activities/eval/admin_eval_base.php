@@ -163,6 +163,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $availDate    = trim($_POST['available_date'] ?? '');
         $durationHrs  = max(1, (int) ($_POST['duration_hours'] ?? 24));
         $maxUses      = (int) ($_POST['max_uses'] ?? 999);
+        $groupLevel   = trim($_POST['group_level'] ?? '');
         $token        = bin2hex(random_bytes(16));
         if (!ev_exam_exists($pdo, $examId)) {
             $msg = 'Selecciona un examen válido.';
@@ -182,10 +183,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
             }
 
             $stmt = $pdo->prepare(
-                "INSERT INTO eval_links (exam_id, token, link_type, max_uses, expires_at, exam_snapshot_json, created_by)
-                 VALUES (?,?,'group',?,?,?,?) RETURNING id"
+                "INSERT INTO eval_links (exam_id, token, link_type, student_phone, max_uses, expires_at, exam_snapshot_json, created_by)
+                 VALUES (?,?,'group',?,?,?,?,?) RETURNING id"
             );
-            $stmt->execute([$examId, $token, $maxUses, $expires, json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            $stmt->execute([$examId, $token, $groupLevel ?: null, $maxUses, $expires,
+                json_encode($snapshot, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 $_SESSION['admin_username'] ?? 'admin']);
             $msg = 'Link de grupo generado.';
             $tab = 'links';
@@ -1233,6 +1235,10 @@ tr:hover td{background:#FAFAFE;}
               <label>Usos máximos</label>
               <input type="number" name="max_uses" value="999" min="1">
             </div>
+            <div class="form-group">
+              <label>Nivel / Grado <span style="color:var(--muted);font-weight:600;font-size:11px;">(opcional)</span></label>
+              <input type="text" name="group_level" placeholder="Ej: First grade, 3°A, B2…">
+            </div>
           </div>
           <button type="submit" class="btn btn-primary">Generar link de grupo</button>
         </form>
@@ -1412,13 +1418,14 @@ tr:hover td{background:#FAFAFE;}
         <?php else: ?>
         <table>
           <thead>
-            <tr><th>Nombre</th><th>Doc</th><th>Modalidad</th><th>Fecha</th><th>Puntaje</th><th>%</th><th>MCER</th><th>Status</th></tr>
+            <tr><th>Nombre</th><th>Nivel</th><th>Doc</th><th>Modalidad</th><th>Fecha</th><th>Puntaje</th><th>%</th><th>MCER</th><th>Status</th></tr>
           </thead>
           <tbody>
           <?php foreach ($examResults as $r): ?>
           <?php $cc2 = $cefrColors[$r['cefr_suggested'] ?? ''] ?? '#6c757d'; ?>
           <tr>
             <td><?= h($r['student_name'] ?? '-') ?></td>
+            <td><?= h($r['student_phone'] ?? '-') ?></td>
             <td><?= h($r['student_doc'] ?? '-') ?></td>
             <td><span class="badge badge-<?= $r['modality'] === 'printed' ? 'printed' : 'online' ?>"><?= h($r['modality']) ?></span></td>
             <td><?= $r['submitted_at'] ? h(date('d/m/Y H:i', strtotime($r['submitted_at']))) : '<em>Pendiente</em>' ?></td>
@@ -1429,7 +1436,7 @@ tr:hover td{background:#FAFAFE;}
           </tr>
           <?php endforeach; ?>
           <?php if (empty($examResults)): ?>
-          <tr><td colspan="8" style="text-align:center;color:var(--muted);padding:24px;">Sin resultados todavía.</td></tr>
+          <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px;">Sin resultados todavía.</td></tr>
           <?php endif; ?>
           </tbody>
         </table>
