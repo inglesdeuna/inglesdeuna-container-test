@@ -34,8 +34,10 @@ require __DIR__ . '/admin_eval_base.php';
         if (handler.indexOf("showTab('results')") === -1) return;
         button.removeAttribute('onclick');
         button.addEventListener('click', function () {
+            // Drop exam_id so the PHP auto-select picks the most recently submitted exam.
             var params = new URLSearchParams(window.location.search);
             params.set('tab', 'results');
+            params.delete('exam_id');
             window.location.href = 'admin_eval.php?' + params.toString();
         });
     });

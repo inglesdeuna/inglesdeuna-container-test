@@ -1408,7 +1408,13 @@ tr:hover td{background:#FAFAFE;}
       <div class="card">
         <div class="card-head">
           <h3>Resultados<?= $currentExam ? ' — ' . h($currentExam['title']) : '' ?></h3>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+            <select id="results-exam-select" onchange="if(this.value){window.location.href='admin_eval.php?tab=results&exam_id='+this.value;}" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:700;color:var(--ink);">
+              <option value="">— Cambiar examen —</option>
+              <?php foreach ($exams as $exOpt): ?>
+              <option value="<?= $exOpt['id'] ?>"<?= $currentExamId == $exOpt['id'] ? ' selected' : ''?>><?= h($exOpt['title']) ?></option>
+              <?php endforeach; ?>
+            </select>
             <a class="btn btn-secondary btn-sm" href="eval_results.php<?= $currentExamId ? '?exam_id='.$currentExamId : '' ?>"><i class="ti ti-chart-bar" aria-hidden="true"></i>Dashboard completo</a>
             <button class="btn btn-primary btn-sm" onclick="openPrintedModal()">+ Nota impresa</button>
           </div>
