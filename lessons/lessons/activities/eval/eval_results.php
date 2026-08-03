@@ -14,6 +14,21 @@ function h(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8')
 $examId = (int) ($_GET['exam_id'] ?? 0);
 $msg    = '';
 
+// Auto-redirect to the exam with the most recent submitted result when none is selected.
+if ($examId === 0 && $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    try {
+        $stmt = $pdo->query("SELECT exam_id FROM eval_results WHERE status = 'submitted'
+                             ORDER BY submitted_at DESC NULLS LAST, id DESC LIMIT 1");
+        $latestExamId = (int) ($stmt->fetchColumn() ?: 0);
+        if ($latestExamId > 0) {
+            header('Location: eval_results.php?exam_id=' . $latestExamId);
+            exit;
+        }
+    } catch (Throwable $e) {
+        // Fall through to the normal empty-state page.
+    }
+}
+
 // ─── POST: Registrar nota impresa ─────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     if ($_POST['action'] === 'register_printed') {
