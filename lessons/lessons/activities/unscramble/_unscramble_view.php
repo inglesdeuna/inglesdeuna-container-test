@@ -77,18 +77,17 @@ body.fullscreen-embedded .us2-card{max-height:calc(100vh - 130px);overflow:auto;
                 <div class="us2-bank" id="us2Bank" aria-label="Word bank"></div>
 
                 <div class="us2-controls">
-                    <?php if (empty($usQuizMode)): ?>
-                    <button id="us2Show" class="us2-btn us2-purple" type="button">Show Answer</button>
-                    <?php endif; ?>
                     <button id="us2Next" class="us2-btn us2-orange" type="button">Next</button>
                     <?php if (!empty($usQuizMode)): ?>
                     <button id="us2QuizSkip" class="us2-btn us2-purple" type="button">Skip</button>
+                    <?php else: ?>
+                    <button id="us2Show" class="us2-btn us2-purple" type="button">Show Answer</button>
                     <?php endif; ?>
                 </div>
 
                 <div class="us2-feedback" id="us2Feedback"></div>
 
-                <div class="us2-score" id="us2Score">
+                <div class="us2-score<?= !empty($usQuizMode) ? ' us2-hidden' : '' ?>" id="us2Score">
                     <div class="us2-score-card"><div class="us2-score-num" id="us2Correct">0</div><div class="us2-score-label">Correct</div></div>
                     <div class="us2-score-card"><div class="us2-score-num" id="us2Wrong">0</div><div class="us2-score-label">Wrong</div></div>
                     <div class="us2-score-card"><div class="us2-score-num" id="us2Pct">0%</div><div class="us2-score-label">Score</div></div>
@@ -99,7 +98,9 @@ body.fullscreen-embedded .us2-card{max-height:calc(100vh - 130px);overflow:auto;
                 <div class="us2-completed-icon">✅</div>
                 <h2 class="us2-completed-title">Completed!</h2>
                 <p class="us2-completed-text" id="us2CompletedText"></p>
+                <?php if (empty($usQuizMode)): ?>
                 <p class="us2-completed-text" id="us2ScoreText"></p>
+                <?php endif; ?>
                 <button id="us2Restart" class="us2-btn us2-purple" type="button">Restart</button>
             </div>
         </div>

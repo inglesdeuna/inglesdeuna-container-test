@@ -158,7 +158,7 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
 
         <div id="uskFeedback"></div>
 
-        <div class="usk-score-grid" id="uskScoreGrid">
+        <div class="usk-score-grid<?= $uskQuizMode ? ' usk-hidden' : '' ?>" id="uskScoreGrid">
             <div class="usk-score-card"><div class="usk-score-num c" id="uskSC">0</div><div class="usk-score-lbl">Correct</div></div>
             <div class="usk-score-card"><div class="usk-score-num w" id="uskSW">0</div><div class="usk-score-lbl">Wrong</div></div>
             <div class="usk-score-card"><div class="usk-score-num p" id="uskSP">0%</div><div class="usk-score-lbl">Score</div></div>
@@ -168,13 +168,15 @@ body{margin:0!important;padding:0!important;background:#fff!important;font-famil
             <div class="usk-completed-icon">✅</div>
             <h2 class="usk-completed-title">Completed!</h2>
             <p class="usk-completed-text" id="uskCompText"></p>
-            <p class="usk-score-text" id="uskScoreText"></p>
+            <?php if (!$uskQuizMode): ?><p class="usk-score-text" id="uskScoreText"></p><?php endif; ?>
             <button type="button" class="usk-completed-button" onclick="uskRestart()">Try Again</button>
         </div>
 
         <div class="usk-controls" id="uskControls">
+            <?php if (!$uskQuizMode): ?>
             <button class="usk-btn usk-btn-hint"  type="button" onclick="uskHint()">Hint</button>
             <button class="usk-btn usk-btn-clear" type="button" onclick="uskClear()">Clear</button>
+            <?php endif; ?>
             <button class="usk-btn usk-btn-next"  type="button" onclick="uskNext()">Next →</button>
             <?php if ($uskQuizMode): ?><button class="usk-btn usk-btn-clear" type="button" onclick="window.USK_QUIZ_SUBMIT('', true)">Skip</button><?php endif; ?>
         </div>
@@ -617,4 +619,3 @@ function uskBrowserTTS(text){
 /* ── init ── */
 uskRender();
 </script>
-
