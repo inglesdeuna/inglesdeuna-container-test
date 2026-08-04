@@ -291,7 +291,7 @@ tr:hover td{background:#f7fcf8;}
       <table id="results-table">
         <thead>
           <tr>
-            <th>Nombre</th><th>Nivel</th><th>Doc</th><th>Modalidad</th><th>Fecha</th>
+            <th>Nombre</th><th>Nivel</th><th>Institución</th><th>Modalidad</th><th>Fecha</th>
             <th>Puntaje</th><th>%</th><th>Nivel MCER</th><th>Status</th>
           </tr>
         </thead>
@@ -304,8 +304,8 @@ tr:hover td{background:#f7fcf8;}
         ?>
         <tr>
           <td><strong><?= h($r['student_name'] ?? '-') ?></strong></td>
-          <td><?= h($r['student_phone'] ?? '-') ?></td>
-          <td><?= h($r['student_doc'] ?? '-') ?></td>
+          <td><?= h(trim((string)($r['student_phone'] ?? '')) !== '' ? (string)$r['student_phone'] : '-') ?></td>
+          <td><?= h(trim((string)($r['student_doc'] ?? '')) !== '' ? (string)$r['student_doc'] : "LET'S INSTITUTE") ?></td>
           <td>
             <span class="badge badge-<?= $r['modality'] === 'printed' ? 'printed' : 'online' ?>">
               <?= h($r['modality']) ?>
@@ -380,7 +380,7 @@ document.querySelectorAll('.modal-bg').forEach(bg => {
 });
 
 function exportCsv() {
-  const rows = [['Nombre','Documento','Modalidad','Fecha','Puntaje','Max','%','MCER','Status']];
+  const rows = [['Nombre','Nivel','Institución','Modalidad','Fecha','Puntaje','%','MCER','Status']];
   document.querySelectorAll('#results-table tbody tr').forEach(tr => {
     const cells = tr.querySelectorAll('td');
     if (cells.length < 8) return;
@@ -390,10 +390,10 @@ function exportCsv() {
       cells[2].textContent.trim(),
       cells[3].textContent.trim(),
       cells[4].textContent.trim(),
-      '',
       cells[5].textContent.trim(),
       cells[6].textContent.trim(),
       cells[7].textContent.trim(),
+      cells[8].textContent.trim(),
     ]);
   });
   const csv = rows.map(r => r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')).join('\n');
