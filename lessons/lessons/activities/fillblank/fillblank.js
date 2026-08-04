@@ -516,7 +516,7 @@ document.addEventListener('DOMContentLoaded', function () {
     scores[index] = { earned: score.earned, possible: score.possible, revealed: false };
 
     renderSentence(q, user, true);
-    updateScoreCards(true);
+    updateScoreCards(!quizMode);
 
     if (feedbackEl) {
       if (allCorrect) {
@@ -556,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function () {
     selectedAnswers[index] = correct.slice();
 
     renderSentence(q, correct, true);
-    updateScoreCards(true);
+    updateScoreCards(!quizMode);
 
     if (feedbackEl) {
       feedbackEl.textContent = 'Answer revealed — these words do not affect score.';
@@ -613,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     completedEl.classList.add('active');
 
-    updateScoreCards(true);
+    updateScoreCards(!quizMode);
 
     if (completedTitleEl) {
       completedTitleEl.textContent = 'All Done!';
