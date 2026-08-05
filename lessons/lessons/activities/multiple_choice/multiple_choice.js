@@ -38,6 +38,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const optionsEl = document.getElementById('mc-options');
   const feedbackEl = document.getElementById('mc-feedback');
   const listenBtn = document.getElementById('mc-listen');
+  const listenWrapEl = document.getElementById('mc-listen-wrap');
   const showBtn = document.getElementById('mc-show');
   const nextBtn = document.getElementById('mc-next');
   const quizSkipBtn = document.getElementById('mc-quiz-skip');
@@ -297,7 +298,11 @@ document.addEventListener('DOMContentLoaded', function () {
         textSpan.textContent = optionText;
         button.appendChild(textSpan);
 
-        if (optionText !== '') {
+        if (item.question_type === 'listen') {
+          button.classList.add('mc-option-listen-mode');
+        }
+
+        if (optionText !== '' && item.question_type === 'listen') {
           const listenIcon = document.createElement('button');
           listenIcon.type = 'button';
           listenIcon.className = 'mc-option-listen';
@@ -408,6 +413,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (questionEl) {
       questionEl.textContent = cleanQuestion || 'Choose the correct answer.';
+    }
+
+    if (listenWrapEl) {
+      listenWrapEl.style.display = (item.question_type === 'listen') ? 'flex' : 'none';
     }
 
     if (listenBtn) {
