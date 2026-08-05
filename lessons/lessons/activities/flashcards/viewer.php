@@ -261,15 +261,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 }
 .fc-side-listen {
     display: none;
-    margin: 0 auto 4px;
-    border: 0;
-    border-radius: 999px;
-    padding: 8px 15px;
     background: var(--purple);
-    color: #fff;
-    font: 800 13px 'Nunito', sans-serif;
-    cursor: pointer;
-    box-shadow: 0 4px 12px rgba(127,119,221,.18);
 }
 .fc-side-listen.visible { display: block; }
 .fc-side-listen:disabled { opacity: .55; cursor: wait; }
@@ -305,8 +297,8 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 
 @media (max-width: 560px) {
     .fc-page { padding: 12px; }
-    .fc-actions { grid-template-columns: 1fr 1fr; display: grid; }
-    .fc-btn { width: 100%; }
+    .fc-actions { gap: 8px; }
+    .fc-btn { min-width: 0; flex: 1; }
 }
 
 /* ── Unified unscored completed screen ── */
@@ -368,15 +360,13 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
                 </div>
 
                 <div class="fc-word" id="fc-word"></div>
-                <div style="text-align:center">
-                    <button type="button" class="fc-side-listen" id="fc-front-listen"
-                            aria-label="Play front audio">🔊 Listen</button>
-                    <button type="button" class="fc-side-listen" id="fc-back-listen"
-                            aria-label="Play back audio">🔊 Listen</button>
-                </div>
             </div>
 
             <div class="fc-actions">
+                <button type="button" class="fc-side-listen fc-btn" id="fc-front-listen"
+                        aria-label="Play front audio">🔊 Listen</button>
+                <button type="button" class="fc-side-listen fc-btn" id="fc-back-listen"
+                        aria-label="Play back audio">🔊 Listen</button>
                 <button class="fc-btn fc-btn-orange" id="fc-next">Next →</button>
             </div>
 
