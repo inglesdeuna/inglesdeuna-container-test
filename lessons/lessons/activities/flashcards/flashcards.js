@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function () {
   var progressBadgeEl = document.getElementById('fc-progress-badge');
   var imgEl           = document.getElementById('fc-img');
   var backImgEl       = document.getElementById('fc-back-img');
-  var imgPlaceholder  = document.getElementById('fc-image-placeholder');
   var wordEl          = document.getElementById('fc-word');
   var frontListenBtn  = document.getElementById('fc-front-listen');
   var backListenBtn   = document.getElementById('fc-back-listen');
@@ -45,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function () {
   function setSideButton(button, loading) {
     if (!button) return;
     button.disabled = loading;
-    button.textContent = loading ? '⏳ Loading…' : (button === frontListenBtn ? '🔊 Front' : '🔊 Back');
+    button.textContent = loading ? '⏳ Loading…' : '🔊 Listen';
   }
 
   function playElevenLabs(text, voiceId, button, onError) {
@@ -129,28 +128,35 @@ document.addEventListener('DOMContentLoaded', function () {
     var card = cards[index] || {};
     var frontImg = card.front_image || '';
     var backImg  = card.back_image  || '';
-    var currentImg = flipped ? backImg : frontImg;
 
+    /* Determine which flags apply for the current side */
+    var showImage  = flipped ? !!card.back_show_image  : !!card.front_show_image;
+    var showText   = flipped ? !!card.back_show_text   : !!card.front_show_text;
+    var showListen = flipped ? !!card.back_show_listen : !!card.front_show_listen;
+
+    /* Image wrap — show only when image is selected and image URL exists */
+    var imageWrapEl = document.getElementById('fc-image-wrap');
+    var currentImg  = flipped ? backImg : frontImg;
+    if (imageWrapEl) imageWrapEl.style.display = (showImage && currentImg) ? '' : 'none';
     if (imgEl) {
       imgEl.src = frontImg;
-      imgEl.style.display = (!flipped && frontImg) ? 'block' : 'none';
+      imgEl.style.display = (!flipped && showImage && frontImg) ? 'block' : 'none';
     }
     if (backImgEl) {
       backImgEl.src = backImg;
-      backImgEl.style.display = (flipped && backImg) ? 'block' : 'none';
+      backImgEl.style.display = (flipped && showImage && backImg) ? 'block' : 'none';
     }
-    if (imgPlaceholder) imgPlaceholder.style.display = currentImg ? 'none' : 'flex';
 
+    /* Text */
     var currentText = flipped ? (card.back_text || '') : (card.front_text || '');
     if (wordEl) {
-      wordEl.textContent = currentText;
-      wordEl.style.display = currentText ? 'block' : 'none';
+      wordEl.textContent = showText ? currentText : '';
+      wordEl.style.display = (showText && currentText) ? 'block' : 'none';
     }
 
-    var frontText = card.front_text || '';
-    var backText  = card.back_text  || '';
-    if (frontListenBtn) { frontListenBtn.classList.toggle('visible', !flipped && !!frontText); frontListenBtn.disabled = !frontText; }
-    if (backListenBtn)  { backListenBtn.classList.toggle('visible',   flipped && !!backText);  backListenBtn.disabled  = !backText; }
+    /* Listen buttons */
+    if (frontListenBtn) { frontListenBtn.classList.toggle('visible', !flipped && showListen); frontListenBtn.disabled = !showListen; }
+    if (backListenBtn)  { backListenBtn.classList.toggle('visible',   flipped && showListen);  backListenBtn.disabled  = !showListen; }
   }
 
   /* ── Listen (always ElevenLabs) ────────────────────────────── */
@@ -171,8 +177,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     playElevenLabs(text, voiceId, button);
   }
-
-  /* ── Show/Hide word ─────────────────────────────────────────── */
   function toggleWord() {
     if (!wordEl) return;
     wordVisible = !wordVisible;
@@ -182,7 +186,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function flipCard() {
-    if (!cards[index] || (!cards[index].back_image && !cards[index].back_text)) return;
+    if (!cards[index]) return;
     stopAudio();
     flipped = !flipped;
     wordVisible = false;
