@@ -224,6 +224,12 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     margin-bottom: 14px;
     cursor: pointer;
     perspective: 900px;
+    /* Fixed height so both front and back occupy the same space */
+    min-height: clamp(260px, 55vw, 420px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
 }
 .fc-card-shell.fc-flipping {
     animation: fc-card-flip .45s ease;
@@ -233,6 +239,18 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     50% { transform: rotateY(90deg); }
     100% { transform: rotateY(0); }
 }
+
+/* Inner wrapper centres content vertically/horizontally when only text */
+.fc-card-inner {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    width: 100%;
+}
+
 .fc-image-wrap {
     width: 100%;
     aspect-ratio: 16/9;
@@ -242,7 +260,7 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 14px;
+    /* No margin-bottom — gap on fc-card-inner handles spacing */
 }
 .fc-image-wrap img {
     width: 100%;
@@ -253,11 +271,15 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 .fc-word {
     text-align: center;
     font-family: 'Fredoka', sans-serif;
-    font-size: clamp(28px, 5vw, 48px);
+    font-size: clamp(22px, 5vw, 48px);
     font-weight: 600;
     color: var(--purple-dark);
-    min-height: 1.2em;
     line-height: 1.2;
+    /* Allow text to shrink on overflow without changing card size */
+    overflow-wrap: break-word;
+    word-break: break-word;
+    max-width: 100%;
+    padding: 0 4px;
 }
 .fc-side-listen {
     display: none;
@@ -354,12 +376,14 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
             </div>
 
             <div class="fc-card-shell">
-                <div class="fc-image-wrap" id="fc-image-wrap">
-                    <img id="fc-img" src="" alt="" style="display:none;">
-                    <img id="fc-back-img" src="" alt="" style="display:none;">
-                </div>
+                <div class="fc-card-inner">
+                    <div class="fc-image-wrap" id="fc-image-wrap" style="display:none;">
+                        <img id="fc-img" src="" alt="" style="display:none;">
+                        <img id="fc-back-img" src="" alt="" style="display:none;">
+                    </div>
 
-                <div class="fc-word" id="fc-word"></div>
+                    <div class="fc-word" id="fc-word" style="display:none;"></div>
+                </div>
             </div>
 
             <div class="fc-actions">
