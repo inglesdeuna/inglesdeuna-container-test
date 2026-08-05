@@ -96,6 +96,9 @@ $jsCards = array_values(array_map(function ($card) {
     $backAud   = fc_first_nonempty($card, ['back_audio']);
     $frontAudText = isset($card['front_audio_text']) ? trim((string)$card['front_audio_text']) : '';
     $backAudText  = isset($card['back_audio_text'])  ? trim((string)$card['back_audio_text'])  : '';
+    // Migrate legacy cards: populate audio text from the matching side's text if not set
+    if ($frontAudText === '') $frontAudText = $frontText;
+    if ($backAudText  === '') $backAudText  = $backText;
     $hasFlags  = array_key_exists('front_show_image', $card);
     return [
         'front_image'       => $frontImg,

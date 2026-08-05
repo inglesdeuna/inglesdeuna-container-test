@@ -176,7 +176,9 @@ document.addEventListener('DOMContentLoaded', function () {
     /* Always use the dedicated audio text for the requested side.
        Do not fall back to pre-generated URLs (which may be stale) or
        the opposite side's audio under any circumstances. */
-    var text    = (side === 'front' ? card.front_audio_text : card.back_audio_text) || '';
+    var text    = side === 'front'
+      ? (card.front_audio_text || '').trim() || (card.front_text || '').trim()
+      : (card.back_audio_text  || '').trim() || (card.back_text  || '').trim();
     var voiceId = card.voice_id || '';
     if (!text) {
       if (feedbackEl) feedbackEl.textContent = 'No audio text is set for this side. Please add audio text in the editor.';
