@@ -10,46 +10,94 @@ if ($activityId === '' && $unit === '') {
     die('Activity not specified');
 }
 
-function fc_load(PDO $pdo, string $activityId): array
+function fc_first_nonempty(array $card, array $keys): string
 {
-    $stmt = $pdo->prepare("SELECT * FROM activities WHERE id = :id LIMIT 1");
-    $stmt->execute(['id' => $activityId]);
-    $activity = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    if (!$activity) return [];
-
-    $raw     = $activity['data'] ?? $activity['content_json'] ?? '[]';
-    $decoded = json_decode($raw, true);
-
-    if (!is_array($decoded)) return [];
-
-    if (isset($decoded['cards']) && is_array($decoded['cards'])) {
-        return $decoded['cards'];
+    foreach ($keys as $k) {
+        if (isset($card[$k]) && trim((string) $card[$k]) !== '') {
+            return trim((string) $card[$k]);
+        }
     }
-
-    return $decoded;
+    return '';
 }
 
-$rawCards = fc_load($pdo, $activityId);
+function fc_load(PDO $pdo, string $activityId, string $unit): array
+{
+    // Detect available columns
+    static $cols = null;
+    if ($cols === null) {
+        $stmt = $pdo->query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='activities'");
+        $cols = array_column($stmt->fetchAll(PDO::FETCH_ASSOC), 'column_name');
+    }
+
+    $fields = ['id'];
+    foreach (['data', 'content_json', 'title', 'name'] as $c) {
+        if (in_array($c, $cols, true)) $fields[] = $c;
+    }
+    $sel = implode(', ', $fields);
+
+    $row = null;
+    if ($activityId !== '') {
+        $stmt = $pdo->prepare("SELECT {$sel} FROM activities WHERE id=:id AND type='flashcards' LIMIT 1");
+        $stmt->execute(['id' => $activityId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        // Fallback: fetch by ID regardless of type (handles legacy activities with wrong type stored)
+        if (!$row) {
+            $stmt = $pdo->prepare("SELECT {$sel} FROM activities WHERE id=:id LIMIT 1");
+            $stmt->execute(['id' => $activityId]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        }
+    }
+    if (!$row && $unit !== '') {
+        foreach (['unit_id', 'unit'] as $col) {
+            if (!in_array($col, $cols, true)) continue;
+            $stmt = $pdo->prepare("SELECT {$sel} FROM activities WHERE {$col}=:unit AND type='flashcards' ORDER BY id ASC LIMIT 1");
+            $stmt->execute(['unit' => $unit]);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            if ($row) break;
+        }
+    }
+
+    if (!$row) return ['title' => 'Flashcards', 'cards' => []];
+
+    $raw     = $row['data'] ?? $row['content_json'] ?? null;
+    $decoded = is_string($raw) ? json_decode($raw, true) : null;
+    if (!is_array($decoded)) $decoded = [];
+
+    $cardsRaw = (isset($decoded['cards']) && is_array($decoded['cards'])) ? $decoded['cards'] : (array_is_list($decoded) ? $decoded : []);
+
+    // Title: prefer DB column, then JSON field
+    $title = '';
+    if (isset($row['title']) && trim((string)$row['title']) !== '') $title = trim((string)$row['title']);
+    elseif (isset($row['name']) && trim((string)$row['name']) !== '') $title = trim((string)$row['name']);
+    elseif (isset($decoded['title']) && trim((string)$decoded['title']) !== '') $title = trim((string)$decoded['title']);
+    if ($title === '') $title = 'Flashcards';
+
+    return ['title' => $title, 'cards' => $cardsRaw];
+}
+
+$loaded   = fc_load($pdo, $activityId, $unit);
+$rawCards = $loaded['cards'];
+$viewerTitle = $loaded['title'];
 
 if (!$rawCards || !count($rawCards)) {
     die('No flashcards found');
 }
 
-/* Map to {image, text, audio, voice_id} — learning activity (no score) */
+/* Map to viewer fields — handles both new format (front_text/back_text) and
+   legacy formats (text, english_text, spanish_text, meaning, image, audio).
+   Uses fc_first_nonempty() instead of ?? to skip empty-string keys that the
+   old normalizer always wrote (e.g. text:"") before reaching the real value. */
 $jsCards = array_values(array_map(function ($card) {
     return [
-        'front_image' => (string) ($card['front_image'] ?? $card['image']        ?? ''),
-        'back_image'  => (string) ($card['back_image']  ?? ''),
-        'front_text'  => (string) ($card['front_text']  ?? $card['text']         ?? $card['english_text'] ?? ''),
-        'back_text'   => (string) ($card['back_text']   ?? $card['meaning']      ?? ''),
-        'front_audio' => (string) ($card['front_audio'] ?? $card['audio']        ?? ''),
-        'back_audio'  => (string) ($card['back_audio']  ?? ''),
-        'voice_id'    => (string) ($card['voice_id']    ?? ''),
+        'front_image' => fc_first_nonempty($card, ['front_image', 'image']),
+        'back_image'  => fc_first_nonempty($card, ['back_image']),
+        'front_text'  => fc_first_nonempty($card, ['front_text', 'english_text', 'text']),
+        'back_text'   => fc_first_nonempty($card, ['back_text', 'spanish_text', 'meaning']),
+        'front_audio' => fc_first_nonempty($card, ['front_audio', 'audio']),
+        'back_audio'  => fc_first_nonempty($card, ['back_audio']),
+        'voice_id'    => fc_first_nonempty($card, ['voice_id']),
     ];
 }, $rawCards));
-
-$viewerTitle = 'Flashcards';
 
 ob_start();
 ?>
