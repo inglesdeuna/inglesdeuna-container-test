@@ -261,18 +261,20 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 }
 .fc-side-listen {
     display: none;
-    margin: 0 auto 4px;
     border: 0;
-    border-radius: 999px;
-    padding: 8px 15px;
+    border-radius: 10px;
+    padding: 12px 22px;
+    min-width: 110px;
     background: var(--purple);
     color: #fff;
-    font: 800 13px 'Nunito', sans-serif;
+    font: 900 14px 'Nunito', sans-serif;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(127,119,221,.18);
+    box-shadow: 0 6px 18px rgba(127,119,221,.15);
+    transition: .18s;
 }
-.fc-side-listen.visible { display: block; }
-.fc-side-listen:disabled { opacity: .55; cursor: wait; }
+.fc-side-listen:hover { transform: translateY(-1px); }
+.fc-side-listen.visible { display: inline-flex; align-items: center; gap: 5px; }
+.fc-side-listen:disabled { opacity: .55; cursor: wait; transform: none; }
 
 /* Buttons */
 .fc-actions {
@@ -305,8 +307,8 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 
 @media (max-width: 560px) {
     .fc-page { padding: 12px; }
-    .fc-actions { grid-template-columns: 1fr 1fr; display: grid; }
-    .fc-btn { width: 100%; }
+    .fc-actions { flex-wrap: nowrap; }
+    .fc-side-listen, .fc-btn { flex: 1; min-width: 0; }
 }
 
 /* ── Unified unscored completed screen ── */
@@ -368,15 +370,13 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
                 </div>
 
                 <div class="fc-word" id="fc-word"></div>
-                <div style="text-align:center">
-                    <button type="button" class="fc-side-listen" id="fc-front-listen"
-                            aria-label="Play front audio">🔊 Listen</button>
-                    <button type="button" class="fc-side-listen" id="fc-back-listen"
-                            aria-label="Play back audio">🔊 Listen</button>
-                </div>
             </div>
 
             <div class="fc-actions">
+                <button type="button" class="fc-side-listen" id="fc-front-listen"
+                        aria-label="Play front audio">🔊 Listen</button>
+                <button type="button" class="fc-side-listen" id="fc-back-listen"
+                        aria-label="Play back audio">🔊 Listen</button>
                 <button class="fc-btn fc-btn-orange" id="fc-next">Next →</button>
             </div>
 
