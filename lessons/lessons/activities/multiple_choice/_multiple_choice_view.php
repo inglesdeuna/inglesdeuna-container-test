@@ -303,6 +303,9 @@ body {
 
 .mc-option-text {
     display:block;
+}
+
+.mc-option-listen-mode .mc-option-text {
     padding-right:22px;
 }
 
@@ -583,7 +586,7 @@ body {
                 </div>
 
                 <div class="mc-card">
-                    <div class="mc-listen-wrap"><button type="button" class="mc-listen-btn" id="mc-listen">🔊 Listen</button></div>
+                    <div class="mc-listen-wrap" id="mc-listen-wrap" style="display:none"><button type="button" class="mc-listen-btn" id="mc-listen">🔊 Listen</button></div>
                     <div class="mc-question" id="mc-question"></div>
                     <div class="mc-image-box" id="mc-image-box"><img id="mc-image" class="mc-image" alt=""></div>
                     <div class="mc-options" id="mc-options"></div>
