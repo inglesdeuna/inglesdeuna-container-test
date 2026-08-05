@@ -94,6 +94,8 @@ $jsCards = array_values(array_map(function ($card) {
     $backText  = fc_first_nonempty($card, ['back_text', 'spanish_text', 'meaning']);
     $frontAud  = fc_first_nonempty($card, ['front_audio', 'audio']);
     $backAud   = fc_first_nonempty($card, ['back_audio']);
+    $frontAudText = isset($card['front_audio_text']) ? trim((string)$card['front_audio_text']) : '';
+    $backAudText  = isset($card['back_audio_text'])  ? trim((string)$card['back_audio_text'])  : '';
     $hasFlags  = array_key_exists('front_show_image', $card);
     return [
         'front_image'       => $frontImg,
@@ -102,6 +104,8 @@ $jsCards = array_values(array_map(function ($card) {
         'back_text'         => $backText,
         'front_audio'       => $frontAud,
         'back_audio'        => $backAud,
+        'front_audio_text'  => $frontAudText,
+        'back_audio_text'   => $backAudText,
         'voice_id'          => fc_first_nonempty($card, ['voice_id']),
         // Visibility flags — default: show element if it has content (legacy cards)
         'front_show_image'  => array_key_exists('front_show_image', $card)  ? (bool)$card['front_show_image']  : ($hasFlags ? false : $frontImg  !== ''),
