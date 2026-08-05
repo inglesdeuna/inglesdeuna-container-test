@@ -40,20 +40,18 @@ function fc_normalize($raw): array {
     $cards = [];
     foreach ($src as $item) {
         if (!is_array($item)) continue;
-        $text = trim((string)($item['text'] ?? $item['word'] ?? $item['english_text'] ?? ''));
+        // Migrate legacy fields: front text from text/word/english_text, back text from back_text/meaning
+        $frontText = trim((string)($item['front_text'] ?? $item['text'] ?? $item['word'] ?? $item['english_text'] ?? ''));
+        $backText  = trim((string)($item['back_text']  ?? $item['meaning'] ?? ''));
         $cards[] = [
-            'id' => trim((string)($item['id'] ?? uniqid('flashcard_'))),
-            'text' => $text,
-            'word' => $text,
-            'image' => trim((string)($item['image'] ?? $item['img'] ?? '')),
+            'id'         => trim((string)($item['id'] ?? uniqid('flashcard_'))),
+            'front_text' => $frontText,
+            'front_image'=> trim((string)($item['front_image'] ?? $item['image'] ?? $item['img'] ?? '')),
+            'front_audio'=> trim((string)($item['front_audio'] ?? $item['audio'] ?? '')),
+            'back_text'  => $backText,
             'back_image' => trim((string)($item['back_image'] ?? '')),
-            'example' => trim((string)($item['example'] ?? '')),
-            'ipa' => trim((string)($item['ipa'] ?? '')),
-            'meaning' => trim((string)($item['meaning'] ?? '')),
-            'back_text' => trim((string)($item['back_text'] ?? $item['meaning'] ?? '')),
-            'voice_id' => trim((string)($item['voice_id'] ?? 'nzFihrBIvB34imQBuxub')),
-            'audio' => trim((string)($item['audio'] ?? '')),
             'back_audio' => trim((string)($item['back_audio'] ?? '')),
+            'voice_id'   => trim((string)($item['voice_id'] ?? 'nzFihrBIvB34imQBuxub')),
         ];
     }
     return ['title' => fc_title((string)($d['title'] ?? '')), 'cards' => $cards];
@@ -130,45 +128,36 @@ $activityTitle = (string)($activity['title'] ?? 'Flashcards');
 if ($activityId === '' && !empty($activity['id'])) $activityId = (string)$activity['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $title = trim((string)($_POST['activity_title'] ?? ''));
-    $texts = is_array($_POST['text'] ?? null) ? $_POST['text'] : [];
-    $examples = is_array($_POST['example'] ?? null) ? $_POST['example'] : [];
-    $ipas = is_array($_POST['ipa'] ?? null) ? $_POST['ipa'] : [];
-    $meanings = is_array($_POST['meaning'] ?? null) ? $_POST['meaning'] : [];
-    $backTexts = is_array($_POST['back_text'] ?? null) ? $_POST['back_text'] : [];
-    $images = is_array($_POST['image_existing'] ?? null) ? $_POST['image_existing'] : [];
-    $backImages = is_array($_POST['back_image_existing'] ?? null) ? $_POST['back_image_existing'] : [];
-    $audios = is_array($_POST['audio'] ?? null) ? $_POST['audio'] : [];
-    $backAudios = is_array($_POST['back_audio'] ?? null) ? $_POST['back_audio'] : [];
-    $voiceIds = is_array($_POST['voice_id'] ?? null) ? $_POST['voice_id'] : [];
-    $ids = is_array($_POST['card_id'] ?? null) ? $_POST['card_id'] : [];
-    $imageFiles = $_FILES['image_file'] ?? null;
-    $backImageFiles = $_FILES['back_image_file'] ?? null;
+    $title       = trim((string)($_POST['activity_title'] ?? ''));
+    $frontTexts  = is_array($_POST['front_text']           ?? null) ? $_POST['front_text']           : [];
+    $backTexts   = is_array($_POST['back_text']            ?? null) ? $_POST['back_text']             : [];
+    $frontImages = is_array($_POST['front_image_existing'] ?? null) ? $_POST['front_image_existing']  : [];
+    $backImages  = is_array($_POST['back_image_existing']  ?? null) ? $_POST['back_image_existing']   : [];
+    $frontAudios = is_array($_POST['front_audio']          ?? null) ? $_POST['front_audio']           : [];
+    $backAudios  = is_array($_POST['back_audio']           ?? null) ? $_POST['back_audio']            : [];
+    $voiceIds    = is_array($_POST['voice_id']             ?? null) ? $_POST['voice_id']              : [];
+    $ids         = is_array($_POST['card_id']              ?? null) ? $_POST['card_id']               : [];
+    $frontImageFiles = $_FILES['front_image_file'] ?? null;
+    $backImageFiles  = $_FILES['back_image_file']  ?? null;
+    $count = max(count($frontTexts), count($backTexts), count($ids));
     $out = [];
-    foreach ($texts as $i => $raw) {
-        $text = trim((string)$raw);
-        $image = trim((string)($images[$i] ?? ''));
-        $backImage = trim((string)($backImages[$i] ?? ''));
-        if ($imageFiles && !empty($imageFiles['tmp_name'][$i])) { $up = upload_to_cloudinary($imageFiles['tmp_name'][$i]); if ($up) $image = $up; }
-        if ($backImageFiles && !empty($backImageFiles['tmp_name'][$i])) { $up = upload_to_cloudinary($backImageFiles['tmp_name'][$i]); if ($up) $backImage = $up; }
-        $example = trim((string)($examples[$i] ?? ''));
-        $ipa = trim((string)($ipas[$i] ?? ''));
-        $meaning = trim((string)($meanings[$i] ?? ''));
-        $backText = trim((string)($backTexts[$i] ?? $meaning));
-        if ($text === '' && $image === '' && $backImage === '' && $ipa === '' && $backText === '' && $example === '') continue;
+    for ($i = 0; $i < $count; $i++) {
+        $frontText  = trim((string)($frontTexts[$i]  ?? ''));
+        $backText   = trim((string)($backTexts[$i]   ?? ''));
+        $frontImage = trim((string)($frontImages[$i] ?? ''));
+        $backImage  = trim((string)($backImages[$i]  ?? ''));
+        if ($frontImageFiles && !empty($frontImageFiles['tmp_name'][$i])) { $up = upload_to_cloudinary($frontImageFiles['tmp_name'][$i]); if ($up) $frontImage = $up; }
+        if ($backImageFiles  && !empty($backImageFiles['tmp_name'][$i]))  { $up = upload_to_cloudinary($backImageFiles['tmp_name'][$i]);  if ($up) $backImage  = $up; }
+        if ($frontText === '' && $backText === '' && $frontImage === '' && $backImage === '') continue;
         $out[] = [
-            'id' => trim((string)($ids[$i] ?? '')) ?: uniqid('flashcard_'),
-            'text' => $text,
-            'word' => $text,
-            'image' => $image,
-            'back_image' => $backImage,
-            'example' => $example,
-            'ipa' => $ipa,
-            'meaning' => $meaning !== '' ? $meaning : $backText,
-            'back_text' => $backText,
-            'voice_id' => trim((string)($voiceIds[$i] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
-            'audio' => trim((string)($audios[$i] ?? '')),
-            'back_audio' => trim((string)($backAudios[$i] ?? '')),
+            'id'          => trim((string)($ids[$i] ?? '')) ?: uniqid('flashcard_'),
+            'front_text'  => $frontText,
+            'front_image' => $frontImage,
+            'front_audio' => trim((string)($frontAudios[$i] ?? '')),
+            'back_text'   => $backText,
+            'back_image'  => $backImage,
+            'back_audio'  => trim((string)($backAudios[$i] ?? '')),
+            'voice_id'    => trim((string)($voiceIds[$i] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
         ];
     }
     $savedId = fc_save($pdo, $unit, $activityId, $title, $out);
@@ -181,33 +170,88 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 ob_start();
 ?>
-<style>.flashcards-form{max-width:940px;margin:0 auto;text-align:left;font-family:Nunito,Arial,sans-serif}.title-box,.card-item{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin-bottom:14px}.title-box input,.card-item input[type=text],.card-item input[type=file],.card-item select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box}label{display:block;font-weight:800;margin:8px 0 6px}.ipa-meaning-row{display:grid;grid-template-columns:1fr 2fr auto;gap:10px;align-items:end;margin:8px 0 12px}.autofill-btn,.btn-autofill-all{background:#7F77DD;color:#fff;border:0;border-radius:999px;padding:10px 14px;font-weight:900;cursor:pointer}.btn-autofill-all{background:#F97316}.toolbar-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.btn-add,.save-btn,.btn-remove{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;color:#fff}.btn-add{background:#16a34a}.save-btn{background:#0d9488}.btn-remove{background:#ef4444;margin-top:12px}.small-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.image-preview{display:block;max-width:120px;max-height:120px;object-fit:contain;border:1px solid #d1d5db;border-radius:10px;margin-bottom:10px}.status{font-size:12px;font-weight:800;color:#7F77DD;min-height:18px}@media(max-width:760px){.ipa-meaning-row,.small-grid{grid-template-columns:1fr}}</style>
+<style>
+.flashcards-form{max-width:940px;margin:0 auto;text-align:left;font-family:Nunito,Arial,sans-serif}
+.title-box,.card-item{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin-bottom:14px}
+.title-box input,.card-item input[type=text],.card-item input[type=file],.card-item select{width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box}
+label{display:block;font-weight:800;margin:8px 0 6px}
+.sides-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px}
+.side-box{background:#f9f8ff;border:1px solid #EDE9FA;border-radius:10px;padding:12px}
+.side-box h4{margin:0 0 10px;font-family:Fredoka,sans-serif;font-size:15px;color:#7F77DD}
+.side-box h4.back{color:#F97316}
+.image-preview{display:block;max-width:120px;max-height:120px;object-fit:contain;border:1px solid #d1d5db;border-radius:10px;margin-bottom:8px}
+.toolbar-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn-add,.save-btn,.btn-remove{border:0;border-radius:8px;padding:10px 14px;font-weight:800;cursor:pointer;color:#fff}
+.btn-add{background:#16a34a}.save-btn{background:#0d9488}.btn-remove{background:#ef4444;margin-top:12px}
+.card-voice-row{margin-bottom:10px}
+@media(max-width:640px){.sides-grid{grid-template-columns:1fr}}
+</style>
 <?php if (isset($_GET['saved'])) { ?><p style="color:green;font-weight:bold">Saved successfully</p><?php } ?>
 <form class="flashcards-form" id="flashcardsForm" method="post" enctype="multipart/form-data">
 <div class="title-box"><label>Activity title</label><input type="text" name="activity_title" value="<?= htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8') ?>" required></div>
-<div class="toolbar-row" style="margin-bottom:14px"><button type="button" class="btn-autofill-all" id="autofillAll">Auto-fill all words</button></div>
 <div id="cardsContainer">
-<?php foreach ($cards as $card) { ?>
+<?php foreach ($cards as $card) {
+    $vid = $card['voice_id'] ?? 'nzFihrBIvB34imQBuxub';
+?>
 <div class="card-item word-row">
 <input type="hidden" name="card_id[]" value="<?= htmlspecialchars($card['id'] ?? uniqid('flashcard_'), ENT_QUOTES, 'UTF-8') ?>">
-<input type="hidden" name="image_existing[]" value="<?= htmlspecialchars($card['image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-<input type="hidden" name="back_image_existing[]" value="<?= htmlspecialchars($card['back_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-<input type="hidden" name="audio[]" value="<?= htmlspecialchars($card['audio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-<input type="hidden" name="back_audio[]" value="<?= htmlspecialchars($card['back_audio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-<label>Front-side text</label><input class="word-input" type="text" name="text[]" value="<?= htmlspecialchars($card['text'] ?? $card['word'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="coral reef">
-<label>Example sentence (optional)</label><input class="example-input" type="text" name="example[]" value="<?= htmlspecialchars($card['example'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="The coral reef was full of colorful fish.">
-<div class="ipa-meaning-row"><input class="ipa-input" type="text" name="ipa[]" value="<?= htmlspecialchars($card['ipa'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="/ipa/"><input class="meaning-input" type="text" name="back_text[]" value="<?= htmlspecialchars($card['back_text'] ?? $card['meaning'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="Back-side text"><button type="button" class="autofill-btn">Auto-fill pronunciation &amp; meaning</button></div>
-<div class="status"></div>
-<label>Voice</label><select name="voice_id[]"><option value="nzFihrBIvB34imQBuxub"<?= ($card['voice_id'] ?? 'nzFihrBIvB34imQBuxub') === 'nzFihrBIvB34imQBuxub' ? ' selected' : '' ?>>Jose</option><option value="NoOVOzCQFLOvtsMoNcdT"<?= ($card['voice_id'] ?? '') === 'NoOVOzCQFLOvtsMoNcdT' ? ' selected' : '' ?>>Lily</option><option value="Nggzl2QAXh3OijoXD116"<?= ($card['voice_id'] ?? '') === 'Nggzl2QAXh3OijoXD116' ? ' selected' : '' ?>>Candy</option></select>
-<div class="small-grid"><div><label>Image (optional)</label><?php if (!empty($card['image'])) { ?><img src="<?= htmlspecialchars($card['image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="image_file[]" accept="image/*"></div><div><label>Back image (optional)</label><?php if (!empty($card['back_image'])) { ?><img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="back_image_file[]" accept="image/*"></div></div>
-<button type="button" class="btn-remove" onclick="removeCard(this)">Remove</button>
+<input type="hidden" name="front_image_existing[]" value="<?= htmlspecialchars($card['front_image'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+<input type="hidden" name="back_image_existing[]"  value="<?= htmlspecialchars($card['back_image']  ?? '', ENT_QUOTES, 'UTF-8') ?>">
+<input type="hidden" name="front_audio[]" value="<?= htmlspecialchars($card['front_audio'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+<input type="hidden" name="back_audio[]"  value="<?= htmlspecialchars($card['back_audio']  ?? '', ENT_QUOTES, 'UTF-8') ?>">
+<div class="card-voice-row"><label>Voice (used for audio on both sides)</label><select name="voice_id[]"><option value="nzFihrBIvB34imQBuxub"<?= $vid==='nzFihrBIvB34imQBuxub'?' selected':''?>>Jose</option><option value="NoOVOzCQFLOvtsMoNcdT"<?= $vid==='NoOVOzCQFLOvtsMoNcdT'?' selected':''?>>Lily</option><option value="Nggzl2QAXh3OijoXD116"<?= $vid==='Nggzl2QAXh3OijoXD116'?' selected':''?>>Candy</option></select></div>
+<div class="sides-grid">
+<div class="side-box"><h4>▶ Front</h4>
+<label>Text (optional)</label><input type="text" name="front_text[]" value="<?= htmlspecialchars($card['front_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. coral reef">
+<label>Image (optional)</label><?php if (!empty($card['front_image'])) { ?><img src="<?= htmlspecialchars($card['front_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="front_image_file[]" accept="image/*">
+</div>
+<div class="side-box"><h4 class="back">◀ Back</h4>
+<label>Text (optional)</label><input type="text" name="back_text[]" value="<?= htmlspecialchars($card['back_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. arrecife de coral">
+<label>Image (optional)</label><?php if (!empty($card['back_image'])) { ?><img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="back_image_file[]" accept="image/*">
+</div>
+</div>
+<button type="button" class="btn-remove" onclick="this.closest('.card-item').remove();markChanged()">Remove</button>
 </div>
 <?php } ?>
 </div>
 <div class="toolbar-row"><button type="button" class="btn-add" onclick="addCard()">Add Card</button><button type="submit" class="save-btn">Save</button></div>
 </form>
 <script>
-let formChanged=false,formSubmitted=false;function markChanged(){formChanged=true}function cardHasBothImages(row){const front=row.querySelector('input[name="image_existing[]"]')?.value.trim()||'';const back=row.querySelector('input[name="back_image_existing[]"]')?.value.trim()||'';const frontFile=row.querySelector('input[name="image_file[]"]')?.files?.length>0;const backFile=row.querySelector('input[name="back_image_file[]"]')?.files?.length>0;return !!(front||frontFile)&&!!(back||backFile)}function updateAutofillState(){const rows=[...document.querySelectorAll('.word-row')];rows.forEach(row=>{const disabled=cardHasBothImages(row);const btn=row.querySelector('.autofill-btn');if(btn)btn.disabled=disabled});const all=document.getElementById('autofillAll');if(all)all.disabled=rows.length>0&&rows.every(cardHasBothImages)}function removeCard(btn){const row=btn.closest('.card-item');if(row){row.remove();markChanged();updateAutofillState()}}function cardHtml(){return '<div class="card-item word-row"><input type="hidden" name="card_id[]" value="flashcard_'+Date.now()+'"><input type="hidden" name="image_existing[]" value=""><input type="hidden" name="back_image_existing[]" value=""><input type="hidden" name="audio[]" value=""><input type="hidden" name="back_audio[]" value=""><label>Front-side text</label><input class="word-input" type="text" name="text[]" placeholder="coral reef"><label>Example sentence (optional)</label><input class="example-input" type="text" name="example[]" placeholder="The coral reef was full of colorful fish."><div class="ipa-meaning-row"><input class="ipa-input" type="text" name="ipa[]" placeholder="/ipa/"><input class="meaning-input" type="text" name="back_text[]" placeholder="Back-side text"><button type="button" class="autofill-btn">Auto-fill pronunciation & meaning</button></div><div class="status"></div><label>Voice</label><select name="voice_id[]"><option value="nzFihrBIvB34imQBuxub" selected>Jose</option><option value="NoOVOzCQFLOvtsMoNcdT">Lily</option><option value="Nggzl2QAXh3OijoXD116">Candy</option></select><div class="small-grid"><div><label>Image (optional)</label><input type="file" name="image_file[]" accept="image/*"></div><div><label>Back image (optional)</label><input type="file" name="back_image_file[]" accept="image/*"></div></div><button type="button" class="btn-remove" onclick="removeCard(this)">Remove</button></div>'}function addCard(){const c=document.getElementById('cardsContainer');c.insertAdjacentHTML('beforeend',cardHtml());bindChangeTracking(c.lastElementChild);markChanged();updateAutofillState()}function bindChangeTracking(scope){scope.querySelectorAll('input,select,textarea').forEach(el=>{el.addEventListener('input',markChanged);el.addEventListener('change',function(){markChanged();updateAutofillState()})})}function sleep(ms){return new Promise(r=>setTimeout(r,ms))}async function autofillRow(row){if(cardHasBothImages(row))return false;const word=row.querySelector('.word-input')?.value.trim()||'';const context=row.querySelector('.example-input')?.value.trim()||'';const btn=row.querySelector('.autofill-btn');const status=row.querySelector('.status');if(!word){if(status)status.textContent='Enter a word first.';return false}if(btn){btn.disabled=true;btn.textContent='Filling...'}try{const body='word='+encodeURIComponent(word)+'&context='+encodeURIComponent(context);const res=await fetch('/lessons/lessons/api/autofill_word.php',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body,credentials:'same-origin'});const data=await res.json();if(!res.ok||data.error)throw new Error(data.error||'Auto-fill failed');if(data.ipa)row.querySelector('.ipa-input').value=data.ipa;if(data.meaning)row.querySelector('.meaning-input').value=data.meaning;if(status)status.textContent='Auto-fill complete. Review before saving.';markChanged();return true}catch(e){if(status)status.textContent='Auto-fill failed. Type it manually.';alert('Auto-fill failed. You can type it manually.');return false}finally{if(btn){btn.disabled=false;btn.textContent='Auto-fill pronunciation & meaning'}}}document.addEventListener('DOMContentLoaded',()=>{bindChangeTracking(document);updateAutofillState();document.getElementById('cardsContainer').addEventListener('click',e=>{const b=e.target.closest('.autofill-btn');if(b&&!b.disabled)autofillRow(b.closest('.word-row'))});document.getElementById('autofillAll').addEventListener('click',async()=>{const rows=[...document.querySelectorAll('.word-row')];const all=document.getElementById('autofillAll');all.disabled=true;all.textContent='Filling all...';for(const row of rows){await autofillRow(row);await sleep(300)}all.disabled=false;all.textContent='Auto-fill all words';updateAutofillState()});document.getElementById('flashcardsForm').addEventListener('submit',()=>{formSubmitted=true;formChanged=false})});window.addEventListener('beforeunload',e=>{if(formChanged&&!formSubmitted){e.preventDefault();e.returnValue=''}});
+let formChanged=false,formSubmitted=false;
+function markChanged(){formChanged=true}
+function cardHtml(){
+  const id='flashcard_'+Date.now();
+  return '<div class="card-item word-row">'
+    +'<input type="hidden" name="card_id[]" value="'+id+'">'
+    +'<input type="hidden" name="front_image_existing[]" value="">'
+    +'<input type="hidden" name="back_image_existing[]" value="">'
+    +'<input type="hidden" name="front_audio[]" value="">'
+    +'<input type="hidden" name="back_audio[]" value="">'
+    +'<div class="card-voice-row"><label>Voice (used for audio on both sides)</label><select name="voice_id[]"><option value="nzFihrBIvB34imQBuxub" selected>Jose</option><option value="NoOVOzCQFLOvtsMoNcdT">Lily</option><option value="Nggzl2QAXh3OijoXD116">Candy</option></select></div>'
+    +'<div class="sides-grid">'
+    +'<div class="side-box"><h4>▶ Front</h4>'
+    +'<label>Text (optional)</label><input type="text" name="front_text[]" placeholder="e.g. coral reef">'
+    +'<label>Image (optional)</label><input type="file" name="front_image_file[]" accept="image/*">'
+    +'</div>'
+    +'<div class="side-box"><h4 class="back">◀ Back</h4>'
+    +'<label>Text (optional)</label><input type="text" name="back_text[]" placeholder="e.g. arrecife de coral">'
+    +'<label>Image (optional)</label><input type="file" name="back_image_file[]" accept="image/*">'
+    +'</div>'
+    +'</div>'
+    +'<button type="button" class="btn-remove" onclick="this.closest(\'.card-item\').remove();markChanged()">Remove</button>'
+    +'</div>';
+}
+function addCard(){
+  const c=document.getElementById('cardsContainer');
+  c.insertAdjacentHTML('beforeend',cardHtml());
+  c.lastElementChild.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',markChanged));
+  markChanged();
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('.flashcards-form input,.flashcards-form select').forEach(el=>el.addEventListener('input',markChanged));
+  document.getElementById('flashcardsForm').addEventListener('submit',()=>{formSubmitted=true;formChanged=false});
+});
+window.addEventListener('beforeunload',e=>{if(formChanged&&!formSubmitted){e.preventDefault();e.returnValue=''}});
 </script>
 <?php
 $content = ob_get_clean();

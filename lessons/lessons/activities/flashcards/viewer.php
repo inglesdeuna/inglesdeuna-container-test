@@ -39,14 +39,13 @@ if (!$rawCards || !count($rawCards)) {
 /* Map to {image, text, audio, voice_id} — learning activity (no score) */
 $jsCards = array_values(array_map(function ($card) {
     return [
-        'image'    => (string) ($card['image']        ?? ''),
-        'back_image' => (string) ($card['back_image'] ?? ''),
-        'text'     => (string) ($card['front_text'] ?? $card['english_text'] ?? $card['text'] ?? ''),
-        'back_text' => (string) ($card['back_text'] ?? $card['meaning'] ?? ''),
-        'meaning'  => (string) ($card['meaning'] ?? ''),
-        'audio'    => (string) ($card['audio']        ?? ''),
-        'back_audio' => (string) ($card['back_audio'] ?? ''),
-        'voice_id' => (string) ($card['voice_id']     ?? ''),
+        'front_image' => (string) ($card['front_image'] ?? $card['image']        ?? ''),
+        'back_image'  => (string) ($card['back_image']  ?? ''),
+        'front_text'  => (string) ($card['front_text']  ?? $card['text']         ?? $card['english_text'] ?? ''),
+        'back_text'   => (string) ($card['back_text']   ?? $card['meaning']      ?? ''),
+        'front_audio' => (string) ($card['front_audio'] ?? $card['audio']        ?? ''),
+        'back_audio'  => (string) ($card['back_audio']  ?? ''),
+        'voice_id'    => (string) ($card['voice_id']    ?? ''),
     ];
 }, $rawCards));
 
@@ -197,7 +196,6 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     color: var(--purple-dark);
     min-height: 1.2em;
     line-height: 1.2;
-    display: none; /* shown by JS after Listen or flip */
 }
 .fc-side-listen {
     display: none;
