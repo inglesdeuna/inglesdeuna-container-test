@@ -129,10 +129,11 @@ document.addEventListener('DOMContentLoaded', function () {
     var frontImg = card.front_image || '';
     var backImg  = card.back_image  || '';
 
-    /* Determine which flags apply for the current side */
-    var showImage  = flipped ? !!card.back_show_image  : !!card.front_show_image;
-    var showText   = flipped ? !!card.back_show_text   : !!card.front_show_text;
-    var showListen = flipped ? !!card.back_show_listen : !!card.front_show_listen;
+    /* Determine which flags apply — each side has its own independent flags */
+    var showImage       = flipped ? !!card.back_show_image  : !!card.front_show_image;
+    var showText        = flipped ? !!card.back_show_text   : !!card.front_show_text;
+    var showFrontListen = !!card.front_show_listen;
+    var showBackListen  = !!card.back_show_listen;
 
     /* Image wrap — show only when image is selected and image URL exists */
     var imageWrapEl = document.getElementById('fc-image-wrap');
@@ -154,24 +155,19 @@ document.addEventListener('DOMContentLoaded', function () {
       wordEl.style.display = (showText && currentText) ? 'block' : 'none';
     }
 
-    /* Listen buttons */
-    if (frontListenBtn) { frontListenBtn.classList.toggle('visible', !flipped && showListen); frontListenBtn.disabled = !showListen; }
-    if (backListenBtn)  { backListenBtn.classList.toggle('visible',   flipped && showListen);  backListenBtn.disabled  = !showListen; }
+    /* Listen buttons — front button uses front_show_listen, back button uses back_show_listen */
+    if (frontListenBtn) { frontListenBtn.classList.toggle('visible', !flipped && showFrontListen); frontListenBtn.disabled = !showFrontListen; }
+    if (backListenBtn)  { backListenBtn.classList.toggle('visible',   flipped && showBackListen);  backListenBtn.disabled  = !showBackListen; }
   }
 
   /* ── Listen (always ElevenLabs) ────────────────────────────── */
   function listen(button, side) {
     var card = cards[index] || {};
 
-    /* If card already has a pre-generated audio URL, play it directly */
-    var savedAudio = side === 'back' ? card.back_audio : card.front_audio;
-    if (savedAudio) {
-      playUrl(savedAudio, button);
-      return;
-    }
-
-    /* Use the dedicated audio text for this side — never fall back to the other side */
-    var text    = (side === 'back' ? card.back_audio_text : card.front_audio_text) || '';
+    /* Always use the dedicated audio text for the requested side.
+       Do not fall back to pre-generated URLs (which may be stale) or
+       the opposite side's audio under any circumstances. */
+    var text    = (side === 'front' ? card.front_audio_text : card.back_audio_text) || '';
     var voiceId = card.voice_id || '';
     if (!text) {
       if (feedbackEl) feedbackEl.textContent = 'No audio text is set for this side. Please add audio text in the editor.';
