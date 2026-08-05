@@ -88,14 +88,28 @@ if (!$rawCards || !count($rawCards)) {
    Uses fc_first_nonempty() instead of ?? to skip empty-string keys that the
    old normalizer always wrote (e.g. text:"") before reaching the real value. */
 $jsCards = array_values(array_map(function ($card) {
+    $frontImg  = fc_first_nonempty($card, ['front_image', 'image']);
+    $backImg   = fc_first_nonempty($card, ['back_image']);
+    $frontText = fc_first_nonempty($card, ['front_text', 'english_text', 'text']);
+    $backText  = fc_first_nonempty($card, ['back_text', 'spanish_text', 'meaning']);
+    $frontAud  = fc_first_nonempty($card, ['front_audio', 'audio']);
+    $backAud   = fc_first_nonempty($card, ['back_audio']);
+    $hasFlags  = array_key_exists('front_show_image', $card);
     return [
-        'front_image' => fc_first_nonempty($card, ['front_image', 'image']),
-        'back_image'  => fc_first_nonempty($card, ['back_image']),
-        'front_text'  => fc_first_nonempty($card, ['front_text', 'english_text', 'text']),
-        'back_text'   => fc_first_nonempty($card, ['back_text', 'spanish_text', 'meaning']),
-        'front_audio' => fc_first_nonempty($card, ['front_audio', 'audio']),
-        'back_audio'  => fc_first_nonempty($card, ['back_audio']),
-        'voice_id'    => fc_first_nonempty($card, ['voice_id']),
+        'front_image'       => $frontImg,
+        'back_image'        => $backImg,
+        'front_text'        => $frontText,
+        'back_text'         => $backText,
+        'front_audio'       => $frontAud,
+        'back_audio'        => $backAud,
+        'voice_id'          => fc_first_nonempty($card, ['voice_id']),
+        // Visibility flags — default: show element if it has content (legacy cards)
+        'front_show_image'  => array_key_exists('front_show_image', $card)  ? (bool)$card['front_show_image']  : ($hasFlags ? false : $frontImg  !== ''),
+        'front_show_listen' => array_key_exists('front_show_listen', $card) ? (bool)$card['front_show_listen'] : ($hasFlags ? false : ($frontAud !== '' || $frontText !== '')),
+        'front_show_text'   => array_key_exists('front_show_text', $card)   ? (bool)$card['front_show_text']   : ($hasFlags ? false : $frontText !== ''),
+        'back_show_image'   => array_key_exists('back_show_image', $card)   ? (bool)$card['back_show_image']   : ($hasFlags ? false : $backImg   !== ''),
+        'back_show_listen'  => array_key_exists('back_show_listen', $card)  ? (bool)$card['back_show_listen']  : ($hasFlags ? false : ($backAud  !== '' || $backText !== '')),
+        'back_show_text'    => array_key_exists('back_show_text', $card)    ? (bool)$card['back_show_text']    : ($hasFlags ? false : $backText  !== ''),
     ];
 }, $rawCards));
 
@@ -231,10 +245,6 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
     height: 100%;
     object-fit: contain;
 }
-.fc-image-placeholder {
-    color: #D5D0F0;
-}
-.fc-image-placeholder svg { width: 64px; height: 64px; }
 
 .fc-word {
     text-align: center;
@@ -349,20 +359,17 @@ html, body { width: 100%; margin: 0; padding: 0; background: #fff; font-family: 
 
             <div class="fc-card-shell">
                 <div class="fc-image-wrap" id="fc-image-wrap">
-                    <div class="fc-image-placeholder" id="fc-image-placeholder">
-                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4-4 4 4 8-8"/>
-                        </svg>
-                    </div>
                     <img id="fc-img" src="" alt="" style="display:none;">
                     <img id="fc-back-img" src="" alt="" style="display:none;">
                 </div>
 
                 <div class="fc-word" id="fc-word"></div>
-                <button type="button" class="fc-side-listen" id="fc-front-listen"
-                        aria-label="Play front audio">🔊 Front</button>
-                <button type="button" class="fc-side-listen" id="fc-back-listen"
-                        aria-label="Play back audio">🔊 Back</button>
+                <div style="text-align:center">
+                    <button type="button" class="fc-side-listen" id="fc-front-listen"
+                            aria-label="Play front audio">🔊 Listen</button>
+                    <button type="button" class="fc-side-listen" id="fc-back-listen"
+                            aria-label="Play back audio">🔊 Listen</button>
+                </div>
             </div>
 
             <div class="fc-actions">
