@@ -669,4 +669,15 @@ renderLabels();
 </script>
 <?php
 $content = ob_get_clean();
-render_activity_editor('Drag & Drop Kids — Editor', '🖼️', $content);
+$editorBackUrl = '';
+if ($source === 'eval_builder' && $unit !== '') {
+    $examId = isset($_GET['exam_id']) ? (int) $_GET['exam_id'] : 0;
+    if ($examId <= 0 && isset($_SESSION['eval_builder_exam_for_unit'][$unit])) {
+        $examId = (int) $_SESSION['eval_builder_exam_for_unit'][$unit];
+    }
+    if ($examId > 0) {
+        $_SESSION['eval_builder_exam_for_unit'][$unit] = $examId;
+        $editorBackUrl = '../eval/quiz_from_scratch.php?mode=edit&unit=' . urlencode($unit) . '&exam_id=' . $examId;
+    }
+}
+render_activity_editor('Drag & Drop Kids — Editor', '🖼️', $content, $editorBackUrl);
