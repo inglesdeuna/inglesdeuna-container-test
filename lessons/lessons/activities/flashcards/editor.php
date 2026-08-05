@@ -48,15 +48,19 @@ function fc_normalize($raw): array {
         $backImg   = trim((string)($item['back_image'] ?? ''));
         $frontAud  = trim((string)($item['front_audio'] ?? $item['audio'] ?? ''));
         $backAud   = trim((string)($item['back_audio'] ?? ''));
+        $frontAudText = trim((string)($item['front_audio_text'] ?? ''));
+        $backAudText  = trim((string)($item['back_audio_text']  ?? ''));
         $hasFlag = array_key_exists('front_show_image', $item);
         $cards[] = [
             'id'               => trim((string)($item['id'] ?? uniqid('flashcard_'))),
             'front_text'       => $frontText,
             'front_image'      => $frontImg,
             'front_audio'      => $frontAud,
+            'front_audio_text' => $frontAudText,
             'back_text'        => $backText,
             'back_image'       => $backImg,
             'back_audio'       => $backAud,
+            'back_audio_text'  => $backAudText,
             'voice_id'         => trim((string)($item['voice_id'] ?? 'nzFihrBIvB34imQBuxub')),
             // Visibility flags (default true for legacy cards so existing content still shows)
             'front_show_image' => array_key_exists('front_show_image', $item) ? (bool)$item['front_show_image'] : ($hasFlag ? false : $frontImg !== ''),
@@ -146,8 +150,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $backTexts   = is_array($_POST['back_text']            ?? null) ? $_POST['back_text']             : [];
     $frontImages = is_array($_POST['front_image_existing'] ?? null) ? $_POST['front_image_existing']  : [];
     $backImages  = is_array($_POST['back_image_existing']  ?? null) ? $_POST['back_image_existing']   : [];
-    $frontAudios = is_array($_POST['front_audio']          ?? null) ? $_POST['front_audio']           : [];
-    $backAudios  = is_array($_POST['back_audio']           ?? null) ? $_POST['back_audio']            : [];
+    $frontAudios    = is_array($_POST['front_audio']          ?? null) ? $_POST['front_audio']           : [];
+    $backAudios     = is_array($_POST['back_audio']           ?? null) ? $_POST['back_audio']            : [];
+    $frontAudTexts  = is_array($_POST['front_audio_text']     ?? null) ? $_POST['front_audio_text']      : [];
+    $backAudTexts   = is_array($_POST['back_audio_text']      ?? null) ? $_POST['back_audio_text']       : [];
     $voiceIds    = is_array($_POST['voice_id']             ?? null) ? $_POST['voice_id']              : [];
     $ids         = is_array($_POST['card_id']              ?? null) ? $_POST['card_id']               : [];
     // Visibility checkboxes (present in POST only when checked)
@@ -174,9 +180,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'front_text'       => $frontText,
             'front_image'      => $frontImage,
             'front_audio'      => trim((string)($frontAudios[$i] ?? '')),
+            'front_audio_text' => trim((string)($frontAudTexts[$i] ?? '')),
             'back_text'        => $backText,
             'back_image'       => $backImage,
             'back_audio'       => trim((string)($backAudios[$i] ?? '')),
+            'back_audio_text'  => trim((string)($backAudTexts[$i] ?? '')),
             'voice_id'         => trim((string)($voiceIds[$i] ?? 'nzFihrBIvB34imQBuxub')) ?: 'nzFihrBIvB34imQBuxub',
             'front_show_image' => !empty($frontShowImages[$i]),
             'front_show_listen'=> !empty($frontShowListens[$i]),
@@ -241,11 +249,14 @@ label{display:block;font-weight:800;margin:8px 0 6px}
 <div class="side-box"><h4>▶ Front</h4>
 <div class="show-opts">
   <label><input type="checkbox" name="front_show_image[<?= $i ?>]" value="1" onchange="syncField(this,'front-image-<?= $i ?>')" <?= $fsi?'checked':''?>> Show image</label>
-  <label><input type="checkbox" name="front_show_listen[<?= $i ?>]" value="1" <?= $fsl?'checked':''?>> Show listen</label>
+  <label><input type="checkbox" name="front_show_listen[<?= $i ?>]" value="1" onchange="syncField(this,'front-audtext-<?= $i ?>')" <?= $fsl?'checked':''?>> Show listen</label>
   <label><input type="checkbox" name="front_show_text[<?= $i ?>]" value="1" onchange="syncField(this,'front-text-<?= $i ?>')" <?= $fst?'checked':''?>> Show text</label>
 </div>
 <div class="field-group<?= $fst?'':' hidden-field' ?>" id="front-text-<?= $i ?>">
 <label>Text</label><input type="text" name="front_text[]" value="<?= htmlspecialchars($card['front_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. coral reef">
+</div>
+<div class="field-group<?= $fsl?'':' hidden-field' ?>" id="front-audtext-<?= $i ?>">
+<label>Audio text <small style="font-weight:400;color:#6b7280">(what the Listen button reads aloud)</small></label><input type="text" name="front_audio_text[]" value="<?= htmlspecialchars($card['front_audio_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Head in hands">
 </div>
 <div class="field-group<?= $fsi?'':' hidden-field' ?>" id="front-image-<?= $i ?>">
 <label>Image</label><?php if (!empty($card['front_image'])) { ?><img src="<?= htmlspecialchars($card['front_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="front_image_file[]" accept="image/*">
@@ -254,11 +265,14 @@ label{display:block;font-weight:800;margin:8px 0 6px}
 <div class="side-box"><h4 class="back">◀ Back</h4>
 <div class="show-opts">
   <label><input type="checkbox" name="back_show_image[<?= $i ?>]" value="1" onchange="syncField(this,'back-image-<?= $i ?>')" <?= $bsi?'checked':''?>> Show image</label>
-  <label><input type="checkbox" name="back_show_listen[<?= $i ?>]" value="1" <?= $bsl?'checked':''?>> Show listen</label>
+  <label><input type="checkbox" name="back_show_listen[<?= $i ?>]" value="1" onchange="syncField(this,'back-audtext-<?= $i ?>')" <?= $bsl?'checked':''?>> Show listen</label>
   <label><input type="checkbox" name="back_show_text[<?= $i ?>]" value="1" onchange="syncField(this,'back-text-<?= $i ?>')" <?= $bst?'checked':''?>> Show text</label>
 </div>
 <div class="field-group<?= $bst?'':' hidden-field' ?>" id="back-text-<?= $i ?>">
 <label>Text</label><input type="text" name="back_text[]" value="<?= htmlspecialchars($card['back_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. arrecife de coral">
+</div>
+<div class="field-group<?= $bsl?'':' hidden-field' ?>" id="back-audtext-<?= $i ?>">
+<label>Audio text <small style="font-weight:400;color:#6b7280">(what the Listen button reads aloud)</small></label><input type="text" name="back_audio_text[]" value="<?= htmlspecialchars($card['back_audio_text'] ?? '', ENT_QUOTES, 'UTF-8') ?>" placeholder="e.g. Feeling distressed or embarrassed">
 </div>
 <div class="field-group<?= $bsi?'':' hidden-field' ?>" id="back-image-<?= $i ?>">
 <label>Image</label><?php if (!empty($card['back_image'])) { ?><img src="<?= htmlspecialchars($card['back_image'], ENT_QUOTES, 'UTF-8') ?>" class="image-preview" alt=""><?php } ?><input type="file" name="back_image_file[]" accept="image/*">
@@ -293,11 +307,14 @@ function cardHtml(){
     +'<div class="side-box"><h4>▶ Front</h4>'
     +'<div class="show-opts">'
     +'<label><input type="checkbox" name="front_show_image['+i+']" value="1" onchange="syncField(this,\'front-image-'+i+'\')"> Show image</label>'
-    +'<label><input type="checkbox" name="front_show_listen['+i+']" value="1"> Show listen</label>'
+    +'<label><input type="checkbox" name="front_show_listen['+i+']" value="1" onchange="syncField(this,\'front-audtext-'+i+'\')"> Show listen</label>'
     +'<label><input type="checkbox" name="front_show_text['+i+']" value="1" onchange="syncField(this,\'front-text-'+i+'\')" checked> Show text</label>'
     +'</div>'
     +'<div class="field-group" id="front-text-'+i+'">'
     +'<label>Text</label><input type="text" name="front_text[]" placeholder="e.g. coral reef">'
+    +'</div>'
+    +'<div class="field-group hidden-field" id="front-audtext-'+i+'">'
+    +'<label>Audio text <small style="font-weight:400;color:#6b7280">(what the Listen button reads aloud)</small></label><input type="text" name="front_audio_text[]" placeholder="e.g. Head in hands">'
     +'</div>'
     +'<div class="field-group hidden-field" id="front-image-'+i+'">'
     +'<label>Image</label><input type="file" name="front_image_file[]" accept="image/*">'
@@ -306,11 +323,14 @@ function cardHtml(){
     +'<div class="side-box"><h4 class="back">◀ Back</h4>'
     +'<div class="show-opts">'
     +'<label><input type="checkbox" name="back_show_image['+i+']" value="1" onchange="syncField(this,\'back-image-'+i+'\')"> Show image</label>'
-    +'<label><input type="checkbox" name="back_show_listen['+i+']" value="1"> Show listen</label>'
+    +'<label><input type="checkbox" name="back_show_listen['+i+']" value="1" onchange="syncField(this,\'back-audtext-'+i+'\')"> Show listen</label>'
     +'<label><input type="checkbox" name="back_show_text['+i+']" value="1" onchange="syncField(this,\'back-text-'+i+'\')" checked> Show text</label>'
     +'</div>'
     +'<div class="field-group" id="back-text-'+i+'">'
     +'<label>Text</label><input type="text" name="back_text[]" placeholder="e.g. arrecife de coral">'
+    +'</div>'
+    +'<div class="field-group hidden-field" id="back-audtext-'+i+'">'
+    +'<label>Audio text <small style="font-weight:400;color:#6b7280">(what the Listen button reads aloud)</small></label><input type="text" name="back_audio_text[]" placeholder="e.g. Feeling distressed or embarrassed">'
     +'</div>'
     +'<div class="field-group hidden-field" id="back-image-'+i+'">'
     +'<label>Image</label><input type="file" name="back_image_file[]" accept="image/*">'

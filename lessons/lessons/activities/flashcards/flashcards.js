@@ -170,10 +170,13 @@ document.addEventListener('DOMContentLoaded', function () {
       return;
     }
 
-    /* Otherwise request ElevenLabs via tts.php */
-    var text    = (side === 'back' ? card.back_text : card.front_text) || '';
+    /* Use the dedicated audio text for this side — never fall back to the other side */
+    var text    = (side === 'back' ? card.back_audio_text : card.front_audio_text) || '';
     var voiceId = card.voice_id || '';
-    if (!text) return;
+    if (!text) {
+      if (feedbackEl) feedbackEl.textContent = 'No audio text is set for this side. Please add audio text in the editor.';
+      return;
+    }
 
     playElevenLabs(text, voiceId, button);
   }
