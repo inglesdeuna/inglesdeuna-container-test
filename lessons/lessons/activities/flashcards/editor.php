@@ -50,6 +50,9 @@ function fc_normalize($raw): array {
         $backAud   = trim((string)($item['back_audio'] ?? ''));
         $frontAudText = trim((string)($item['front_audio_text'] ?? ''));
         $backAudText  = trim((string)($item['back_audio_text']  ?? ''));
+        // Migrate legacy cards: populate audio text from the matching side's text if not set
+        if ($frontAudText === '') $frontAudText = $frontText;
+        if ($backAudText  === '') $backAudText  = $backText;
         $hasFlag = array_key_exists('front_show_image', $item);
         $cards[] = [
             'id'               => trim((string)($item['id'] ?? uniqid('flashcard_'))),
