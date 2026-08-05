@@ -148,11 +148,20 @@ document.addEventListener('DOMContentLoaded', function () {
       backImgEl.style.display = (flipped && showImage && backImg) ? 'block' : 'none';
     }
 
-    /* Text */
+    /* Text — scale font size down for longer strings */
     var currentText = flipped ? (card.back_text || '') : (card.front_text || '');
     if (wordEl) {
       wordEl.textContent = showText ? currentText : '';
       wordEl.style.display = (showText && currentText) ? 'block' : 'none';
+      /* Responsive font: shrink gradually for long text so card outer size never changes */
+      if (showText && currentText) {
+        var len = currentText.length;
+        var fs = len <= 20  ? 'clamp(22px, 5vw, 48px)'
+               : len <= 40  ? 'clamp(18px, 4vw, 36px)'
+               : len <= 80  ? 'clamp(15px, 3.2vw, 26px)'
+               :               'clamp(12px, 2.5vw, 20px)';
+        wordEl.style.fontSize = fs;
+      }
     }
 
     /* Listen buttons — front button uses front_show_listen, back button uses back_show_listen */
