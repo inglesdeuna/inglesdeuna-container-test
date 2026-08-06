@@ -161,6 +161,10 @@ ob_start();
     border-radius: 10px;
     padding: 6px 8px;
 }
+.ddk-label-item.selected {
+    border-color: #f97316;
+    background: #fff7ed;
+}
 .ddk-label-num {
     width: 22px;
     height: 22px;
@@ -244,6 +248,7 @@ ob_start();
     inset: 0;
     cursor: crosshair;
     z-index: 5;
+    pointer-events: none;
 }
 .ddk-ed-empty {
     text-align: center;
@@ -269,6 +274,10 @@ ob_start();
     overflow: visible;
 }
 .ddk-ed-zone.selected {
+    border-color: #f97316;
+    background: rgba(249,115,22,.18);
+}
+.ddk-ed-zone.is-new {
     border-color: #f97316;
     background: rgba(249,115,22,.18);
 }
@@ -505,6 +514,11 @@ function createZoneEl(p) {
     wrap.appendChild(el);
     makeDraggable(el, p);
     makeResizable(handle, el, p);
+    el.addEventListener('click', function (e) {
+        if (e.target.dataset.resize) return;
+        e.stopPropagation();
+        selectZone(p.id);
+    });
 }
 
 function renderLabels() {
@@ -529,6 +543,9 @@ function renderLabels() {
             const pair = pairs.find(pp => pp.id === p.id);
             if (pair) pair.label = this.value;
         });
+        inp.addEventListener('focus', function () {
+            selectZone(p.id);
+        });
 
         const del = document.createElement('button');
         del.type        = 'button';
@@ -545,18 +562,41 @@ function renderLabels() {
     });
 }
 
+function selectZone(id) {
+    document.querySelectorAll('.ddk-ed-zone').forEach(function (zone) {
+        zone.classList.toggle('selected', String(zone.dataset.id) === String(id));
+        zone.classList.remove('is-new');
+    });
+    labelList.querySelectorAll('.ddk-label-item').forEach(function (item) {
+        item.classList.toggle('selected', String(item.dataset.id) === String(id));
+    });
+}
+
+function focusLabelInput(id) {
+    const li = labelList.querySelector('[data-id="' + id + '"]');
+    if (!li) return;
+    const inp = li.querySelector('input');
+    if (!inp) return;
+    setTimeout(function () {
+        inp.focus();
+        inp.select();
+    }, 50);
+}
+
 /* ── Add zone on canvas click ──────────────────── */
-overlay.addEventListener('click', function (e) {
+wrap.addEventListener('click', function (e) {
     if (!bgLoaded) return;
+    if (e.target === bgFile || (e.target.closest && e.target.closest('.ddk-card'))) return;
     if (e.target.dataset.resize) return;
-    if (e.target.classList.contains('ddk-ed-zone')) return;
+    if (e.target.closest && e.target.closest('.ddk-ed-zone')) return;
 
     const rect = wrap.getBoundingClientRect();
-    const imgW  = bgImg.clientWidth  || rect.width;
-    const imgH  = bgImg.clientHeight || rect.height;
+    const imgRect = bgImg.getBoundingClientRect();
+    if (!imgRect.width || !imgRect.height) return;
+    if (e.clientX < imgRect.left || e.clientX > imgRect.right || e.clientY < imgRect.top || e.clientY > imgRect.bottom) return;
 
-    const xPct = ((e.clientX - rect.left) / imgW * 100);
-    const yPct = ((e.clientY - rect.top)  / imgH * 100);
+    const xPct = ((e.clientX - imgRect.left) / imgRect.width * 100);
+    const yPct = ((e.clientY - imgRect.top)  / imgRect.height * 100);
 
     const w = 14, h = 9;
     const clampedX = Math.min(xPct - w / 2, 100 - w);
@@ -573,13 +613,10 @@ overlay.addEventListener('click', function (e) {
     pairs.push(p);
     createZoneEl(p);
     renderLabels();
-
-    /* Focus the new label input */
-    const li = labelList.querySelector('[data-id="' + p.id + '"]');
-    if (li) {
-        const inp = li.querySelector('input');
-        if (inp) setTimeout(() => inp.focus(), 50);
-    }
+    const zoneEl = document.getElementById('edzone-' + p.id);
+    if (zoneEl) zoneEl.classList.add('is-new');
+    selectZone(p.id);
+    focusLabelInput(p.id);
 });
 
 /* ── Drag to reposition ────────────────────────── */
@@ -594,7 +631,7 @@ function makeDraggable(el, p) {
         startMouseY = e.clientY;
         startX = p.x;
         startY = p.y;
-        el.classList.add('selected');
+        selectZone(p.id);
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
@@ -614,7 +651,6 @@ function makeDraggable(el, p) {
 
     function onUp() {
         dragging = false;
-        el.classList.remove('selected');
         document.removeEventListener('mousemove', onMove);
         document.removeEventListener('mouseup', onUp);
     }
