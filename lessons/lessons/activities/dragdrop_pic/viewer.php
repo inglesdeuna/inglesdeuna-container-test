@@ -398,24 +398,126 @@ body.presentation-mode .ddpv-zone,
 body.fullscreen-embedded .ddpv-zone {
     border-width: 3px;
 }
+
+/* Let's Classify-aligned activity shell and authorized result flow */
+.ddpv-page{width:100%;padding:clamp(8px,1.2vw,16px);box-sizing:border-box;background:#fff}
+.ddpv-topbar{height:24px;display:flex;align-items:center;justify-content:center}
+.ddpv-topbar-title{font-size:11px;font-weight:900;color:#9B94BE;letter-spacing:.1em;text-transform:uppercase}
+.ddpv-hero{text-align:center;margin-bottom:8px}
+.ddpv-kicker{display:inline-flex;align-items:center;justify-content:center;padding:6px 13px;border-radius:999px;background:#FFF0E6;border:1px solid #FCDDBF;color:#C2580A;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+.ddpv-hero h1{font-family:'Fredoka','Trebuchet MS',sans-serif;font-size:clamp(32px,3.9vw,46px);font-weight:700;color:#F97316;margin:0;line-height:1.02}
+.ddpv-hero p{font-size:clamp(13px,1.35vw,16px);font-weight:800;color:#9B94BE;margin:6px 0 0}
+.ddpv-card{background:#fff;border:1px solid #F0EEF8;border-radius:22px;padding:12px 14px;box-shadow:0 8px 36px rgba(127,119,221,.11);box-sizing:border-box}
+.ddpv-card .ddpv-toolbar{justify-content:flex-end;padding:0 4px 8px;margin:0}
+.ddpv-card .ddpv-block-head{margin:0 auto 4px;padding:0 12px}
+.ddpv-card .ddpv-block-head h3:empty,.ddpv-card .ddpv-block-head p:empty{display:none}
+.ddpv-play-area{display:block}
+.ddpv-score-grid{display:none;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}.ddpv-score-grid.visible{display:grid}
+.ddpv-score-card{background:#FAFAFE;border:1px solid #EDE9FA;border-radius:14px;padding:12px;text-align:center}
+.ddpv-score-num{font-family:'Fredoka',sans-serif;font-weight:700;font-size:26px;line-height:1}
+.ddpv-score-num.correct{color:#16a34a}.ddpv-score-num.wrong{color:#ef4444}.ddpv-score-num.percent{color:#7F77DD}
+.ddpv-score-label{margin-top:5px;font-size:10px;font-weight:900;color:#9B94BE;text-transform:uppercase;letter-spacing:.08em}
+.ddpv-controls{border-top:1px solid #F0EEF8;margin-top:12px;padding-top:12px;text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
+.ddpv-controls .ddpv-btn{height:auto;min-width:90px;padding:12px 22px;border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:900}
+.ddpv-controls .ddpv-btn.check,.ddpv-controls .ddpv-btn.finish{background:#F97316;box-shadow:0 6px 18px rgba(249,115,22,.22)}
+.ddpv-controls .ddpv-btn.secondary{background:#7F77DD;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+.ddpv-controls .ddpv-btn:disabled{opacity:.5;pointer-events:none}
+.ddpv-completed{display:none;text-align:center;padding:28px 12px;max-width:520px;margin:0 auto}.ddpv-completed.active{display:block}
+.ddpv-completed-icon{font-size:28px;line-height:1;margin-bottom:8px;color:#1E1B3A}
+.ddpv-completed-title{margin:0 0 6px;color:#F97316;font-family:'Fredoka',sans-serif;font-size:34px;font-weight:700}
+.ddpv-completed-text{color:#9B94BE;font-size:14px;font-weight:800;line-height:1.5;margin:0}
+.ddpv-completed-score{font-size:15px;font-weight:900;color:#534AB7;margin:6px 0 14px}
+.ddpv-completed-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ddpv-completed-btn{display:inline-flex;align-items:center;justify-content:center;padding:11px 22px;border:none;border-radius:8px;cursor:pointer;min-width:120px;font-weight:700;font-size:14px;line-height:1;background:#7F77DD;color:#fff;box-shadow:0 6px 18px rgba(127,119,221,.18)}
+@media(max-width:660px){.ddpv-score-grid{grid-template-columns:1fr}.ddpv-controls{flex-direction:column}.ddpv-controls .ddpv-btn{width:100%}}
 </style>
-<div class="ddpv-shell"><div class="ddpv-block-head"><div class="ddpv-progress" id="ddpvProgress"></div><h3 id="ddpvBlockTitle"></h3><p id="ddpvBlockInstructions"></p></div><div class="ddpv-toolbar" id="ddpvToolbar"><button type="button" class="ddpv-btn" id="ddpvZoomOut">−</button><button type="button" class="ddpv-btn" id="ddpvZoomReset">100%</button><button type="button" class="ddpv-btn" id="ddpvZoomIn">+</button><button type="button" class="ddpv-btn warn" id="ddpvShow">Show Answer</button><button type="button" class="ddpv-btn primary" id="ddpvRetry">Retry</button></div><div class="ddpv-feedback" id="ddpvFeedback" aria-live="polite"></div><div class="ddpv-stage-wrap"><div class="ddpv-zoom-target" id="ddpvZoomTarget"><div class="ddpv-stage"><div class="ddpv-canvas" id="ddpvCanvas"></div></div></div></div><div class="ddpv-bank" id="ddpvBank"></div><div class="ddpv-next-wrap"><button type="button" class="ddpv-btn primary" id="ddpvNext" style="display:none">Next Block</button></div><div class="ddpv-completed" id="ddpvCompleted"></div></div>
+
+<div class="ddpv-page">
+  <div class="ddpv-shell">
+    <div class="ddpv-topbar"><span class="ddpv-topbar-title">Drag and Drop Kids</span></div>
+    <div class="ddpv-hero">
+      <div class="ddpv-kicker">Activity</div>
+      <h1><?=ddpv_h(preg_match('/^Drag\s*&\s*Drop Picture$/i',$title)?'Drag and Drop':$title)?></h1>
+      <?php if($instructions!==''):?><p><?=ddpv_h($instructions)?></p><?php endif;?>
+    </div>
+    <div class="ddpv-card" id="ddpvCard">
+      <div class="ddpv-toolbar" id="ddpvToolbar">
+        <button type="button" class="ddpv-btn" id="ddpvZoomOut">−</button>
+        <button type="button" class="ddpv-btn" id="ddpvZoomReset">100%</button>
+        <button type="button" class="ddpv-btn" id="ddpvZoomIn">+</button>
+      </div>
+      <div class="ddpv-block-head" id="ddpvBlockHead">
+        <div class="ddpv-progress" id="ddpvProgress"></div>
+        <h3 id="ddpvBlockTitle"></h3><p id="ddpvBlockInstructions"></p>
+      </div>
+      <div class="ddpv-feedback" id="ddpvFeedback" aria-live="polite"></div>
+      <div class="ddpv-play-area" id="ddpvPlayArea">
+        <div class="ddpv-stage-wrap"><div class="ddpv-zoom-target" id="ddpvZoomTarget"><div class="ddpv-stage"><div class="ddpv-canvas" id="ddpvCanvas"></div></div></div></div>
+        <div class="ddpv-bank" id="ddpvBank"></div>
+      </div>
+      <div class="ddpv-score-grid" id="ddpvScoreGrid">
+        <div class="ddpv-score-card"><div class="ddpv-score-num correct" id="ddpvScoreCorrect">0</div><div class="ddpv-score-label">Correct</div></div>
+        <div class="ddpv-score-card"><div class="ddpv-score-num wrong" id="ddpvScoreWrong">0</div><div class="ddpv-score-label">Wrong</div></div>
+        <div class="ddpv-score-card"><div class="ddpv-score-num percent" id="ddpvScorePercent">0%</div><div class="ddpv-score-label">Score</div></div>
+      </div>
+      <div class="ddpv-controls" id="ddpvControls">
+        <button type="button" class="ddpv-btn check" id="ddpvCheck">Check</button>
+        <button type="button" class="ddpv-btn secondary" id="ddpvShow">Show Answer</button>
+        <button type="button" class="ddpv-btn secondary" id="ddpvRetry">Retry</button>
+        <button type="button" class="ddpv-btn finish" id="ddpvNext" style="display:none">Finish</button>
+      </div>
+      <div class="ddpv-completed" id="ddpvCompleted">
+        <div class="ddpv-completed-icon">OK</div>
+        <h2 class="ddpv-completed-title" id="ddpvCompletedTitle">Drag and Drop</h2>
+        <div class="ddpv-score-grid visible" style="max-width:360px;margin:0 auto 12px">
+          <div class="ddpv-score-card"><div class="ddpv-score-num correct" id="ddpvCompletedCorrect">0</div><div class="ddpv-score-label">Correct</div></div>
+          <div class="ddpv-score-card"><div class="ddpv-score-num wrong" id="ddpvCompletedWrong">0</div><div class="ddpv-score-label">Wrong</div></div>
+          <div class="ddpv-score-card"><div class="ddpv-score-num percent" id="ddpvCompletedPercent">0%</div><div class="ddpv-score-label">Score</div></div>
+        </div>
+        <p class="ddpv-completed-text">You've completed this activity. Great job!</p>
+        <p class="ddpv-completed-score" id="ddpvCompletedScore"></p>
+        <div class="ddpv-completed-actions"><button type="button" class="ddpv-completed-btn" id="ddpvCompletedRestart">Restart</button></div>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 (function(){'use strict';
 const BLOCKS=<?=json_encode($blocks,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>,ACTIVITY_ID=<?=json_encode($activityId)?>,RETURN_TO=<?=json_encode($returnTo)?>,TITLE=<?=json_encode($title,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>,TOTAL_ITEMS=<?=$totalItems?>;
-const canvas=document.getElementById('ddpvCanvas'),bank=document.getElementById('ddpvBank'),feedback=document.getElementById('ddpvFeedback'),completed=document.getElementById('ddpvCompleted'),toolbar=document.getElementById('ddpvToolbar'),zoomTarget=document.getElementById('ddpvZoomTarget'),zoomReset=document.getElementById('ddpvZoomReset'),nextBtn=document.getElementById('ddpvNext'),progress=document.getElementById('ddpvProgress'),blockTitle=document.getElementById('ddpvBlockTitle'),blockInstructions=document.getElementById('ddpvBlockInstructions');
+const canvas=document.getElementById('ddpvCanvas'),bank=document.getElementById('ddpvBank'),feedback=document.getElementById('ddpvFeedback'),completed=document.getElementById('ddpvCompleted'),toolbar=document.getElementById('ddpvToolbar'),zoomTarget=document.getElementById('ddpvZoomTarget'),zoomReset=document.getElementById('ddpvZoomReset'),nextBtn=document.getElementById('ddpvNext'),checkBtn=document.getElementById('ddpvCheck'),controls=document.getElementById('ddpvControls'),playArea=document.getElementById('ddpvPlayArea'),blockHead=document.getElementById('ddpvBlockHead'),scoreGrid=document.getElementById('ddpvScoreGrid'),scoreCorrect=document.getElementById('ddpvScoreCorrect'),scoreWrong=document.getElementById('ddpvScoreWrong'),scorePercent=document.getElementById('ddpvScorePercent'),completedTitle=document.getElementById('ddpvCompletedTitle'),completedCorrect=document.getElementById('ddpvCompletedCorrect'),completedWrong=document.getElementById('ddpvCompletedWrong'),completedPercent=document.getElementById('ddpvCompletedPercent'),completedScore=document.getElementById('ddpvCompletedScore'),progress=document.getElementById('ddpvProgress'),blockTitle=document.getElementById('ddpvBlockTitle'),blockInstructions=document.getElementById('ddpvBlockInstructions');
 let blockIndex=0,selectedChip=null,dragState=null,zoom=1,finished=false,blockFinished=false,showedAnswers=false,wrongAttempts=0,blockCorrect=0,blockMistakes=0,scores=[];
-function current(){return BLOCKS[blockIndex]}function items(){return current().items}function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}function tr(i){return`rotate(${Number(i.rot)||0}deg) scaleX(${i.flipH?-1:1})`}function itemById(id){return items().find(i=>String(i.id)===String(id))}function zoneById(id){return canvas.querySelector(`.ddpv-zone[data-id="${id}"]`)}function setFeedback(t,c){feedback.textContent=t||'';feedback.className='ddpv-feedback'+(c?' '+c:'')}function clearSelection(){if(selectedChip)selectedChip.classList.remove('selected');selectedChip=null}function selectChip(c){clearSelection();selectedChip=c;c.classList.add('selected')}
-function renderBlock(){blockFinished=false;blockCorrect=0;blockMistakes=0;clearSelection();setFeedback('','');nextBtn.style.display='none';progress.textContent=`Block ${blockIndex+1} of ${BLOCKS.length}`;const visibleTitle=String(current().title||'').trim();blockTitle.textContent=/^Block\s+\d+$/i.test(visibleTitle)?'Drag and Drop':(visibleTitle||'Drag and Drop');blockInstructions.textContent=current().instructions||'';canvas.innerHTML='';const bg=document.createElement('img');bg.className='ddpv-bg';bg.src=current().background_image;bg.alt='Activity scene';canvas.appendChild(bg);items().forEach(i=>{const z=document.createElement('div');z.className='ddpv-zone';z.dataset.id=i.id;Object.assign(z.style,{left:i.x+'%',top:i.y+'%',width:i.w+'%',height:i.h+'%',zIndex:String(10+i.layer)});z.addEventListener('pointerup',e=>{if(finished||blockFinished||dragState||!selectedChip||z.classList.contains('filled'))return;e.preventDefault();attemptDrop(z,selectedChip)});canvas.appendChild(z)});buildBank()}
+function activityTitle(){const t=String(TITLE||'').trim();return /^Drag\s*&\s*Drop Picture$/i.test(t)?'Drag and Drop':(t||'Drag and Drop')}function current(){return BLOCKS[blockIndex]}function items(){return current().items}function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}function tr(i){return`rotate(${Number(i.rot)||0}deg) scaleX(${i.flipH?-1:1})`}function itemById(id){return items().find(i=>String(i.id)===String(id))}function zoneById(id){return canvas.querySelector(`.ddpv-zone[data-id="${id}"]`)}function setFeedback(t,c){feedback.textContent=t||'';feedback.className='ddpv-feedback'+(c?' '+c:'')}function clearSelection(){if(selectedChip)selectedChip.classList.remove('selected');selectedChip=null}function selectChip(c){clearSelection();selectedChip=c;c.classList.add('selected')}
+function renderBlock(){
+    blockFinished=false;blockCorrect=0;blockMistakes=0;clearSelection();setFeedback('','');
+    nextBtn.style.display='none';checkBtn.disabled=false;scoreGrid.classList.remove('visible');
+    progress.textContent='Block '+(blockIndex+1)+' of '+BLOCKS.length;
+    const visibleTitle=String(current().title||'').trim();blockTitle.textContent=/^Block\s+\d+$/i.test(visibleTitle)?'':visibleTitle;
+    blockInstructions.textContent=current().instructions||'';canvas.innerHTML='';
+    const bg=document.createElement('img');bg.className='ddpv-bg';bg.src=current().background_image;bg.alt='Activity scene';canvas.appendChild(bg);
+    items().forEach(i=>{const z=document.createElement('div');z.className='ddpv-zone';z.dataset.id=i.id;Object.assign(z.style,{left:i.x+'%',top:i.y+'%',width:i.w+'%',height:i.h+'%',zIndex:String(10+i.layer)});z.addEventListener('pointerup',e=>{if(finished||blockFinished||dragState||!selectedChip||z.classList.contains('filled'))return;e.preventDefault();attemptDrop(z,selectedChip)});canvas.appendChild(z)});buildBank()
+}
 function buildBank(){bank.innerHTML='';shuffle(items()).forEach(i=>{const c=document.createElement('button');c.type='button';c.className='ddpv-chip'+(i.pic_url?'':' is-label');c.dataset.id=i.id;const token=document.createElement(i.pic_url?'img':'span');if(i.pic_url){token.src=i.pic_url;token.alt=i.label||'';token.style.transform=tr(i)}else{token.className='ddpv-chip-label';token.textContent=i.label}c.appendChild(token);c.onclick=e=>{e.preventDefault();if(!finished&&!blockFinished)selectChip(c)};c.addEventListener('pointerdown',startDrag);bank.appendChild(c)})}
 function startDrag(e){if(finished||blockFinished||e.button>0)return;const chip=e.currentTarget;e.preventDefault();selectChip(chip);chip.classList.add('dragging');chip.setPointerCapture(e.pointerId);const item=itemById(chip.dataset.id),ghost=document.createElement(item.pic_url?'img':'div');ghost.className='ddpv-drag-image'+(item.pic_url?'':' is-label');if(item.pic_url){ghost.src=item.pic_url;ghost.style.transform=`translate(-50%,-50%) scale(1.08) ${tr(item)}`}else{ghost.textContent=item.label;ghost.style.transform='translate(-50%,-50%) scale(1.08)'};document.body.appendChild(ghost);dragState={pointerId:e.pointerId,chip,ghost,startX:e.clientX,startY:e.clientY,moved:false};moveGhost(e);chip.addEventListener('pointermove',dragMove);chip.addEventListener('pointerup',dragEnd);chip.addEventListener('pointercancel',dragEnd)}function moveGhost(e){if(!dragState)return;dragState.ghost.style.left=e.clientX+'px';dragState.ghost.style.top=e.clientY+'px'}function dragMove(e){if(!dragState||e.pointerId!==dragState.pointerId)return;e.preventDefault();moveGhost(e);if(Math.hypot(e.clientX-dragState.startX,e.clientY-dragState.startY)>5)dragState.moved=true;document.querySelectorAll('.ddpv-zone.over').forEach(z=>z.classList.remove('over'));const z=document.elementFromPoint(e.clientX,e.clientY)?.closest('.ddpv-zone');if(z&&!z.classList.contains('filled'))z.classList.add('over')}function dragEnd(e){if(!dragState||e.pointerId!==dragState.pointerId)return;e.preventDefault();const s=dragState;s.chip.removeEventListener('pointermove',dragMove);s.chip.removeEventListener('pointerup',dragEnd);s.chip.removeEventListener('pointercancel',dragEnd);s.chip.classList.remove('dragging');s.ghost.remove();document.querySelectorAll('.ddpv-zone.over').forEach(z=>z.classList.remove('over'));const z=document.elementFromPoint(e.clientX,e.clientY)?.closest('.ddpv-zone');dragState=null;if(z&&!z.classList.contains('filled'))attemptDrop(z,s.chip);else if(s.moved)setFeedback('Drop the item on a matching place.','bad')}
-function placeImage(z,i){const placed=document.createElement(i.pic_url?'img':'div');placed.className='ddpv-placed'+(i.pic_url?'':' is-label');if(i.pic_url){placed.src=i.pic_url;placed.alt=i.label||'';placed.style.transform=tr(i)}else{placed.textContent=i.label}Object.assign(placed.style,{left:z.style.left,top:z.style.top,width:z.style.width,height:z.style.height,zIndex:String(100+(Number(i.layer)||0))});canvas.appendChild(placed);z.classList.add('filled')}function attemptDrop(z,c){if(finished||blockFinished)return;if(String(c.dataset.id)===String(z.dataset.id)){placeImage(z,itemById(c.dataset.id));c.remove();clearSelection();blockCorrect++;setFeedback('Correct!','good');if(blockCorrect===items().length)setTimeout(completeBlock,250)}else{wrongAttempts++;blockMistakes++;z.classList.add('wrong');setFeedback('Try a different spot.','bad');setTimeout(()=>z.classList.remove('wrong'),450)}}
-function completeBlock(){if(blockFinished)return;blockFinished=true;const good=Math.max(0,items().length-Math.min(items().length,blockMistakes));for(let i=0;i<items().length;i++)scores.push(i<good?1:0);bank.innerHTML='';setFeedback(blockIndex<BLOCKS.length-1?'Block completed! Continue to the next block.':'All blocks completed!','good');if(blockIndex<BLOCKS.length-1){nextBtn.textContent='Next Block';nextBtn.style.display='inline-block'}else finishActivity()}
-function showAnswers(){if(finished||blockFinished)return;showedAnswers=true;items().forEach(i=>{const z=zoneById(i.id);if(z&&!z.classList.contains('filled'))placeImage(z,i)});blockMistakes=Math.max(blockMistakes,items().length);wrongAttempts+=items().length;setFeedback('Answers shown.','bad');setTimeout(completeBlock,250)}
-function restart(){blockIndex=0;finished=false;blockFinished=false;showedAnswers=false;wrongAttempts=0;scores=[];completed.dataset.rendered='0';completed.innerHTML='';toolbar.style.display='flex';nextBtn.style.display='none';renderBlock()}
-async function finishActivity(){if(completed.dataset.rendered==='1')return;finished=true;completed.dataset.rendered='1';toolbar.style.display='none';nextBtn.style.display='none';const pct=TOTAL_ITEMS?Math.round(scores.reduce((a,b)=>a+b,0)/TOTAL_ITEMS*100):0;if(window.ActivityFeedback&&typeof window.ActivityFeedback.showCompleted==='function'){window.ActivityFeedback.showCompleted({target:completed,scores,title:TITLE,activityType:'Drag & Drop Picture',questionCount:TOTAL_ITEMS,onRetry:restart})}else completed.innerHTML=`<div style="text-align:center;padding:22px;font-weight:800">Completed — ${pct}%</div>`;if(ACTIVITY_ID&&RETURN_TO){const j=RETURN_TO.includes('?')?'&':'?',u=RETURN_TO+j+'activity_percent='+pct+'&activity_errors='+wrongAttempts+'&activity_total='+TOTAL_ITEMS+'&activity_id='+encodeURIComponent(ACTIVITY_ID)+'&activity_type=dragdrop_pic';try{await fetch(u,{method:'GET',credentials:'same-origin',cache:'no-store'})}catch(e){console.warn('Score persistence failed',e)}}}
+function placeImage(z,i){const placed=document.createElement(i.pic_url?'img':'div');placed.className='ddpv-placed'+(i.pic_url?'':' is-label');if(i.pic_url){placed.src=i.pic_url;placed.alt=i.label||'';placed.style.transform=tr(i)}else{placed.textContent=i.label}Object.assign(placed.style,{left:z.style.left,top:z.style.top,width:z.style.width,height:z.style.height,zIndex:String(100+(Number(i.layer)||0))});canvas.appendChild(placed);z.classList.add('filled')}
+function attemptDrop(z,c){if(finished||blockFinished)return;if(String(c.dataset.id)===String(z.dataset.id)){placeImage(z,itemById(c.dataset.id));c.remove();clearSelection();blockCorrect++;setFeedback(blockCorrect===items().length?'All items placed. Press Check to see your score.':'Correct!','good')}else{wrongAttempts++;blockMistakes++;z.classList.add('wrong');setFeedback('Try a different spot.','bad');setTimeout(()=>z.classList.remove('wrong'),450)}}
+function completeBlock(){
+    if(finished||blockFinished)return;if(blockCorrect<items().length){alert('Place all items before checking!');return}
+    blockFinished=true;const good=Math.max(0,items().length-Math.min(items().length,blockMistakes)),wrong=items().length-good,pct=items().length?Math.round(good/items().length*100):0;
+    for(let i=0;i<items().length;i++)scores.push(i<good?1:0);
+    bank.innerHTML='';scoreCorrect.textContent=good;scoreWrong.textContent=wrong;scorePercent.textContent=pct+'%';scoreGrid.classList.add('visible');checkBtn.disabled=true;
+    nextBtn.textContent=blockIndex<BLOCKS.length-1?'Next Block':'Finish';nextBtn.style.display='inline-flex';setFeedback(blockIndex<BLOCKS.length-1?'Score ready. Continue to the next block.':'Score ready. Press Finish to complete the activity.','good')
+}
+function showAnswers(){if(finished||blockFinished)return;showedAnswers=true;items().forEach(i=>{const z=zoneById(i.id);if(z&&!z.classList.contains('filled'))placeImage(z,i)});bank.innerHTML='';clearSelection();blockCorrect=items().length;blockMistakes=Math.max(blockMistakes,items().length);wrongAttempts+=items().length;setFeedback('Answers shown. Press Check to see your score.','bad')}
+function restart(){blockIndex=0;finished=false;blockFinished=false;showedAnswers=false;wrongAttempts=0;scores=[];completed.dataset.rendered='0';completed.classList.remove('active');playArea.style.display='';toolbar.style.display='flex';blockHead.style.display='';feedback.style.display='';controls.style.display='flex';scoreGrid.style.display='';nextBtn.style.display='none';renderBlock();applyZoom()}
+async function finishActivity(){
+    if(completed.dataset.rendered==='1')return;finished=true;completed.dataset.rendered='1';
+    const correct=scores.reduce((a,b)=>a+b,0),wrong=Math.max(0,TOTAL_ITEMS-correct),pct=TOTAL_ITEMS?Math.round(correct/TOTAL_ITEMS*100):0;
+    playArea.style.display='none';toolbar.style.display='none';blockHead.style.display='none';feedback.style.display='none';scoreGrid.style.display='none';controls.style.display='none';
+    completedTitle.textContent=activityTitle();completedCorrect.textContent=correct;completedWrong.textContent=wrong;completedPercent.textContent=pct+'%';completedScore.textContent=correct+' correct · '+wrong+' wrong · '+pct+'%';completed.classList.add('active');
+    if(ACTIVITY_ID&&RETURN_TO){const j=RETURN_TO.includes('?')?'&':'?',u=RETURN_TO+j+'activity_percent='+pct+'&activity_errors='+wrongAttempts+'&activity_total='+TOTAL_ITEMS+'&activity_id='+encodeURIComponent(ACTIVITY_ID)+'&activity_type=dragdrop_pic';try{await fetch(u,{method:'GET',credentials:'same-origin',cache:'no-store'})}catch(e){console.warn('Score persistence failed',e)}}
+}
 function applyZoom(){zoomTarget.style.transform=`scale(${zoom})`;zoomReset.textContent=Math.round(zoom*100)+'%'}
-nextBtn.onclick=()=>{if(!blockFinished)return;blockIndex++;renderBlock()};document.getElementById('ddpvZoomIn').onclick=()=>{zoom=Math.min(2,Number((zoom+.1).toFixed(2)));applyZoom()};document.getElementById('ddpvZoomOut').onclick=()=>{zoom=Math.max(.6,Number((zoom-.1).toFixed(2)));applyZoom()};zoomReset.onclick=()=>{zoom=1;applyZoom()};document.getElementById('ddpvShow').onclick=showAnswers;document.getElementById('ddpvRetry').onclick=restart;renderBlock();applyZoom();
+nextBtn.onclick=()=>{if(!blockFinished)return;if(blockIndex<BLOCKS.length-1){blockIndex++;renderBlock()}else finishActivity()};checkBtn.onclick=completeBlock;document.getElementById('ddpvZoomIn').onclick=()=>{zoom=Math.min(2,Number((zoom+.1).toFixed(2)));applyZoom()};document.getElementById('ddpvZoomOut').onclick=()=>{zoom=Math.max(.6,Number((zoom-.1).toFixed(2)));applyZoom()};zoomReset.onclick=()=>{zoom=1;applyZoom()};document.getElementById('ddpvShow').onclick=showAnswers;document.getElementById('ddpvRetry').onclick=restart;document.getElementById('ddpvCompletedRestart').onclick=restart;renderBlock();applyZoom();
 })();
 </script>
 <?php $content=ob_get_clean();render_activity_viewer($title,'🖼️',$content);
