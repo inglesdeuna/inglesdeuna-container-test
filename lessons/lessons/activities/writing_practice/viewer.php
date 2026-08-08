@@ -1064,7 +1064,7 @@ function checkEssay(){
     var total = keys.length ? Math.round(keys.reduce(function(sum, k){ return sum + categories[k]; }, 0)/keys.length) : 100;
 
     RUBRIC[idx] = categories;
-    SCORES[idx] = total;
+    SCORES[idx] = { earned: total, possible: 100 };
     if(total >= 80) launchConfetti();
 }
 
@@ -1074,16 +1074,9 @@ function checkAnswer(){
     var modelWords = normalize(item.answer || '');
     var studentWords = normalize(el('wp-textarea').value);
 
-    var modelFreq = {};
-    modelWords.forEach(function(w){ modelFreq[w] = (modelFreq[w]||0)+1; });
-    var studentFreq = {};
-    studentWords.forEach(function(w){ studentFreq[w] = (studentFreq[w]||0)+1; });
-
     var correct = 0;
-    var usedCount = {};
-    studentWords.forEach(function(w){
-        usedCount[w] = (usedCount[w]||0)+1;
-        if(modelFreq[w] && usedCount[w] <= modelFreq[w]) correct++;
+    modelWords.forEach(function(w, i){
+        if(w === (studentWords[i] || '')) correct++;
     });
 
     var pct = modelWords.length > 0 ? Math.round((correct / modelWords.length)*100) : 0;
@@ -1093,10 +1086,8 @@ function checkAnswer(){
 
     var sTok = el('wp-student-tokens');
     sTok.innerHTML = '';
-    var usedC2 = {};
     studentWords.forEach(function(w, i){
-        usedC2[w] = (usedC2[w]||0)+1;
-        var isMatch = modelFreq[w] && usedC2[w] <= modelFreq[w];
+        var isMatch = w === (modelWords[i] || '');
         var span = document.createElement('span');
         span.className = 'wp-token ' + (isMatch ? 'match' : 'extra');
         span.textContent = w;
@@ -1106,10 +1097,8 @@ function checkAnswer(){
 
     var aTok = el('wp-answer-tokens');
     aTok.innerHTML = '';
-    var usedM = {};
     modelWords.forEach(function(w, i){
-        usedM[w] = (usedM[w]||0)+1;
-        var found = studentFreq[w] && usedM[w] <= studentFreq[w];
+        var found = w === (studentWords[i] || '');
         var span = document.createElement('span');
         span.className = 'wp-token ' + (found ? 'neutral' : 'miss');
         span.textContent = w;
@@ -1120,7 +1109,7 @@ function checkAnswer(){
     el('wp-result').classList.add('show');
     el('wp-answer-reveal').classList.remove('show');
 
-    SCORES[idx] = pct >= 80 ? 1 : 0;
+    SCORES[idx] = { earned: correct, possible: modelWords.length };
     if(pct >= 80) launchConfetti();
 }
 
@@ -1208,12 +1197,18 @@ async function showCompleted(){
     finished = true;
 
     var correct = 0;
-    var wrong = 0;
+    var totalPossible = 0;
     for(var i=0;i<SCORES.length;i++){
-        if(SCORES[i] === 1) correct++;
-        else wrong++;
+        var item = ITEMS[i] || {};
+        var fallbackPossible = item.mode === 'essay' ? 100 : normalize(item.answer || '').length;
+        var entry = SCORES[i];
+        var possible = entry && typeof entry.possible === 'number' ? entry.possible : fallbackPossible;
+        var earned = entry && typeof entry.earned === 'number' ? entry.earned : 0;
+        totalPossible += Math.max(0, possible);
+        correct += Math.max(0, Math.min(possible, earned));
     }
-    var pct = TOTAL > 0 ? Math.round((correct / TOTAL) * 100) : 0;
+    var wrong = Math.max(0, totalPossible - correct);
+    var pct = totalPossible > 0 ? Math.round((correct / totalPossible) * 100) : 0;
 
     el('wp-board').style.display = 'none';
 
@@ -1235,7 +1230,7 @@ async function showCompleted(){
         var saveUrl = WP_RETURN_TO + joiner
             + 'activity_percent=' + pct
             + '&activity_errors=' + wrong
-            + '&activity_total=' + TOTAL
+            + '&activity_total=' + totalPossible
             + '&activity_id=' + encodeURIComponent(WP_ACTIVITY_ID)
             + '&activity_type=writing_practice';
         var ok = await persistScoreSilently(saveUrl);
