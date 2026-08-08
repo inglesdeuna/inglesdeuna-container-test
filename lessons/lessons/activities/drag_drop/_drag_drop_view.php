@@ -186,6 +186,7 @@ body {
     background: var(--dd-purple-soft);
     border-radius: 16px;
     padding: 20px;
+    white-space: pre-wrap;
 }
 
 .dd-media {
