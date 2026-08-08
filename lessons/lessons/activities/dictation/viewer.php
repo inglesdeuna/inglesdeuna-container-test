@@ -155,6 +155,7 @@ function normalize_dictation_payload($rawData): array
     return array(
         'title' => normalize_activity_title($title),
         'voice_id' => $voiceId,
+        'instruction' => isset($decoded['instruction']) ? trim((string) $decoded['instruction']) : '',
         'items' => $normalizedItems,
     );
 }
@@ -278,6 +279,7 @@ function load_dictation_activity(PDO $pdo, string $activityId, string $unit): ar
         'id' => isset($row['id']) ? (string) $row['id'] : '',
         'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
         'voice_id' => isset($payload['voice_id']) && $payload['voice_id'] !== '' ? (string) $payload['voice_id'] : 'nzFihrBIvB34imQBuxub',
+        'instruction' => isset($payload['instruction']) ? (string) $payload['instruction'] : '',
         'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
@@ -290,6 +292,7 @@ $activity = load_dictation_activity($pdo, $activityId, $unit);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $viewerTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
 $activityVoiceId = isset($activity['voice_id']) ? (string) $activity['voice_id'] : 'nzFihrBIvB34imQBuxub';
+$activityInstruction = isset($activity['instruction']) ? (string) $activity['instruction'] : '';
 
 ob_start();
 ?>
@@ -425,6 +428,15 @@ body {
     font-weight: 800;
     color: #9B94BE;
     margin: 8px 0 0;
+}
+
+.dict-instruction {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(13px, 1.8vw, 16px);
+    font-weight: 700;
+    color: #7F77DD;
+    margin: 10px 0 0;
+    white-space: pre-line;
 }
 
 .dict-board {
@@ -884,7 +896,9 @@ body {
         <div class="dict-hero">
             <div class="dict-kicker">Activity</div>
             <h1><?php echo htmlspecialchars($viewerTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-            <p>Listen carefully and write what you hear.</p>
+            <?php if ($activityInstruction !== '') { ?>
+            <div class="dict-instruction"><?php echo nl2br(htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8')); ?></div>
+            <?php } ?>
         </div>
 
         <div class="dict-board" id="dict-viewer" data-az-zoom>
