@@ -14,6 +14,8 @@ if (!empty($_SESSION['student_must_change_password'])) {
 $assignmentFilter = trim((string) ($_GET['assignment'] ?? ''));
 $studentId = trim((string) ($_SESSION['student_id'] ?? ''));
 
+require_once __DIR__ . '/../activities/quiz/_quiz_lib.php';
+
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -113,7 +115,7 @@ function load_assignments(PDO $pdo, string $studentId, string $assignmentFilter 
         quiz_attempts AS (
             SELECT sqs.assignment_id::text, sqs.unit_id::text, sqs.attempt_number, sqs.score_percent,
                    ROW_NUMBER() OVER (PARTITION BY sqs.assignment_id::text, sqs.unit_id::text ORDER BY sqs.attempt_number ASC) AS attempt_order,
-                   ROW_NUMBER() OVER (PARTITION BY sqs.assignment_id::text, sqs.unit_id::text ORDER BY sqs.score_percent DESC, sqs.attempt_number ASC) AS best_order
+                   ROW_NUMBER() OVER (PARTITION BY sqs.assignment_id::text, sqs.unit_id::text ORDER BY sqs.attempt_number DESC) AS best_order
             FROM student_quiz_state sqs
             WHERE sqs.student_id::text = :student_id AND sqs.is_completed = TRUE
         )
@@ -197,6 +199,7 @@ $pdo = get_pdo_connection();
 if (!$pdo) { die('Database is not available.'); }
 
 ensure_quiz_state_table($pdo);
+qz_recalculate_student_quiz_scores($pdo, $studentId, $assignmentFilter);
 $assignments = load_assignments($pdo, $studentId, $assignmentFilter);
 $showGlobalSummary = ($assignmentFilter === '');
 
