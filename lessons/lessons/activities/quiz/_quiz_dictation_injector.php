@@ -80,17 +80,38 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
   var audioUrl=<?=json_encode($dictAudio,JSON_UNESCAPED_SLASHES)?>;
   var text=<?=json_encode($dictText,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES)?>;
   var voiceId=<?=json_encode($dictVoiceId)?>;
-  var player=null,isPaused=false;
+  var player=null,utterance=null,isPaused=false,objectUrl='';
 
-  function setListenLabel(){if(!listen)return;listen.textContent=isPaused?'Resume':(player&&!player.paused?'Pause':'Listen');}
-  function stopAudio(){try{if(player){player.pause();player.currentTime=0;player=null;}if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(error){}isPaused=false;setListenLabel();}
-  function playAudio(src,isObjectUrl){player=new Audio(src);player.onended=function(){if(isObjectUrl)URL.revokeObjectURL(src);player=null;isPaused=false;setListenLabel();};player.play().then(setListenLabel).catch(function(){player=null;setListenLabel();});}
+  function isSpeechActive(){return !!(utterance&&window.speechSynthesis&&window.speechSynthesis.speaking);}
+  function setListenLabel(){if(!listen)return;listen.textContent=isPaused?'Resume':((player&&!player.paused)||isSpeechActive()?'Pause':'Listen');}
+  function clearPlayer(){if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl='';}player=null;}
+  function stopAudio(){try{if(player){player.pause();player.currentTime=0;}clearPlayer();if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(error){}utterance=null;isPaused=false;setListenLabel();}
+  function playAudio(src,isObjectUrl){
+    stopAudio();
+    objectUrl=isObjectUrl?src:'';player=new Audio(src);
+    player.onplay=function(){isPaused=false;setListenLabel();};
+    player.onpause=function(){if(player&&player.currentTime>0&&!player.ended){isPaused=true;}setListenLabel();};
+    player.onended=function(){clearPlayer();isPaused=false;setListenLabel();};
+    player.onerror=function(){clearPlayer();isPaused=false;setListenLabel();};
+    player.play().catch(function(){clearPlayer();isPaused=false;setListenLabel();});
+  }
+  function playBrowserSpeech(){
+    if(!window.speechSynthesis||!text)return;
+    stopAudio();utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=.85;
+    utterance.onstart=function(){isPaused=false;setListenLabel();};
+    utterance.onpause=function(){isPaused=true;setListenLabel();};
+    utterance.onresume=function(){isPaused=false;setListenLabel();};
+    utterance.onend=function(){utterance=null;isPaused=false;setListenLabel();};
+    utterance.onerror=function(){utterance=null;isPaused=false;setListenLabel();};
+    window.speechSynthesis.speak(utterance);
+  }
   function speak(){
-    if(player){if(player.paused){player.play().then(function(){isPaused=false;setListenLabel();}).catch(function(){});}else{player.pause();isPaused=true;setListenLabel();}return;}
+    if(player){if(player.paused){player.play().catch(function(){});}else{player.pause();}return;}
+    if(isSpeechActive()){if(window.speechSynthesis.paused){window.speechSynthesis.resume();isPaused=false;}else{window.speechSynthesis.pause();isPaused=true;}setListenLabel();return;}
     if(audioUrl){playAudio(audioUrl,false);return;}
     listen.disabled=true;listen.textContent='...';
     var data=new FormData();data.append('text',text);data.append('voice_id',voiceId);
-    fetch('/lessons/lessons/activities/dictation/tts.php',{method:'POST',body:data,credentials:'same-origin'}).then(function(response){if(!response.ok)throw new Error('TTS '+response.status);return response.blob();}).then(function(blob){listen.disabled=false;playAudio(URL.createObjectURL(blob),true);}).catch(function(){listen.disabled=false;setListenLabel();if(window.speechSynthesis&&text){var utterance=new SpeechSynthesisUtterance(text);utterance.lang='en-US';utterance.rate=.85;window.speechSynthesis.speak(utterance);}});
+    fetch('/lessons/lessons/activities/dictation/tts.php',{method:'POST',body:data,credentials:'same-origin'}).then(function(response){if(!response.ok)throw new Error('TTS '+response.status);return response.blob();}).then(function(blob){listen.disabled=false;playAudio(URL.createObjectURL(blob),true);}).catch(function(){listen.disabled=false;playBrowserSpeech();});
   }
   function submit(value,skipped){
     if(!form||form.dataset.submitted==='1')return;
@@ -107,5 +128,4 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
   setTimeout(function(){try{input.focus();}catch(error){}},80);
 })();
 </script>
-
 
