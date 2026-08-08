@@ -552,6 +552,7 @@ if (isset($_GET['saved'])) {
                 <input type="hidden" name="block_id[]" value="<?= htmlspecialchars((string) ($block['id'] ?? uniqid('drag_drop_')), ENT_QUOTES, 'UTF-8') ?>">
 
                 <label>Sentence or paragraph</label>
+                <p class="help">Press Enter to start a new line. Each line will display separately for students.</p>
                 <textarea name="text[]" required><?= htmlspecialchars((string) ($block['text'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
 
                 <label>Words to drag</label>
@@ -620,6 +621,7 @@ function addBlock() {
         <input type="hidden" name="block_id[]" value="drag_drop_${Date.now()}_${Math.floor(Math.random() * 1000)}">
 
         <label>Sentence or paragraph</label>
+        <p class="help">Press Enter to start a new line. Each line will display separately for students.</p>
         <textarea name="text[]" required></textarea>
 
         <label>Words to drag</label>
