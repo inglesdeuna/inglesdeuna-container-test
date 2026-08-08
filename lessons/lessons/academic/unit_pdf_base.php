@@ -567,7 +567,7 @@ function ws_video(array $d, int $n, bool $k): string {
 function ws_dictation(array $d, int $n, bool $k): string {
     $items = is_array($d['items'] ?? null) ? $d['items'] : [];
     $out   = ws_head($n, 'Dictation', trim((string)($d['title'] ?? '')),
-                     'Listen to each item and write what you hear.', $k, 'card-open');
+                     trim((string)($d['instruction'] ?? '')) !== '' ? trim((string)$d['instruction']) : 'Listen to each item and write what you hear.', $k, 'card-open');
     if (empty($items)) {
         $out .= '<div class="notes-box"></div>';
         return $out.ws_foot();

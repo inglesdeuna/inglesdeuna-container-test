@@ -136,7 +136,7 @@ $dictationPatch = <<<'PHP'
 /* ── DICTATION ───────────────────────────────────────────── */
 function ws_dictation(array $d, int $n, bool $k): string {
     $items = is_array($d['items'] ?? null) ? $d['items'] : [];
-    $out = ws_head($n, 'Dictation', trim((string)($d['title'] ?? '')), 'Listen to each item and write what you hear.', $k, 'card-open dictation-print');
+    $out = ws_head($n, 'Dictation', trim((string)($d['title'] ?? '')), trim((string)($d['instruction'] ?? '')) !== '' ? trim((string)$d['instruction']) : 'Listen to each item and write what you hear.', $k, 'card-open dictation-print');
     if (empty($items)) return $out.'<div class="notes-box"></div>'.ws_foot();
     foreach ($items as $i => $item) {
         if (!is_array($item)) continue;

@@ -94,12 +94,13 @@ function normalize_dictation_payload($rawData): array
             );
         }
     }
-    return array('title' => normalize_activity_title($title), 'voice_id' => $voiceId, 'items' => $normalizedItems);
+    $instruction = isset($decoded['instruction']) ? trim((string) $decoded['instruction']) : '';
+    return array('title' => normalize_activity_title($title), 'voice_id' => $voiceId, 'instruction' => $instruction, 'items' => $normalizedItems);
 }
 
-function encode_dictation_payload(string $title, array $items): string
+function encode_dictation_payload(string $title, string $instruction, array $items): string
 {
-    return json_encode(array('title' => normalize_activity_title($title), 'items' => array_values($items)), JSON_UNESCAPED_UNICODE);
+    return json_encode(array('title' => normalize_activity_title($title), 'instruction' => $instruction, 'items' => array_values($items)), JSON_UNESCAPED_UNICODE);
 }
 
 function load_dictation_activity(PDO $pdo, string $unit, string $activityId): array
@@ -134,17 +135,18 @@ function load_dictation_activity(PDO $pdo, string $unit, string $activityId): ar
     elseif (isset($row['name']) && trim((string) $row['name']) !== '') $columnTitle = trim((string) $row['name']);
     if ($columnTitle !== '') $payload['title'] = $columnTitle;
     return array(
-        'id'    => isset($row['id']) ? (string) $row['id'] : '',
-        'title' => normalize_activity_title((string) ($payload['title'] ?? '')),
-        'items' => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
+        'id'          => isset($row['id']) ? (string) $row['id'] : '',
+        'title'       => normalize_activity_title((string) ($payload['title'] ?? '')),
+        'instruction' => isset($payload['instruction']) ? (string) $payload['instruction'] : '',
+        'items'       => isset($payload['items']) && is_array($payload['items']) ? $payload['items'] : array(),
     );
 }
 
-function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, array $items): string
+function save_dictation_activity(PDO $pdo, string $unit, string $activityId, string $title, string $instruction, array $items): string
 {
     $columns = activities_columns($pdo);
     $title = normalize_activity_title($title);
-    $json  = encode_dictation_payload($title, $items);
+    $json  = encode_dictation_payload($title, $instruction, $items);
     $hasUnitId = in_array('unit_id', $columns, true);
     $hasUnit = in_array('unit', $columns, true);
     $hasData = in_array('data', $columns, true);
@@ -201,11 +203,13 @@ if ($unit === '') die('Unit not specified');
 $activity = load_dictation_activity($pdo, $unit, $activityId);
 $items = isset($activity['items']) && is_array($activity['items']) ? $activity['items'] : array();
 $activityTitle = isset($activity['title']) ? (string) $activity['title'] : default_dictation_title();
+$activityInstruction = isset($activity['instruction']) ? (string) $activity['instruction'] : '';
 
 if ($activityId === '' && !empty($activity['id'])) $activityId = (string) $activity['id'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $postedTitle = isset($_POST['activity_title']) ? trim((string) $_POST['activity_title']) : '';
+    $postedInstruction = isset($_POST['instruction']) ? trim((string) $_POST['instruction']) : '';
     $ens = isset($_POST['en']) && is_array($_POST['en']) ? $_POST['en'] : array();
     $phs = isset($_POST['ph']) && is_array($_POST['ph']) ? $_POST['ph'] : array();
     $ess = isset($_POST['es']) && is_array($_POST['es']) ? $_POST['es'] : array();
@@ -229,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($en === '' && $img === '' && $ph === '' && $es === '') continue;
         $sanitized[] = array('img' => $img, 'en' => $en, 'ph' => $ph, 'es' => $es, 'audio' => $audio, 'voice_id' => $voiceId);
     }
-    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $sanitized);
+    $savedActivityId = save_dictation_activity($pdo, $unit, $activityId, $postedTitle, $postedInstruction, $sanitized);
     $redirectParams = array('unit=' . urlencode($unit), 'saved=1');
     if ($savedActivityId !== '') $redirectParams[] = 'id=' . urlencode($savedActivityId);
     elseif ($activityId !== '') $redirectParams[] = 'id=' . urlencode($activityId);
@@ -292,6 +296,13 @@ ob_start();
   <input id="activity_title" type="text" name="activity_title"
     value="<?php echo htmlspecialchars($activityTitle, ENT_QUOTES, 'UTF-8'); ?>"
     placeholder="Example: Basic Sentences" required>
+</div>
+
+<div class="title-box">
+  <label for="activity_instruction">Instructions (optional — shown to students above the Listen button)</label>
+  <textarea id="activity_instruction" name="instruction" rows="3"
+    style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:15px;font-family:'Nunito','Segoe UI',sans-serif;box-sizing:border-box;resize:vertical"
+    placeholder="e.g. Listen and write each sentence you hear."><?php echo htmlspecialchars($activityInstruction, ENT_QUOTES, 'UTF-8'); ?></textarea>
 </div>
 
 <div id="items">
