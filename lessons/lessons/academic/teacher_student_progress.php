@@ -15,6 +15,8 @@ if ($studentId === '' || $assignmentId === '') {
     exit;
 }
 
+require_once __DIR__ . '/../activities/quiz/_quiz_lib.php';
+
 function h(string $value): string
 {
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
@@ -269,6 +271,8 @@ $assignment = load_student_assignment($pdo, $assignmentId, $teacherId);
 if (!$assignment || (string) ($assignment['student_id'] ?? '') !== $studentId) {
     die('You do not have access to this record.');
 }
+
+qz_recalculate_student_quiz_scores($pdo, $studentId, $assignmentId);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && (string) ($_POST['action'] ?? '') === 'enable_quiz') {
     $unitToEnable = trim((string) ($_POST['unit_id'] ?? ''));
