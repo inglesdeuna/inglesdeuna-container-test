@@ -409,17 +409,21 @@ $questions = [];
 foreach ($quiz as $_qi => $_qq) {
   $_qtype = (string)($_qq['type'] ?? '');
   $_answerRaw = $answers[$_qi]['answer'] ?? null;
+  $_answerScore = qz_answer_score($_qq,$_answerRaw);
   $questions[] = [
     'id'      => $_qq['id'] ?? $_qi,
     'number'  => $_qi + 1,
     'text'    => (string)($_qq['question'] ?? ''),
     'skill'   => $_qz_skill_map[$_qtype] ?? 'reading',
-    'correct' => !empty($answers[$_qi]['correct']),
+    // Re-evaluate the raw answer with the current scoring rules. Stored attempts
+    // may contain the legacy binary flag even though their answer is correct (or
+    // now earns proportional credit) under the canonical scorer.
+    'correct' => empty($answers[$_qi]['skipped']) && !empty($_answerScore['correct']),
     'answer_text' => qz_review_answer_text($_qq,$_answerRaw),
     'correct_text' => qz_review_correct_text($_qq),
   ];
 }
-unset($_qi, $_qq, $_qtype, $_qz_skill_map, $_answerRaw);
+unset($_qi, $_qq, $_qtype, $_qz_skill_map, $_answerRaw, $_answerScore);
 if (!function_exists('rw_skill_meta')) {
   function rw_skill_meta($skill) {
     $map = [
@@ -896,7 +900,6 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
 <?php endif; ?>
 <?php endif;?></div><script src="../../core/activity_zoom.js"></script></body></html>
 <?php require __DIR__ . '/_quiz_injector.php'; ?>
-
 
 
 
