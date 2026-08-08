@@ -35,11 +35,61 @@ function qz_build($all,$u,$a,$att){return qz_limit_quiz_questions((array)$all,qz
 function qz_fill_parts_expected($v){$raw=preg_split('/\s*[|,]\s*/',(string)$v);$parts=[];foreach($raw as$p){$p=trim((string)$p);if($p!=='')$parts[]=$p;}return$parts;}
 function qz_fill_parts_actual($v){$raw=preg_split('/\s*[|,]\s*/',(string)$v);return array_map(fn($p)=>trim((string)$p),$raw);}
 function qz_words($v){$parts=preg_split('/\s+/u',trim((string)$v));$out=[];foreach((array)$parts as$p){$p=trim((string)$p);if($p!=='')$out[]=$p;}return$out;}
-function qz_words_score($actual,$expected){$a=qz_words($actual);$e=qz_words($expected);$possible=max(1,count($e));$earned=0.0;for($i=0;$i<$possible;$i++)if(qz_norm((string)($a[$i]??''))===qz_norm((string)($e[$i]??'')))$earned++;$full=count($a)===$possible&&$earned===$possible;return['earned'=>$earned,'possible'=>$possible,'correct'=>$full];}
+function qz_words_score($actual,$expected){$a=qz_words(qz_pron_norm($actual));$e=qz_words(qz_pron_norm($expected));$possible=max(1,count($e));$earned=0.0;for($i=0;$i<$possible;$i++)if(qz_pron_norm((string)($a[$i]??''))===qz_pron_norm((string)($e[$i]??'')))$earned++;$full=count($a)===$possible&&$earned===$possible;return['earned'=>$earned,'possible'=>$possible,'correct'=>$full];}
+function qz_characters_score($actual,$expected){$clean=fn($v)=>preg_replace('/[^\p{L}\p{N}]/u','',qz_pron_norm((string)$v));$a=preg_split('//u',$clean($actual),-1,PREG_SPLIT_NO_EMPTY);$e=preg_split('//u',$clean($expected),-1,PREG_SPLIT_NO_EMPTY);$a=is_array($a)?$a:[];$e=is_array($e)?$e:[];$possible=max(1,count($e));$earned=0.0;for($i=0;$i<$possible;$i++)if(($a[$i]??null)===($e[$i]??null))$earned++;$full=count($a)===$possible&&$earned===$possible;return['earned'=>$earned,'possible'=>$possible,'correct'=>$full];}
 function qz_question_parts_possible($q){$type=(string)($q['type']??'');if(in_array($type,['match','drag_drop_kids'],true))return max(1,count((array)($q['pairs']??[])));if(in_array($type,['fill','writing_practice'],true)){if(strpos((string)($q['correct']??''),'|')!==false){$expected=qz_fill_parts_expected($q['correct']??'');$possible=0;foreach($expected as$part)$possible+=max(1,count(qz_words($part)));return max(1,$possible);}return max(1,count(qz_words((string)($q['correct']??''))));}return 1;}
 function qz_question_possible($q){return 1;}
 function qz_drag_drop_kids_answer($a){if(is_array($a))return$a;if(!is_string($a)||trim($a)==='')return[];$decoded=json_decode($a,true);return is_array($decoded)?$decoded:[];}
-function qz_answer_score($q,$a){$possible=1.0;if($a===null||$a==='')return['earned'=>0.0,'possible'=>$possible,'correct'=>false];$type=(string)($q['type']??'');if($type==='drag_drop_kids'){$actual=qz_drag_drop_kids_answer($a);$partsPossible=qz_question_parts_possible($q);$partsEarned=0.0;foreach((array)($q['pairs']??[])as$p){$id=(string)($p['id']??'');if($id!==''&&isset($actual[$id])&&(string)$actual[$id]===$id)$partsEarned++;}$earned=min(1.0,$partsEarned/max(1,$partsPossible));return['earned'=>$earned,'possible'=>$possible,'correct'=>$partsEarned>=$partsPossible];}if($type==='match'){$actual=is_array($a)?$a:[];$partsPossible=qz_question_parts_possible($q);$partsEarned=0.0;foreach((array)($q['pairs']??[])as$i=>$p)if(isset($actual[$i])&&qz_norm((string)$actual[$i])===qz_norm((string)($p['right']??'')))$partsEarned++;$earned=min(1.0,$partsEarned/max(1,$partsPossible));return['earned'=>$earned,'possible'=>$possible,'correct'=>$partsEarned>=$partsPossible];}if(in_array($type,['fill','writing_practice'],true)){if(strpos((string)($q['correct']??''),'|')!==false){$actual=qz_fill_parts_actual($a);$expected=qz_fill_parts_expected($q['correct']??'');$count=max(count($actual),count($expected),1);$partsEarned=0.0;$partsPossible=0.0;$allCorrect=true;for($i=0;$i<$count;$i++){$ws=qz_words_score((string)($actual[$i]??''),(string)($expected[$i]??''));$partsEarned+=$ws['earned'];$partsPossible+=$ws['possible'];if(!$ws['correct'])$allCorrect=false;}$earned=min(1.0,$partsEarned/max(1.0,$partsPossible));return['earned'=>$earned,'possible'=>$possible,'correct'=>$allCorrect&&$partsEarned>0];}$ws=qz_words_score((string)$a,(string)($q['correct']??''));$earned=min(1.0,(float)$ws['earned']/max(1.0,(float)$ws['possible']));return['earned'=>$earned,'possible'=>$possible,'correct'=>$ws['correct']&&$ws['earned']>0];}$correct=qz_correct($q,$a);return['earned'=>$correct?1.0:0.0,'possible'=>$possible,'correct'=>$correct];}
+function qz_answer_score($q,$a){
+    $possible=1.0;
+    if($a===null||$a==='')return['earned'=>0.0,'possible'=>$possible,'correct'=>false];
+    $type=(string)($q['type']??'');
+
+    if($type==='drag_drop_kids'){
+        $actual=qz_drag_drop_kids_answer($a);$partsPossible=qz_question_parts_possible($q);$partsEarned=0.0;
+        foreach((array)($q['pairs']??[])as$p){$id=(string)($p['id']??'');if($id!==''&&isset($actual[$id])&&(string)$actual[$id]===$id)$partsEarned++;}
+        $earned=min(1.0,$partsEarned/max(1,$partsPossible));
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>$partsEarned>=$partsPossible];
+    }
+
+    if($type==='match'){
+        $actual=is_array($a)?$a:[];$partsPossible=qz_question_parts_possible($q);$partsEarned=0.0;
+        foreach((array)($q['pairs']??[])as$i=>$p)if(isset($actual[$i])&&qz_norm((string)$actual[$i])===qz_norm((string)($p['right']??'')))$partsEarned++;
+        $earned=min(1.0,$partsEarned/max(1,$partsPossible));
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>$partsEarned>=$partsPossible];
+    }
+
+    if($type==='drag_drop'){
+        $actual=is_array($a)?array_values($a):[];$expected=array_values((array)($q['correct_words']??[]));$partsPossible=max(1,count($expected));$partsEarned=0.0;
+        foreach($expected as$i=>$word)if(isset($actual[$i])&&qz_pron_norm((string)$actual[$i])===qz_pron_norm((string)$word))$partsEarned++;
+        $earned=min(1.0,$partsEarned/$partsPossible);
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>count($actual)===$partsPossible&&$partsEarned===$partsPossible];
+    }
+
+    if(in_array($type,['fill','writing_practice'],true)){
+        if(strpos((string)($q['correct']??''),'|')!==false){
+            $actual=qz_fill_parts_actual($a);$expected=qz_fill_parts_expected($q['correct']??'');$count=max(count($actual),count($expected),1);$partsEarned=0.0;$partsPossible=0.0;$allCorrect=true;
+            for($i=0;$i<$count;$i++){$ws=qz_words_score((string)($actual[$i]??''),(string)($expected[$i]??''));$partsEarned+=$ws['earned'];$partsPossible+=$ws['possible'];if(!$ws['correct'])$allCorrect=false;}
+            $earned=min(1.0,$partsEarned/max(1.0,$partsPossible));
+            return['earned'=>$earned,'possible'=>$possible,'correct'=>$allCorrect&&$partsEarned>0];
+        }
+        $ws=qz_words_score((string)$a,(string)($q['correct']??''));$earned=min(1.0,(float)$ws['earned']/max(1.0,(float)$ws['possible']));
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>$ws['correct']&&$ws['earned']>0];
+    }
+
+    if(in_array($type,['dictation','unscramble'],true)){
+        $ws=qz_words_score((string)$a,(string)($q['correct']??''));$earned=min(1.0,(float)$ws['earned']/max(1.0,(float)$ws['possible']));
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>$ws['correct']&&$ws['earned']>0];
+    }
+
+    if($type==='unscramble_kids'){
+        $cs=qz_characters_score((string)$a,(string)($q['correct']??''));$earned=min(1.0,(float)$cs['earned']/max(1.0,(float)$cs['possible']));
+        return['earned'=>$earned,'possible'=>$possible,'correct'=>$cs['correct']&&$cs['earned']>0];
+    }
+
+    $correct=qz_correct($q,$a);
+    return['earned'=>$correct?1.0:0.0,'possible'=>$possible,'correct'=>$correct];
+}
 function qz_quiz_type_label(array $q):string{$labels=['dictation'=>'Dictation','pronunciation'=>'Pronunciation','multiple_choice'=>'Multiple Choice','fill'=>'Fill in the Blank','writing_practice'=>'Writing Practice','match'=>'Matching','drag_drop'=>'Drag and Drop','drag_drop_kids'=>'Drag and Drop Kids','unscramble'=>'Unscramble the Sentence','unscramble_kids'=>'Unscramble Kids'];$type=(string)($q['block_type']??$q['type']??'activity');return$labels[$type]??ucwords(str_replace('_',' ',$type));}
 function qz_answers_totals(array $quiz,array $answers):array{$earned=0.0;$possible=0.0;$correctQuestions=0;$skipped=0;foreach($answers as$i=>$a){if(!is_array($a))continue;$q=is_array($quiz[$i]??null)?$quiz[$i]:null;if($q!==null&&array_key_exists('answer',$a)){$score=qz_answer_score($q,$a['answer']);$entryEarned=(float)$score['earned'];$entryCorrect=!empty($score['correct']);}else{$legacyPossible=max(1.0,(float)($a['possible']??1));$legacyEarned=max(0.0,(float)($a['earned']??(!empty($a['correct'])?1:0)));$entryEarned=min(1.0,$legacyEarned/$legacyPossible);$entryCorrect=!empty($a['correct']);}$possible+=1.0;$earned+=max(0.0,min(1.0,$entryEarned));if($entryCorrect)$correctQuestions++;if(!empty($a['skipped']))$skipped++;}return['earned'=>$earned,'possible'=>$possible,'correct_questions'=>$correctQuestions,'skipped_questions'=>$skipped];}
 function qz_quiz_feedback_by_type(array $quiz,array $answers):array{$rows=[];foreach($quiz as$i=>$q){if(!is_array($q))continue;$type=(string)($q['block_type']??$q['type']??'activity');if(!isset($rows[$type]))$rows[$type]=['type'=>$type,'label'=>qz_quiz_type_label($q),'errors'=>0,'questions'=>0,'lost_points'=>0.0];$rows[$type]['questions']++;$answer=is_array($answers[$i]??null)?$answers[$i]:[];if(!empty($answer)&&array_key_exists('answer',$answer)){$score=qz_answer_score($q,$answer['answer']);$earned=(float)$score['earned'];}else{$legacyPossible=max(1.0,(float)($answer['possible']??1));$legacyEarned=max(0.0,(float)($answer['earned']??(!empty($answer['correct'])?1:0)));$earned=min(1.0,$legacyEarned/$legacyPossible);}$wrong=empty($answer)||!empty($answer['skipped'])||$earned+0.00001<1.0;if($wrong){$rows[$type]['errors']++;$rows[$type]['lost_points']+=max(0.0,1.0-$earned);}}$rows=array_filter($rows,fn($row)=>(int)$row['errors']>0);uasort($rows,function($a,$b){$cmp=((int)$b['errors'])<=>((int)$a['errors']);return$cmp!==0?$cmp:strcmp((string)$a['label'],(string)$b['label']);});return array_values($rows);}
@@ -94,5 +144,4 @@ function qz_ensure_share_tables(PDO $pdo): void {
 function qz_build_shared(array $all, string $token): array {
     return qz_limit_quiz_questions($all, crc32('qz_share_' . $token), true);
 }
-
 

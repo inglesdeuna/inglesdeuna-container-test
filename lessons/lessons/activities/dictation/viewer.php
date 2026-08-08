@@ -1059,8 +1059,28 @@ document.addEventListener('DOMContentLoaded', function () {
         return String(text || '')
             .toLowerCase()
             .trim()
-            .replace(/[.,!?;:]/g, '')
+            .replace(/[.,!?;:'"\-]/g, '')
             .replace(/\s+/g, ' ');
+    }
+
+    function scoreWords(studentText, correctText) {
+        var studentWords = normalizeText(studentText).split(' ').filter(Boolean);
+        var correctWords = normalizeText(correctText).split(' ').filter(Boolean);
+        var possible = correctWords.length;
+        var earned = 0;
+
+        for (var i = 0; i < possible; i++) {
+            if ((studentWords[i] || '') === correctWords[i]) {
+                earned++;
+            }
+        }
+
+        return {
+            earned: earned,
+            possible: possible,
+            correct: possible > 0 && studentWords.length === possible && earned === possible,
+            revealed: false
+        };
     }
 
     function escapeHtml(text) {
@@ -1075,26 +1095,14 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildDiffHtml(studentText, correctText) {
         var studentWords = normalizeText(studentText).split(' ').filter(Boolean);
         var correctWords = normalizeText(correctText).split(' ').filter(Boolean);
-        var max = Math.max(studentWords.length, correctWords.length);
         var studentHtml = [];
         var correctHtml = [];
-
-        var correctFreq = {};
-        correctWords.forEach(function(w){ correctFreq[w] = (correctFreq[w] || 0) + 1; });
-        var studentFreq = {};
-        studentWords.forEach(function(w){ studentFreq[w] = (studentFreq[w] || 0) + 1; });
-
-        var usedCorrect = {};
-        studentWords.forEach(function(w) {
-            usedCorrect[w] = (usedCorrect[w] || 0) + 1;
-            var isMatch = correctFreq[w] && usedCorrect[w] <= correctFreq[w];
+        studentWords.forEach(function(w, i) {
+            var isMatch = w === (correctWords[i] || '');
             studentHtml.push('<span class="dict-word ' + (isMatch ? 'match' : 'extra') + '">' + escapeHtml(w) + '</span>');
         });
-
-        var usedStudent = {};
-        correctWords.forEach(function(w) {
-            usedStudent[w] = (usedStudent[w] || 0) + 1;
-            var found = studentFreq[w] && usedStudent[w] <= studentFreq[w];
+        correctWords.forEach(function(w, i) {
+            var found = w === (studentWords[i] || '');
             correctHtml.push('<span class="dict-word ' + (found ? 'neutral' : 'miss') + '">' + escapeHtml(w) + '</span>');
         });
 
@@ -1114,20 +1122,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function computeScore() {
         var correct = 0;
-        var wrong = 0;
+        var total = 0;
         var revealed = 0;
 
         for (var i = 0; i < scores.length; i++) {
-            if (scores[i] === 1) {
-                correct++;
-            } else if (scores[i] === -1) {
+            var entry = scores[i];
+            if (entry && entry.revealed) {
                 revealed++;
-            } else if (scores[i] === 0) {
-                wrong++;
+            } else if (entry && typeof entry.earned === 'number') {
+                correct += entry.earned;
+                total += Math.max(0, Number(entry.possible || 0));
             }
         }
 
-        var total = correct + wrong;
+        var wrong = Math.max(0, total - correct);
         return {
             correct: correct,
             wrong: wrong,
@@ -1362,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function () {
             revealEl.textContent = '';
             playSound(correctSound);
             checkedCards[index] = true;
-            scores[index] = 1;
+            scores[index] = scoreWords(answer, expected);
             answerEl.disabled = true;
             checkBtn.disabled = true;
         } else {
@@ -1375,7 +1383,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 feedbackEl.className = 'dict-feedback bad';
                 playSound(wrongSound);
                 checkedCards[index] = true;
-                scores[index] = 0;
+                scores[index] = scoreWords(answer, expected);
                 answerEl.disabled = true;
                 checkBtn.disabled = true;
             } else {
@@ -1423,7 +1431,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
         if (!checkedCards[index]) {
             checkedCards[index] = true;
-            scores[index] = -1;
+            scores[index] = { earned: 0, possible: 0, correct: false, revealed: true };
             answerEl.disabled = true;
             checkBtn.disabled = true;
             feedbackEl.textContent = 'Answer revealed — this item does not affect score.';
@@ -1463,7 +1471,7 @@ document.addEventListener('DOMContentLoaded', function () {
             var saveUrl = DICT_RETURN_TO +
                 joiner + 'activity_percent=' + pct +
                 '&activity_errors=' + errors +
-                '&activity_total=' + totalCount +
+                '&activity_total=' + score.total +
                 '&activity_id=' + encodeURIComponent(DICT_ACTIVITY_ID) +
                 '&activity_type=dictation';
 
@@ -1538,4 +1546,3 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '✍️', $content);
-
