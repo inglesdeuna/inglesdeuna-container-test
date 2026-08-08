@@ -4,6 +4,7 @@
 $dictText=trim((string)($qNow['correct']??''));
 $dictAudio=trim((string)($qNow['audio']??''));
 $dictImage=trim((string)($qNow['image']??''));
+$dictInstruction=trim((string)($qNow['instruction']??''));
 $dictVoiceId=trim((string)($qNow['voice_id']??'nzFihrBIvB34imQBuxub'))?:'nzFihrBIvB34imQBuxub';
 $prefix='qzdict_'.preg_replace('/[^a-zA-Z0-9_-]/','',(string)($GLOBALS['unitId']??'0')).'_'.$qIndexNow;
 $quizCount=max(1,count($quizNow));
@@ -19,6 +20,7 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
           <div class="dict-status"><?=$quizPosition?> / <?=$quizCount?></div>
         </div>
         <div class="dict-card">
+          <?php if($dictInstruction!==''):?><div class="dict-instruction"><?=nl2br(htmlspecialchars($dictInstruction,ENT_QUOTES,'UTF-8'))?></div><?php endif;?>
           <div class="dict-listen-row">
             <button type="button" class="dict-btn dict-btn-listen" id="<?=$prefix?>_listen">Listen</button>
           </div>
@@ -47,6 +49,7 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
 .qzdict-holder .dict-progress-fill{height:100%;background:linear-gradient(90deg,#F97316,#7F77DD);border-radius:999px}
 .qzdict-holder .dict-status{background:#7F77DD;color:#fff;font-family:'Nunito',sans-serif;font-size:12px;font-weight:900;border-radius:999px;padding:7px 11px;white-space:nowrap}
 .qzdict-holder .dict-card{background:#fff;border:1px solid #EDE9FA;border-radius:28px;box-shadow:0 12px 36px rgba(127,119,221,.13);padding:clamp(18px,3vw,28px);min-height:clamp(260px,35vh,390px);box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.qzdict-holder .dict-instruction{max-width:620px;margin:0 auto 16px;color:#7F77DD;font-family:'Nunito',sans-serif;font-size:clamp(13px,1.8vw,16px);font-weight:800;line-height:1.5;text-align:center;white-space:pre-line}
 .qzdict-holder .dict-listen-row{display:flex;align-items:center;justify-content:center;margin-bottom:16px}
 .qzdict-holder .dict-image{display:block;width:min(100%,340px);max-width:100%;max-height:280px;object-fit:contain;border-radius:22px;margin:0 auto 18px;background:#fff;border:1px solid #EDE9FA;box-shadow:0 8px 24px rgba(127,119,221,.10)}
 .qzdict-holder .dict-answer-box{width:100%;max-width:620px;min-height:108px;padding:16px;border:1.5px solid #EDE9FA;background:#fff;border-radius:22px;font-family:'Nunito','Segoe UI',sans-serif;font-size:clamp(16px,2vw,19px);line-height:1.45;font-weight:800;color:#534AB7;resize:vertical;box-sizing:border-box;margin:0 auto;display:block;outline:none;box-shadow:0 4px 14px rgba(127,119,221,.08)}
@@ -107,3 +110,4 @@ $dictProgress=(int)round(($quizPosition/$quizCount)*100);
   setTimeout(function(){try{input.focus();}catch(error){}},80);
 })();
 </script>
+
