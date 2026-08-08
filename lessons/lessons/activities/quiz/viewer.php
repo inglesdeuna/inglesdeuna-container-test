@@ -24,7 +24,7 @@ if($qzTeacherContext){try{$qzTeacherScoreStmt=$pdo->prepare("SELECT AVG(percent)
 // fall back to the last completed DB attempt's stats so correct/total display correctly.
 if($mode==='result'&&count($answers)<$total&&$qzDbState!==null&&qz_bool($qzDbState['is_completed'])){$dbCor=(int)($qzDbState['correct_count']??0);$dbTot=(int)($qzDbState['total_count']??1);$correct=$dbCor;$score_total=$dbTot;$wrong=max(0,$dbTot-$dbCor);$skip=0;}
 $qzAllAttempts=$qzHasDb?qz_load_all_completed_attempts($pdo,$qzStudentId,$unitId,$assignment):[];
-if($qzTeacherContext&&$mode==='result'&&count($answers)>=$total&&$total>0)$_SESSION[$qzSessionPrefix.'qz_score_'.$att]=(int)$percent;
+if($qzTeacherContext&&in_array($mode,['result','review'],true)&&count($answers)>=$total&&$total>0){$qzTeacherEarned=(float)($score_stats['earned']??0.0);$qzTeacherErrors=max(0,$score_total-(int)round($qzTeacherEarned));qz_save_teacher_quiz_score($pdo,$qzTeacherId,$unitId,(string)$assignment,(int)$percent,$qzTeacherEarned,(int)$score_total);if($mode==='result')$_SESSION[$qzSessionPrefix.'qz_score_'.$att]=(int)$percent;}
 if(!empty($qzAllAttempts)){$qzCompletedCount=count($qzAllAttempts);$qzHasCompletedAttempt=$qzCompletedCount>0;$qzLatestCompletedAttempt=(int)($qzAllAttempts[$qzCompletedCount-1]['attempt_number']??0);foreach($qzAllAttempts as$qzAttemptRow){if((int)($qzAttemptRow['attempt_number']??0)===1){$qzHasFirstAttemptCompleted=true;break;}}}
 $attempt1_score=$qzTeacherContext&&isset($_SESSION[$qzSessionPrefix.'qz_score_1'])?(int)$_SESSION[$qzSessionPrefix.'qz_score_1']:null;$attempt2_score=$qzTeacherContext&&isset($_SESSION[$qzSessionPrefix.'qz_score_2'])?(int)$_SESSION[$qzSessionPrefix.'qz_score_2']:null;$attempt_number=max(1,min(2,$att));$max_attempts=2;
 foreach($qzAllAttempts as$qzAttemptRow){$qzAttemptNo=(int)($qzAttemptRow['attempt_number']??0);$qzAttemptPct=(int)($qzAttemptRow['score_percent']??0);if($qzAttemptNo===1)$attempt1_score=$qzAttemptPct;if($qzAttemptNo===2)$attempt2_score=$qzAttemptPct;}
@@ -37,7 +37,7 @@ $qzCanRetry=($attempt_number<$max_attempts)&&$attempt2_score===null&&$qzCanRetry
 $qzFeedbackQuiz=$quiz;$qzFeedbackAnswers=$answers;
 if($mode==='result'&&count($qzFeedbackAnswers)<count($qzFeedbackQuiz)&&$qzDbState!==null&&qz_bool($qzDbState['is_completed'])){$qzStoredQuiz=json_decode((string)($qzDbState['quiz_set_json']??'[]'),true);$qzStoredAnswers=json_decode((string)($qzDbState['answers_json']??'{}'),true);if(is_array($qzStoredQuiz)&&!empty($qzStoredQuiz)&&is_array($qzStoredAnswers)){$qzFeedbackQuiz=$qzStoredQuiz;$qzFeedbackAnswers=$qzStoredAnswers;}}
 $qzTypeFeedback=qz_quiz_feedback_by_type($qzFeedbackQuiz,$qzFeedbackAnswers);$qzStudyLabels=qz_quiz_feedback_labels($qzTypeFeedback);
-if($qzTeacherContext&&in_array($mode,['result','review'],true)&&count($answers)>=$total&&$total>0){$qzTeacherMetrics=['activity_total'=>(int)$score_total,'activity_errors'=>(int)$wrong,'activity_percent'=>(int)$percent,'activity_id'=>'unit_quiz','quiz_total'=>(int)$score_total,'quiz_errors'=>(int)$wrong,'quiz_percent'=>(int)$percent];$returnHref.=(str_contains($returnHref,'?')?'&':'?').http_build_query($qzTeacherMetrics);}
+if($qzTeacherContext&&in_array($mode,['result','review'],true)&&count($answers)>=$total&&$total>0){$qzMetricErrors=(int)($qzTeacherErrors??max(0,$score_total-(int)round((float)($score_stats['earned']??0))));$qzTeacherMetrics=['activity_total'=>(int)$score_total,'activity_errors'=>$qzMetricErrors,'activity_percent'=>(int)$percent,'activity_id'=>'unit_quiz','quiz_total'=>(int)$score_total,'quiz_errors'=>$qzMetricErrors,'quiz_percent'=>(int)$percent];$returnHref.=(str_contains($returnHref,'?')?'&':'?').http_build_query($qzTeacherMetrics);}
 $lastAnswered=count($answers)>0?max(array_keys($answers)):-1;$currentQuizIndex=max(0,min($total-1,$lastAnswered+1));$rtParam='&return_to='.urlencode($returnHref);$resultHref='?mode=result&unit='.$unitId.'&assignment='.$assignment.$rtParam;$reviewHref='?mode=review&unit='.$unitId.'&assignment='.$assignment.$rtParam;$quizHref='?mode=quiz&q='.$currentQuizIndex.'&unit='.$unitId.'&assignment='.$assignment.$rtParam;
 $quizStartHref='?mode=quiz&q=0&unit='.$unitId.'&assignment='.$assignment.$rtParam;$retakeHref='?mode=intro&reset=1&unit='.$unitId.'&assignment='.$assignment.$rtParam;$qzShowTakeQuizState=in_array($mode,['result','review'],true)&&!$qzHasFirstAttemptCompleted;$qzTabsLocked=!$qzHasFirstAttemptCompleted;$resultTabHref=$qzTabsLocked?$quizStartHref:$resultHref;$reviewTabHref=$qzTabsLocked?$quizStartHref:$reviewHref;
 if($mode==='quiz'&&$qzLocked)$mode='intro';
@@ -202,6 +202,8 @@ $unit_title=isset($unit_title)&&$unit_title!==''?(string)$unit_title:('Unit '.$u
 $level_name=isset($level_name)&&$level_name!==''?(string)$level_name:'Level';
 $correct_count=isset($correct_count)?(int)$correct_count:(int)$correct;
 $total_count=isset($total_count)?(int)$total_count:(int)($score_total??$total);
+$earned_points=$total_count>0?($quiz_score/100)*$total_count:0.0;
+$earned_points_label=rtrim(rtrim(number_format($earned_points,2,'.',''),'0'),'.');
 $elapsed_time=isset($elapsed_time)&&$elapsed_time!==''?(string)$elapsed_time:'--';
 $skill_speaking=$skill_speaking??null;
 $skill_listening=$skill_listening??null;
@@ -276,7 +278,7 @@ if(!function_exists('skill_bar')){function skill_bar($label,$icon_color,$bar_col
       </div>
       <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
         <?php if($pass): ?><span style="background:#DCFCE7;color:#166534;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✓ Passed</span><?php else: ?><span style="background:#FEE2E2;color:#991B1B;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">✗ Not passed</span><?php endif; ?>
-        <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;"><?= $correct_count ?> / <?= $total_count ?> correct</span>
+        <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;"><?= qz_h($earned_points_label) ?> / <?= $total_count ?> points</span>
         <span style="background:#EDE9FA;color:#7F77DD;font-family:'Nunito',sans-serif;font-weight:900;font-size:12px;padding:5px 16px;border-radius:999px;">⏱ <?= qz_h($elapsed_time) ?></span>
       </div>
     </div>
@@ -894,8 +896,6 @@ $review_questions = $show_only_errors ? array_values(array_filter($questions, fn
 <?php endif; ?>
 <?php endif;?></div><script src="../../core/activity_zoom.js"></script></body></html>
 <?php require __DIR__ . '/_quiz_injector.php'; ?>
-
-
 
 
 

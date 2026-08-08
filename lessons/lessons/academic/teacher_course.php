@@ -693,9 +693,19 @@ if ($selectedUnitId !== '' && $quizTotalRaw >= 0) {
     $quizErrors = $quizTotal;
   }
 
-  $quizPercent = $quizTotal > 0
-    ? max(0, min(100, (int) round((($quizTotal - $quizErrors) / $quizTotal) * 100)))
-    : max(0, min(100, $quizPercentRaw));
+  if ($quizPercentRaw >= 0) {
+    // Composite quiz questions can earn fractional credit. The explicit
+    // percentage is authoritative; errors/total are only a rounded summary.
+    $quizPercent = max(0, min(100, $quizPercentRaw));
+    if ($quizTotal > 0) {
+      $credited = max(0, min($quizTotal, (int) round(($quizPercent / 100) * $quizTotal)));
+      $quizErrors = $quizTotal - $credited;
+    }
+  } else {
+    $quizPercent = $quizTotal > 0
+      ? max(0, min(100, (int) round((($quizTotal - $quizErrors) / $quizTotal) * 100)))
+      : 0;
+  }
 
   $key = $teacherId . '|' . $assignmentId . '|' . $selectedUnitId;
   if (!isset($_SESSION['teacher_unit_performance']) || !is_array($_SESSION['teacher_unit_performance'])) {
