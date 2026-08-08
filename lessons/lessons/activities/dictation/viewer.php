@@ -93,6 +93,7 @@ function normalize_dictation_payload($rawData): array
     $default = array(
         'title' => default_dictation_title(),
         'voice_id' => 'nzFihrBIvB34imQBuxub',
+        'instruction' => 'Listen carefully and write what you hear.',
         'items' => array(),
     );
 
@@ -155,7 +156,7 @@ function normalize_dictation_payload($rawData): array
     return array(
         'title' => normalize_activity_title($title),
         'voice_id' => $voiceId,
-        'instruction' => isset($decoded['instruction']) ? trim((string) $decoded['instruction']) : '',
+        'instruction' => trim((string) ($decoded['instruction'] ?? $decoded['instructions'] ?? $decoded['description'] ?? 'Listen carefully and write what you hear.')),
         'items' => $normalizedItems,
     );
 }
@@ -1537,3 +1538,4 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php
 $content = ob_get_clean();
 render_activity_viewer($viewerTitle, '✍️', $content);
+

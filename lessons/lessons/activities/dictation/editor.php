@@ -66,7 +66,7 @@ function normalize_activity_title(string $title): string
 
 function normalize_dictation_payload($rawData): array
 {
-    $default = array('title' => default_dictation_title(), 'voice_id' => 'nzFihrBIvB34imQBuxub', 'items' => array());
+    $default = array('title' => default_dictation_title(), 'voice_id' => 'nzFihrBIvB34imQBuxub', 'instruction' => 'Listen carefully and write what you hear.', 'items' => array());
     if ($rawData === null || $rawData === '') return $default;
     $decoded = is_string($rawData) ? json_decode($rawData, true) : $rawData;
     if (!is_array($decoded)) return $default;
@@ -94,7 +94,7 @@ function normalize_dictation_payload($rawData): array
             );
         }
     }
-    $instruction = isset($decoded['instruction']) ? trim((string) $decoded['instruction']) : '';
+    $instruction = trim((string) ($decoded['instruction'] ?? $decoded['instructions'] ?? $decoded['description'] ?? 'Listen carefully and write what you hear.'));
     return array('title' => normalize_activity_title($title), 'voice_id' => $voiceId, 'instruction' => $instruction, 'items' => $normalizedItems);
 }
 
@@ -540,3 +540,4 @@ setInterval(function () {
 <?php
 $content = ob_get_clean();
 render_activity_editor('Dictation Editor', '✍️', $content);
+
