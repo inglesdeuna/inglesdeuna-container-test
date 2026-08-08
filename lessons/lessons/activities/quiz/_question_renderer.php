@@ -64,7 +64,8 @@ if (!function_exists('qzr_render')) {
               </div>
 
             <?php elseif ($type === 'dictation'): ?>
-              <div class="qzr-listen"><button type="button" id="<?=qzr_h($prefix)?>_listen">🔊 Listen</button><span>Listen and type exactly what you hear.</span></div>
+              <?php $dictInstruction=trim((string)($q['instruction']??'')); ?>
+              <div class="qzr-listen"><button type="button" id="<?=qzr_h($prefix)?>_listen">🔊 Listen</button><span><?=nl2br(qzr_h($dictInstruction!==''?$dictInstruction:'Listen carefully and write what you hear.'))?></span></div>
               <?php if (!empty($q['image'])): ?><div class="qzr-image"><img src="<?=qzr_h($q['image'])?>" alt="Dictation image"></div><?php endif; ?>
               <input class="qzr-input" name="answer" autocomplete="off" required placeholder="Type what you hear">
               <div class="qzr-actions"><button class="qzr-btn qzr-btn-orange" type="submit"><?=qzr_h($submitLabel)?></button><button class="qzr-btn qzr-btn-light" type="submit" name="skip" value="1" formnovalidate><?=qzr_h($skipLabel)?></button></div>
@@ -155,3 +156,4 @@ if (!function_exists('qzr_render')) {
         return (string)ob_get_clean();
     }
 }
+
